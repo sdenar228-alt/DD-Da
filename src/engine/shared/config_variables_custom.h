@@ -36,6 +36,19 @@ MACRO_CONFIG_INT(ClCustomSpinSpeed, cl_custom_spin_speed, 720, -3600, 3600, CFGF
 MACRO_CONFIG_INT(ClCustomSpinPauseOnAction, cl_custom_spin_pause_on_action, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send the real aim direction while hooking or firing, so hook and shots go where you aim")
 MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also spin the dummy")
 
+// --- per weapon asset packs ------------------------------------------------
+// Each of these names an asset pack from 'assets/game'. The sprites of that
+// group are copied out of it into the pack selected with `cl_asset_game`, so
+// single models can be mixed from several downloaded texture packs.
+MACRO_CONFIG_STR(ClCustomAssetHook, cl_custom_asset_hook, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the hook is taken from")
+MACRO_CONFIG_STR(ClCustomAssetHammer, cl_custom_asset_hammer, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the hammer is taken from")
+MACRO_CONFIG_STR(ClCustomAssetGun, cl_custom_asset_gun, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the gun is taken from")
+MACRO_CONFIG_STR(ClCustomAssetShotgun, cl_custom_asset_shotgun, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the shotgun is taken from")
+MACRO_CONFIG_STR(ClCustomAssetGrenade, cl_custom_asset_grenade, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the grenade launcher is taken from")
+MACRO_CONFIG_STR(ClCustomAssetLaser, cl_custom_asset_laser, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the laser rifle is taken from")
+MACRO_CONFIG_STR(ClCustomAssetNinja, cl_custom_asset_ninja, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the ninja is taken from")
+MACRO_CONFIG_STR(ClCustomAssetPickups, cl_custom_asset_pickups, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the pickups and the health/armor bars are taken from")
+
 // --- sounds ----------------------------------------------------------------
 MACRO_CONFIG_STR(ClCustomSoundPack, cl_custom_sound_pack, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound pack folder inside 'sounds'")
 MACRO_CONFIG_INT(ClCustomSoundJoin, cl_custom_sound_join, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play a sound when a player joins the server")

@@ -752,6 +752,9 @@ public:
 
 	void LoadGameSkin(const char *pPath, bool AsDir = false);
 	void LoadBrightHookSprites(const CImageInfo &ImgInfo, const std::optional<CImageInfo> &FallbackImgInfo);
+	// Copies single sprite groups out of other asset packs into `ImgInfo`, see
+	// the `cl_custom_asset_*` variables.
+	void ApplyGameAssetOverrides(CImageInfo &ImgInfo);
 	void LoadEmoticonsSkin(const char *pPath, bool AsDir = false);
 	void LoadParticlesSkin(const char *pPath, bool AsDir = false);
 	void LoadHudSkin(const char *pPath, bool AsDir = false);

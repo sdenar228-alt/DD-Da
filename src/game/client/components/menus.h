@@ -593,7 +593,11 @@ protected:
 	void RefreshBackgroundList();
 	void RefreshAvatarList();
 	void RefreshSoundPackList();
+	void RefreshGameAssetList();
 	void RenderSettingsDDDaSounds(CUIRect MainView);
+	void RenderSettingsDDDaModels(CUIRect MainView);
+	std::vector<std::string> m_vGameAssetNames;
+	bool m_GameAssetListLoaded = false;
 	std::vector<std::string> m_vSoundPackNames;
 	bool m_SoundPackListLoaded = false;
 	std::vector<std::string> m_vAvatarNames;

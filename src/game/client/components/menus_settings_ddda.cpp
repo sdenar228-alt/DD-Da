@@ -29,6 +29,7 @@ enum
 	DDDA_TAB_TILES,
 	DDDA_TAB_BACKGROUND,
 	DDDA_TAB_SOUNDS,
+	DDDA_TAB_MODELS,
 	DDDA_TAB_MISC,
 	NUMBER_OF_DDDA_TABS,
 };
@@ -84,6 +85,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 		Localize("Tiles"),
 		Localize("Background"),
 		Localize("Sounds"),
+		Localize("Models"),
 		Localize("Misc")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_DDDA_TABS; ++Tab)
@@ -106,6 +108,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 	case DDDA_TAB_TILES: RenderSettingsDDDaTiles(MainView); break;
 	case DDDA_TAB_BACKGROUND: RenderSettingsDDDaBackground(MainView); break;
 	case DDDA_TAB_SOUNDS: RenderSettingsDDDaSounds(MainView); break;
+	case DDDA_TAB_MODELS: RenderSettingsDDDaModels(MainView); break;
 	case DDDA_TAB_MISC: RenderSettingsDDDaMisc(MainView); break;
 	default: break;
 	}
@@ -767,5 +770,144 @@ void CMenus::RenderSettingsDDDaSounds(CUIRect MainView)
 	if(DoButton_Menu(&s_RefreshSoundButton, Localize("Refresh"), 0, &RefreshButton))
 	{
 		RefreshSoundPackList();
+	}
+}
+
+void CMenus::RefreshGameAssetList()
+{
+	// An asset pack is either <name>.png or a folder <name> holding game.png.
+	m_vGameAssetNames.clear();
+	Storage()->ListDirectory(IStorage::TYPE_ALL, "assets/game", [](const char *pName, int IsDir, int DirType, void *pUser) -> int {
+		auto *pvNames = static_cast<std::vector<std::string> *>(pUser);
+		if(pName[0] == '.')
+			return 0;
+		if(IsDir)
+		{
+			pvNames->emplace_back(pName);
+			return 0;
+		}
+		const char *pExtension = str_endswith_nocase(pName, ".png");
+		if(pExtension != nullptr)
+			pvNames->emplace_back(pName, pExtension - pName);
+		return 0;
+	},
+		&m_vGameAssetNames);
+	std::sort(m_vGameAssetNames.begin(), m_vGameAssetNames.end());
+	m_vGameAssetNames.erase(std::unique(m_vGameAssetNames.begin(), m_vGameAssetNames.end()), m_vGameAssetNames.end());
+	m_GameAssetListLoaded = true;
+}
+
+void CMenus::RenderSettingsDDDaModels(CUIRect MainView)
+{
+	struct SGroup
+	{
+		const char *m_pLabel;
+		char *m_pValue;
+		size_t m_ValueSize;
+	};
+	const SGroup aGroups[] = {
+		{Localize("Hook"), g_Config.m_ClCustomAssetHook, sizeof(g_Config.m_ClCustomAssetHook)},
+		{Localize("Hammer"), g_Config.m_ClCustomAssetHammer, sizeof(g_Config.m_ClCustomAssetHammer)},
+		{Localize("Gun"), g_Config.m_ClCustomAssetGun, sizeof(g_Config.m_ClCustomAssetGun)},
+		{Localize("Shotgun"), g_Config.m_ClCustomAssetShotgun, sizeof(g_Config.m_ClCustomAssetShotgun)},
+		{Localize("Grenade"), g_Config.m_ClCustomAssetGrenade, sizeof(g_Config.m_ClCustomAssetGrenade)},
+		{Localize("Laser"), g_Config.m_ClCustomAssetLaser, sizeof(g_Config.m_ClCustomAssetLaser)},
+		{Localize("Ninja"), g_Config.m_ClCustomAssetNinja, sizeof(g_Config.m_ClCustomAssetNinja)},
+		{Localize("Pickups"), g_Config.m_ClCustomAssetPickups, sizeof(g_Config.m_ClCustomAssetPickups)},
+	};
+	static int s_SelectedGroup = 0;
+	s_SelectedGroup = std::clamp(s_SelectedGroup, 0, (int)std::size(aGroups) - 1);
+
+	CUIRect LeftView, RightView;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Model"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	CUIRect Hint;
+	LeftView.HSplitBottom(48.0f, &LeftView, &Hint);
+	TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+	SLabelProperties HintProps;
+	HintProps.m_MaxWidth = Hint.w;
+	Ui()->DoLabel(&Hint, Localize("Pick a model on the left and the texture pack it should come from on the right. Everything else keeps using the pack from the Assets page."), 11.0f, TEXTALIGN_TL, HintProps);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	static CListBox s_GroupListBox;
+	s_GroupListBox.DoStart(22.0f, (int)std::size(aGroups), 1, 3, s_SelectedGroup, &LeftView);
+	for(size_t i = 0; i < std::size(aGroups); ++i)
+	{
+		const CListboxItem Item = s_GroupListBox.DoNextItem(aGroups[i].m_pLabel, s_SelectedGroup == (int)i);
+		if(!Item.m_Visible)
+			continue;
+		CUIRect Label = Item.m_Rect;
+		Label.VMargin(MARGIN_SMALL, &Label);
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "%s: %s", aGroups[i].m_pLabel,
+			aGroups[i].m_pValue[0] == 0 ? Localize("from the Assets page") : aGroups[i].m_pValue);
+		Ui()->DoLabel(&Label, aBuf, 13.0f, TEXTALIGN_ML);
+	}
+	s_SelectedGroup = s_GroupListBox.DoEnd();
+	s_SelectedGroup = std::clamp(s_SelectedGroup, 0, (int)std::size(aGroups) - 1);
+
+	// Pack list for the selected model
+	Ui()->DoLabel_AutoLineSize(Localize("Texture pack"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	if(!m_GameAssetListLoaded)
+		RefreshGameAssetList();
+
+	CUIRect RefreshButton;
+	RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
+	RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
+
+	char *pValue = aGroups[s_SelectedGroup].m_pValue;
+	const size_t ValueSize = aGroups[s_SelectedGroup].m_ValueSize;
+
+	int Selected = 0;
+	for(size_t i = 0; i < m_vGameAssetNames.size(); ++i)
+	{
+		if(str_comp(m_vGameAssetNames[i].c_str(), pValue) == 0)
+		{
+			Selected = (int)i + 1;
+			break;
+		}
+	}
+
+	static CListBox s_PackListBox;
+	s_PackListBox.DoStart(20.0f, (int)m_vGameAssetNames.size() + 1, 1, 3, Selected, &RightView);
+	{
+		static int s_DefaultId;
+		const CListboxItem Item = s_PackListBox.DoNextItem(&s_DefaultId, Selected == 0);
+		if(Item.m_Visible)
+		{
+			CUIRect Label = Item.m_Rect;
+			Label.VMargin(MARGIN_SMALL, &Label);
+			Ui()->DoLabel(&Label, Localize("from the Assets page"), 14.0f, TEXTALIGN_ML);
+		}
+	}
+	for(size_t i = 0; i < m_vGameAssetNames.size(); ++i)
+	{
+		const CListboxItem Item = s_PackListBox.DoNextItem(&m_vGameAssetNames[i], Selected == (int)i + 1);
+		if(!Item.m_Visible)
+			continue;
+		CUIRect Label = Item.m_Rect;
+		Label.VMargin(MARGIN_SMALL, &Label);
+		Ui()->DoLabel(&Label, m_vGameAssetNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+	}
+	const int NewSelected = s_PackListBox.DoEnd();
+	if(NewSelected != Selected)
+	{
+		if(NewSelected == 0)
+			pValue[0] = 0;
+		else
+			str_copy(pValue, m_vGameAssetNames[NewSelected - 1].c_str(), ValueSize);
+		// The sprites are baked into one image at load time, so rebuild it.
+		GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+	}
+
+	static CButtonContainer s_RefreshAssetButton;
+	if(DoButton_Menu(&s_RefreshAssetButton, Localize("Refresh"), 0, &RefreshButton))
+	{
+		RefreshGameAssetList();
 	}
 }

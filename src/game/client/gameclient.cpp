@@ -60,6 +60,7 @@
 #include <engine/engine.h>
 #include <engine/favorites.h>
 #include <engine/friends.h>
+#include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
 #include <engine/map.h>
 #include <engine/serverbrowser.h>
@@ -4160,6 +4161,70 @@ void CGameClient::LoadBrightHookSprites(const CImageInfo &ImgInfo, const std::op
 	BrightInfo.Free();
 }
 
+// Mixes single models from several downloaded asset packs into one image, so
+// that for example the hook can come from one pack and the gun from another.
+// The sprites are copied before any texture is created, which keeps the rest of
+// the loading code unchanged.
+void CGameClient::ApplyGameAssetOverrides(CImageInfo &ImgInfo)
+{
+	struct SGroup
+	{
+		const char *m_pPack;
+		std::initializer_list<int> m_vSprites;
+	};
+	const SGroup aGroups[] = {
+		{g_Config.m_ClCustomAssetHook, {SPRITE_HOOK_CHAIN, SPRITE_HOOK_HEAD}},
+		{g_Config.m_ClCustomAssetHammer, {SPRITE_WEAPON_HAMMER_BODY, SPRITE_WEAPON_HAMMER_CURSOR, SPRITE_WEAPON_HAMMER_PROJ, SPRITE_PICKUP_HAMMER}},
+		{g_Config.m_ClCustomAssetGun, {SPRITE_WEAPON_GUN_BODY, SPRITE_WEAPON_GUN_CURSOR, SPRITE_WEAPON_GUN_PROJ, SPRITE_WEAPON_GUN_MUZZLE1, SPRITE_WEAPON_GUN_MUZZLE2, SPRITE_WEAPON_GUN_MUZZLE3, SPRITE_PICKUP_GUN}},
+		{g_Config.m_ClCustomAssetShotgun, {SPRITE_WEAPON_SHOTGUN_BODY, SPRITE_WEAPON_SHOTGUN_CURSOR, SPRITE_WEAPON_SHOTGUN_PROJ, SPRITE_WEAPON_SHOTGUN_MUZZLE1, SPRITE_WEAPON_SHOTGUN_MUZZLE2, SPRITE_WEAPON_SHOTGUN_MUZZLE3, SPRITE_PICKUP_SHOTGUN}},
+		{g_Config.m_ClCustomAssetGrenade, {SPRITE_WEAPON_GRENADE_BODY, SPRITE_WEAPON_GRENADE_CURSOR, SPRITE_WEAPON_GRENADE_PROJ, SPRITE_PICKUP_GRENADE}},
+		{g_Config.m_ClCustomAssetLaser, {SPRITE_WEAPON_LASER_BODY, SPRITE_WEAPON_LASER_CURSOR, SPRITE_WEAPON_LASER_PROJ, SPRITE_PICKUP_LASER}},
+		{g_Config.m_ClCustomAssetNinja, {SPRITE_WEAPON_NINJA_BODY, SPRITE_WEAPON_NINJA_CURSOR, SPRITE_WEAPON_NINJA_PROJ, SPRITE_WEAPON_NINJA_MUZZLE1, SPRITE_WEAPON_NINJA_MUZZLE2, SPRITE_WEAPON_NINJA_MUZZLE3, SPRITE_PICKUP_NINJA}},
+		{g_Config.m_ClCustomAssetPickups, {SPRITE_HEALTH_FULL, SPRITE_HEALTH_EMPTY, SPRITE_ARMOR_FULL, SPRITE_ARMOR_EMPTY, SPRITE_PICKUP_HEALTH, SPRITE_PICKUP_ARMOR, SPRITE_PICKUP_ARMOR_SHOTGUN, SPRITE_PICKUP_ARMOR_GRENADE, SPRITE_PICKUP_ARMOR_NINJA, SPRITE_PICKUP_ARMOR_LASER}},
+	};
+
+	if(ImgInfo.m_Format != CImageInfo::FORMAT_RGBA)
+		return;
+
+	for(const SGroup &Group : aGroups)
+	{
+		if(Group.m_pPack[0] == '\0')
+			continue;
+
+		CImageAsset Source = LoadAssetFromPath(Group.m_pPack, false, IMAGE_GAME, "game");
+		if(!Source.IsLoaded())
+			Source = LoadAssetFromPath(Group.m_pPack, true, IMAGE_GAME, "game");
+		if(!Source.IsLoaded())
+		{
+			log_error("gameclient", "Could not load asset pack '%s'", Group.m_pPack);
+			continue;
+		}
+		if(Source.m_ImageInfo.m_Format != CImageInfo::FORMAT_RGBA)
+		{
+			log_error("gameclient", "Asset pack '%s' is not an RGBA image", Group.m_pPack);
+			continue;
+		}
+
+		// Packs come in different resolutions, so scale the source onto the same
+		// grid before copying single cells out of it.
+		if(Source.m_ImageInfo.m_Width != ImgInfo.m_Width || Source.m_ImageInfo.m_Height != ImgInfo.m_Height)
+		{
+			ResizeImage(Source.m_ImageInfo, ImgInfo.m_Width, ImgInfo.m_Height);
+		}
+
+		for(const int SpriteId : Group.m_vSprites)
+		{
+			const CDataSprite *pSprite = &g_pData->m_aSprites[SpriteId];
+			const size_t GridX = ImgInfo.m_Width / pSprite->m_pSet->m_Gridx;
+			const size_t GridY = ImgInfo.m_Height / pSprite->m_pSet->m_Gridy;
+			ImgInfo.CopyRectFrom(Source.m_ImageInfo,
+				pSprite->m_X * GridX, pSprite->m_Y * GridY,
+				pSprite->m_W * GridX, pSprite->m_H * GridY,
+				pSprite->m_X * GridX, pSprite->m_Y * GridY);
+		}
+	}
+}
+
 void CGameClient::LoadGameSkin(const char *pPath, bool AsDir)
 {
 	if(m_GameSkinLoaded)
@@ -4288,6 +4353,8 @@ void CGameClient::LoadGameSkin(const char *pPath, bool AsDir)
 	}
 	else if(LoadedAsset.IsLoaded() && Graphics()->CheckImageDivisibility(LoadedAsset.m_aPath, ImgInfo, g_pData->m_aSprites[SPRITE_HEALTH_FULL].m_pSet->m_Gridx, g_pData->m_aSprites[SPRITE_HEALTH_FULL].m_pSet->m_Gridy, true) && Graphics()->IsImageFormatRgba(LoadedAsset.m_aPath, ImgInfo))
 	{
+		ApplyGameAssetOverrides(ImgInfo);
+
 		m_GameSkin.m_SpriteHealthFull = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HEALTH_FULL]);
 		m_GameSkin.m_SpriteHealthEmpty = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HEALTH_EMPTY]);
 		m_GameSkin.m_SpriteArmorFull = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_ARMOR_FULL]);
