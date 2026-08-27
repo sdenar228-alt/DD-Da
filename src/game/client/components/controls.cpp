@@ -320,10 +320,6 @@ int CControls::SnapInput(int *pData)
 			m_aInputData[!g_Config.m_ClDummy] = *pDummyInput;
 		}
 
-		// Applied after `cl_dummy_copy_moves` so that the dummy keeps copying
-		// the real aim; the dummy has its own `cl_custom_spin_dummy` option.
-		ApplyVisualSpin(&m_aInputData[g_Config.m_ClDummy], m_aLastData[g_Config.m_ClDummy].m_Fire);
-
 		// stress testing
 		if(g_Config.m_DbgStress)
 		{
@@ -352,14 +348,29 @@ int CControls::SnapInput(int *pData)
 	}
 
 	// copy and return size
+	const int PrevFire = m_aLastData[g_Config.m_ClDummy].m_Fire;
 	m_aLastData[g_Config.m_ClDummy] = m_aInputData[g_Config.m_ClDummy];
+
+	// The spin is applied to a copy, never to the stored input: `m_aInputData`
+	// and `m_aLastData` are reused as the dummy's real aim on a dummy swap and
+	// by `ResetInput`, so a spun angle stored there would freeze the tee's aim
+	// at a random direction. It is also applied after `cl_dummy_copy_moves`, so
+	// that the dummy keeps copying the real aim and spins only when
+	// `cl_custom_spin_dummy` says so.
+	CNetObj_PlayerInput SendData = m_aInputData[g_Config.m_ClDummy];
+	if((SendData.m_PlayerFlags & PLAYERFLAG_PLAYING) != 0 && ApplyVisualSpin(&SendData, PrevFire))
+	{
+		// Without this the rotation would only be transmitted by the 25 Hz
+		// fallback below, because the target is not part of the send conditions.
+		Send = true;
+	}
 
 	if(!Send)
 		return 0;
 
 	m_LastSendTime = time_get();
-	mem_copy(pData, &m_aInputData[g_Config.m_ClDummy], sizeof(m_aInputData[0]));
-	return sizeof(m_aInputData[0]);
+	mem_copy(pData, &SendData, sizeof(SendData));
+	return sizeof(SendData);
 }
 
 void CControls::OnRender()

@@ -441,6 +441,26 @@ void CSkins::LoadSkinFinish(CSkinContainer *pSkinContainer, const CSkinLoadData 
 		Skin.m_ColorableSkin.m_aEyes[i] = Graphics()->LoadSpriteTexture(Data.m_InfoGrayscale, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
 	}
 
+	// Outline mask: same shape as the outline sprites, but with white RGB so
+	// that a custom outline color survives the multiplicative vertex color.
+	{
+		CImageInfo InfoOutlineMask = Data.m_Info.DeepCopy();
+		const size_t PixelStep = InfoOutlineMask.PixelSize();
+		if(PixelStep == 4)
+		{
+			const size_t DataSize = InfoOutlineMask.DataSize();
+			for(size_t Offset = 0; Offset < DataSize; Offset += PixelStep)
+			{
+				InfoOutlineMask.m_pData[Offset] = 255;
+				InfoOutlineMask.m_pData[Offset + 1] = 255;
+				InfoOutlineMask.m_pData[Offset + 2] = 255;
+			}
+			Skin.m_OriginalSkin.m_BodyOutlineMask = Graphics()->LoadSpriteTexture(InfoOutlineMask, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
+			Skin.m_OriginalSkin.m_FeetOutlineMask = Graphics()->LoadSpriteTexture(InfoOutlineMask, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
+		}
+		InfoOutlineMask.Free();
+	}
+
 	Skin.m_Metrics = Data.m_Metrics;
 	Skin.m_BloodColor = Data.m_BloodColor;
 

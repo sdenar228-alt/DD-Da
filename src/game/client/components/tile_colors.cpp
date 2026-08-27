@@ -2,6 +2,7 @@
 
 #include <engine/shared/config.h>
 
+#include <game/client/components/camera.h>
 #include <game/client/gameclient.h>
 #include <game/collision.h>
 #include <game/mapitems.h>
@@ -72,14 +73,23 @@ void CTileColors::OnRender()
 	if(MapWidth <= 0 || MapHeight <= 0)
 		return;
 
-	// Only walk the tiles that are actually on screen.
-	const CScreenRect ScreenRect = Graphics()->GetScreen();
+	// Map the screen to the game world explicitly instead of relying on whatever
+	// the map renderer happened to leave behind, and restore it afterwards.
+	const CScreenRect SavedScreenRect = Graphics()->GetScreen();
+	const CCamera *pCamera = &GameClient()->m_Camera;
+	const CScreenRect ScreenRect = Graphics()->MapScreenToWorld(
+		pCamera->m_Center.x, pCamera->m_Center.y, 100.0f, 100.0f, 100.0f, 0, 0,
+		Graphics()->ScreenAspect(), pCamera->m_Zoom);
+	Graphics()->MapScreen(ScreenRect);
 	const int StartX = std::max(0, (int)std::floor(ScreenRect.m_TopLeft.x / 32.0f));
 	const int StartY = std::max(0, (int)std::floor(ScreenRect.m_TopLeft.y / 32.0f));
 	const int EndX = std::min(MapWidth - 1, (int)std::floor(ScreenRect.m_BottomRight.x / 32.0f));
 	const int EndY = std::min(MapHeight - 1, (int)std::floor(ScreenRect.m_BottomRight.y / 32.0f));
 	if(StartX > EndX || StartY > EndY)
+	{
+		Graphics()->MapScreen(SavedScreenRect);
 		return;
+	}
 
 	for(SBucket &Bucket : m_vBuckets)
 		Bucket.m_vQuads.clear();
@@ -94,7 +104,7 @@ void CTileColors::OnRender()
 			int Bucket = m_aBucketForTile[pCollision->GetTileIndex(MapIndex) & 0xFF];
 			if(Bucket < 0 && UseFront)
 				Bucket = m_aBucketForTile[pCollision->GetFrontTileIndex(MapIndex) & 0xFF];
-			if(Bucket < 0)
+			if(Bucket < 0 || (size_t)Bucket >= m_vBuckets.size())
 				continue;
 
 			m_vBuckets[Bucket].m_vQuads.emplace_back(x * 32.0f, y * 32.0f, 32.0f, 32.0f);
@@ -102,13 +112,23 @@ void CTileColors::OnRender()
 	}
 
 	Graphics()->TextureClear();
+	Graphics()->BlendNormal();
 	Graphics()->QuadsBegin();
 	for(const SBucket &Bucket : m_vBuckets)
 	{
 		if(Bucket.m_vQuads.empty())
 			continue;
 		Graphics()->SetColor(Bucket.m_Color);
-		Graphics()->QuadsDrawTL(Bucket.m_vQuads.data(), (int)Bucket.m_vQuads.size());
+		// The vertex buffer behind QuadsDrawTL is a fixed size array that is only
+		// flushed between calls, so the quads have to be handed over in chunks.
+		constexpr size_t MaxQuadsPerCall = 1024;
+		for(size_t Offset = 0; Offset < Bucket.m_vQuads.size(); Offset += MaxQuadsPerCall)
+		{
+			const size_t Count = std::min(MaxQuadsPerCall, Bucket.m_vQuads.size() - Offset);
+			Graphics()->QuadsDrawTL(Bucket.m_vQuads.data() + Offset, (int)Count);
+		}
 	}
 	Graphics()->QuadsEnd();
+
+	Graphics()->MapScreen(SavedScreenRect);
 }

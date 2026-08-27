@@ -692,6 +692,10 @@ public:
 	CNetObj_PlayerInput m_DummyInput;
 	CNetObj_PlayerInput m_HammerInput;
 	unsigned int m_DummyFire;
+	// State for `cl_custom_spin_dummy`: the fire counter of the last dummy input
+	// that was sent, and when the spin last forced a send.
+	int m_LastSpinDummyFire = 0;
+	float m_LastSpinDummySend = 0.0f;
 	bool m_ReceivedDDNetPlayer;
 	bool m_ReceivedDDNetPlayerFinishTimes;
 	bool m_ReceivedDDNetPlayerFinishTimesMillis;

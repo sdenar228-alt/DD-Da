@@ -38,16 +38,17 @@ MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIEN
 // --- tile colors -----------------------------------------------------------
 // Colored overlay for the game layer, independent from `cl_overlay_entities`.
 // Every color has an alpha channel; alpha 0 means the tile type is not drawn.
+// Packed value is (A << 24) | (H << 16) | (S << 8) | L.
 MACRO_CONFIG_INT(ClCustomTileColors, cl_custom_tile_colors, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a colored overlay over the game layer tiles")
 MACRO_CONFIG_INT(ClCustomTileColorsFront, cl_custom_tile_colors_front, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also color tiles of the front layer")
-MACRO_CONFIG_COL(ClCustomTileColorHookable, cl_custom_tile_color_hookable, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of hookable blocks")
-MACRO_CONFIG_COL(ClCustomTileColorUnhookable, cl_custom_tile_color_unhookable, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of unhookable blocks")
-MACRO_CONFIG_COL(ClCustomTileColorDeath, cl_custom_tile_color_death, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of kill tiles")
-MACRO_CONFIG_COL(ClCustomTileColorFreeze, cl_custom_tile_color_freeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of freeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorUnfreeze, cl_custom_tile_color_unfreeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of unfreeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorDeepFreeze, cl_custom_tile_color_deep_freeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of deep freeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorDeepUnfreeze, cl_custom_tile_color_deep_unfreeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of deep unfreeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorLiveFreeze, cl_custom_tile_color_live_freeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of live freeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorLiveUnfreeze, cl_custom_tile_color_live_unfreeze, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of live unfreeze tiles")
-MACRO_CONFIG_COL(ClCustomTileColorNoLaser, cl_custom_tile_color_nolaser, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of laser blocker tiles")
-MACRO_CONFIG_COL(ClCustomTileColorThrough, cl_custom_tile_color_through, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of hookthrough tiles")
+MACRO_CONFIG_COL(ClCustomTileColorHookable, cl_custom_tile_color_hookable, 0x9900005A, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of hookable blocks")
+MACRO_CONFIG_COL(ClCustomTileColorUnhookable, cl_custom_tile_color_unhookable, 0x9914C878, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of unhookable blocks")
+MACRO_CONFIG_COL(ClCustomTileColorDeath, cl_custom_tile_color_death, 0x9900DC6E, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of kill tiles")
+MACRO_CONFIG_COL(ClCustomTileColorFreeze, cl_custom_tile_color_freeze, 0x9996C88C, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of freeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorUnfreeze, cl_custom_tile_color_unfreeze, 0x995AB48C, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of unfreeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorDeepFreeze, cl_custom_tile_color_deep_freeze, 0x99AAC86E, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of deep freeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorDeepUnfreeze, cl_custom_tile_color_deep_unfreeze, 0x9978B482, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of deep unfreeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorLiveFreeze, cl_custom_tile_color_live_freeze, 0x9987C88C, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of live freeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorLiveUnfreeze, cl_custom_tile_color_live_unfreeze, 0x9946B48C, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of live unfreeze tiles")
+MACRO_CONFIG_COL(ClCustomTileColorNoLaser, cl_custom_tile_color_nolaser, 0x99DCB478, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of laser blocker tiles")
+MACRO_CONFIG_COL(ClCustomTileColorThrough, cl_custom_tile_color_through, 0x99C8B482, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of hookthrough tiles")

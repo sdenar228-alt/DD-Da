@@ -72,6 +72,12 @@ class CHud : public CComponent
 	char m_aCustomCrosshairName[128];
 	void UpdateCustomCrosshair();
 
+public:
+	// Forces the crosshair image to be loaded again on the next frame.
+	void InvalidateCustomCrosshair();
+
+private:
+
 	void RenderTextInfo();
 	void RenderConnectionWarning();
 	void RenderTeambalanceWarning();

@@ -49,6 +49,13 @@ CHud::CHud()
 	m_aCustomCrosshairName[0] = '\0';
 }
 
+void CHud::InvalidateCustomCrosshair()
+{
+	if(m_CustomCrosshairTexture.IsValid())
+		Graphics()->UnloadTexture(&m_CustomCrosshairTexture);
+	m_aCustomCrosshairName[0] = '\0';
+}
+
 void CHud::UpdateCustomCrosshair()
 {
 	if(str_comp(m_aCustomCrosshairName, g_Config.m_ClCustomCrosshairFile) == 0)
@@ -704,6 +711,10 @@ void CHud::RenderCursor()
 			Graphics()->QuadsEnd();
 			return;
 		}
+	}
+	else
+	{
+		InvalidateCustomCrosshair();
 	}
 
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);

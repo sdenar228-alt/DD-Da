@@ -493,7 +493,12 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 	// The outline sprites are normally drawn in the same color as the body and
 	// the feet, which makes them invisible. Drawing them in a separate color and
 	// slightly enlarged turns them into a real outline around the tee.
-	const bool CustomOutline = (pInfo->m_TeeRenderFlags & TEE_CUSTOM_OUTLINE) != 0;
+	// The outline sprites are pure black with an alpha channel, so tinting them
+	// requires the white outline masks; without those a color could only ever
+	// multiply down to black again.
+	const bool CustomOutline = (pInfo->m_TeeRenderFlags & TEE_CUSTOM_OUTLINE) != 0 &&
+				   pInfo->m_OriginalRenderSkin.m_BodyOutlineMask.IsValid() &&
+				   pInfo->m_OriginalRenderSkin.m_FeetOutlineMask.IsValid();
 	const ColorRGBA CustomOutlineColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClCustomOutlineColor, true));
 	const float CustomOutlineScale = CustomOutline ? g_Config.m_ClCustomOutlineSize / 100.0f : 1.0f;
 
@@ -522,7 +527,10 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 				GetRenderTeeBodyScale(BaseSize, BodyScale);
 				if(RecolorOutline)
 					BodyScale *= CustomOutlineScale;
-				Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_BodyOutline : pSkinTextures->m_Body);
+				if(RecolorOutline)
+					Graphics()->TextureSet(pInfo->m_OriginalRenderSkin.m_BodyOutlineMask);
+				else
+					Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_BodyOutline : pSkinTextures->m_Body);
 				Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, OutLine, BodyPos.x, BodyPos.y, BodyScale, BodyScale);
 
 				// draw eyes
@@ -601,7 +609,10 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 				Graphics()->SetColor(pInfo->m_ColorFeet.r * ColorScale, pInfo->m_ColorFeet.g * ColorScale, pInfo->m_ColorFeet.b * ColorScale, Alpha);
 			}
 
-			Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_FeetOutline : pSkinTextures->m_Feet);
+			if(RecolorOutline)
+				Graphics()->TextureSet(pInfo->m_OriginalRenderSkin.m_FeetOutlineMask);
+			else
+				Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_FeetOutline : pSkinTextures->m_Feet);
 			Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset, Position.x + pFoot->m_X * AnimScale, Position.y + pFoot->m_Y * AnimScale, w / 64.f, h / 32.f);
 		}
 	}
