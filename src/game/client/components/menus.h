@@ -584,6 +584,9 @@ protected:
 	void RenderSettingsDDDaTiles(CUIRect MainView);
 	void RenderSettingsDDDaMisc(CUIRect MainView);
 	void RenderDDDaTeePreview(const CUIRect *pRect);
+	// A color picker row followed by an opacity row, so that the alpha of a color
+	// is adjustable without having to open the picker popup.
+	void DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default);
 	void RefreshCrosshairList();
 	std::vector<std::string> m_vCrosshairNames;
 	bool m_CrosshairListLoaded = false;

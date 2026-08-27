@@ -47,6 +47,26 @@ static ColorRGBA DefaultColor(unsigned Packed)
 	return color_cast<ColorRGBA>(ColorHSLA(Packed, true));
 }
 
+void CMenus::DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default)
+{
+	DoLine_ColorPicker(pResetId, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, pView,
+		pLabel, pColor, DefaultColor(Default), false, nullptr, true);
+
+	// The alpha byte of the packed HSLA value doubles as the opacity.
+	const int OldOpacity = (int)(((*pColor) >> 24) & 0xFFu) * 100 / 255;
+	int Opacity = OldOpacity;
+	CUIRect Button;
+	pView->HSplitTop(LINE_SIZE, &Button, pView);
+	Button.VSplitLeft(10.0f, nullptr, &Button);
+	Ui()->DoScrollbarOption(pOpacityId, &Opacity, &Button, Localize("Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	if(Opacity != OldOpacity)
+	{
+		const unsigned Alpha = (unsigned)std::clamp(Opacity * 255 / 100, 0, 255);
+		*pColor = ((*pColor) & 0x00FFFFFFu) | (Alpha << 24);
+	}
+	pView->HSplitTop(COLOR_PICKER_LINE_SPACING, nullptr, pView);
+}
+
 void CMenus::RenderSettingsDDDa(CUIRect MainView)
 {
 	static int s_CurTab = DDDA_TAB_TEES;
@@ -106,8 +126,9 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		static CButtonContainer s_OutlineColor;
-		DoLine_ColorPicker(&s_OutlineColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, COLOR_PICKER_LINE_SPACING, &LeftView,
-			Localize("Outline color"), &g_Config.m_ClCustomOutlineColor, DefaultColor(DefaultConfig::ClCustomOutlineColor), false, nullptr, true);
+		static int s_OutlineOpacity;
+		DoDDDaColorLine(&s_OutlineColor, &s_OutlineOpacity, &LeftView, Localize("Outline color"),
+			&g_Config.m_ClCustomOutlineColor, DefaultConfig::ClCustomOutlineColor);
 	}
 
 	Ui()->DoLabel_AutoLineSize(Localize("Preview"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
@@ -138,8 +159,14 @@ void CMenus::RenderSettingsDDDaHook(CUIRect MainView)
 
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		static CButtonContainer s_HookColor;
-		DoLine_ColorPicker(&s_HookColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, COLOR_PICKER_LINE_SPACING, &LeftView,
-			Localize("Hook chain color"), &g_Config.m_ClCustomHookColorValue, DefaultColor(DefaultConfig::ClCustomHookColorValue), false, nullptr, true);
+		static int s_HookOpacity;
+		DoDDDaColorLine(&s_HookColor, &s_HookOpacity, &LeftView, Localize("Hook chain color"),
+			&g_Config.m_ClCustomHookColorValue, DefaultConfig::ClCustomHookColorValue);
+
+		CUIRect Button;
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomHookColorBrightness, &g_Config.m_ClCustomHookColorBrightness, &Button, Localize("Brightness"), 20, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomHookColorBrightness, &Button, Localize("The hook art is very dark, so the recolored hook is drawn from a brightened copy. Lower this to tone it down."));
 	}
 }
 
@@ -181,8 +208,9 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	static CButtonContainer s_CrosshairColor;
-	DoLine_ColorPicker(&s_CrosshairColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, COLOR_PICKER_LINE_SPACING, &LeftView,
-		Localize("Tint color"), &g_Config.m_ClCustomCrosshairColor, DefaultColor(DefaultConfig::ClCustomCrosshairColor), false, nullptr, true);
+	static int s_CrosshairOpacity;
+	DoDDDaColorLine(&s_CrosshairColor, &s_CrosshairOpacity, &LeftView, Localize("Tint color"),
+		&g_Config.m_ClCustomCrosshairColor, DefaultConfig::ClCustomCrosshairColor);
 
 	// Image list
 	Ui()->DoLabel_AutoLineSize(Localize("Image"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
@@ -300,6 +328,7 @@ void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
 	};
 
 	static CButtonContainer s_aTileColorButtons[std::size(aColors)];
+	static int s_aTileColorOpacity[std::size(aColors)];
 	// The first half goes into the left column, the rest into the right one.
 	const size_t Half = (std::size(aColors) + 1) / 2;
 	for(size_t i = 0; i < std::size(aColors); ++i)
@@ -312,8 +341,8 @@ void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
 			// same height.
 			RightView.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL + 2.0f * LINE_SIZE + MARGIN_SMALL, nullptr, &RightView);
 		}
-		DoLine_ColorPicker(&s_aTileColorButtons[i], COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, COLOR_PICKER_LINE_SPACING, pView,
-			aColors[i].m_pLabel, aColors[i].m_pValue, DefaultColor(aColors[i].m_Default), false, nullptr, true);
+		DoDDDaColorLine(&s_aTileColorButtons[i], &s_aTileColorOpacity[i], pView,
+			aColors[i].m_pLabel, aColors[i].m_pValue, aColors[i].m_Default);
 	}
 }
 

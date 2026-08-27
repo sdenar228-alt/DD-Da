@@ -22,6 +22,7 @@ MACRO_CONFIG_INT(ClCustomOutlineOthers, cl_custom_outline_others, 1, 0, 1, CFGFL
 MACRO_CONFIG_INT(ClCustomHookColor, cl_custom_hook_color, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Recolor the hook chain (0 = off, 1 = all tees, 2 = own hook only, 3 = other tees only)")
 MACRO_CONFIG_COL(ClCustomHookColorValue, cl_custom_hook_color_value, 4294967295, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of the hook chain")
 MACRO_CONFIG_INT(ClCustomHookColorHead, cl_custom_hook_color_head, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also recolor the hook head, not just the chain")
+MACRO_CONFIG_INT(ClCustomHookColorBrightness, cl_custom_hook_color_brightness, 100, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Brightness of the recolored hook in percent")
 
 // --- crosshair -------------------------------------------------------------
 MACRO_CONFIG_INT(ClCustomCrosshair, cl_custom_crosshair, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use a custom crosshair image instead of the one from the assets")

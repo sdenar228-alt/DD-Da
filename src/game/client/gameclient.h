@@ -11,6 +11,7 @@
 
 #include <engine/client.h>
 #include <engine/client/enums.h>
+#include <engine/image.h>
 #include <engine/console.h>
 #include <engine/shared/config.h>
 #include <engine/shared/snapshot.h>
@@ -72,6 +73,7 @@
 #include "components/voting.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 class IMap;
@@ -745,6 +747,7 @@ public:
 	protocol7::CNetObjHandler *GetNetObjHandler7() override;
 
 	void LoadGameSkin(const char *pPath, bool AsDir = false);
+	void LoadBrightHookSprites(const CImageInfo &ImgInfo, const std::optional<CImageInfo> &FallbackImgInfo);
 	void LoadEmoticonsSkin(const char *pPath, bool AsDir = false);
 	void LoadParticlesSkin(const char *pPath, bool AsDir = false);
 	void LoadHudSkin(const char *pPath, bool AsDir = false);
@@ -771,6 +774,11 @@ public:
 		// weapons and hook
 		IGraphics::CTextureHandle m_SpriteHookChain;
 		IGraphics::CTextureHandle m_SpriteHookHead;
+		// Brightness normalized copies. The hook art is very dark (the bundled
+		// game.png peaks at about 52% brightness), and `Graphics()->SetColor`
+		// can only multiply, so a custom hook color would always come out dim.
+		IGraphics::CTextureHandle m_SpriteHookChainBright;
+		IGraphics::CTextureHandle m_SpriteHookHeadBright;
 		IGraphics::CTextureHandle m_SpriteWeaponHammer;
 		IGraphics::CTextureHandle m_SpriteWeaponGun;
 		IGraphics::CTextureHandle m_SpriteWeaponShotgun;
@@ -838,6 +846,8 @@ public:
 
 	SClientGameSkin m_GameSkin;
 	bool m_GameSkinLoaded = false;
+	// True when the bright hook handles alias the normal ones.
+	bool m_GameSkinBrightHookShared = false;
 
 	struct SClientParticlesSkin
 	{

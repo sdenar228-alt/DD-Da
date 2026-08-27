@@ -2834,3 +2834,9 @@ Keep this on, otherwise your hook and your shots fly into a random direction.
 
 Spin the dummy as well
 == Крутить также дамми
+
+Brightness
+== Яркость
+
+The hook art is very dark, so the recolored hook is drawn from a brightened copy. Lower this to tone it down.
+== Спрайт крюка очень тёмный, поэтому перекрашенный крюк рисуется по осветлённой копии. Понижай, если слишком ярко.
