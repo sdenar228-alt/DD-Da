@@ -28,6 +28,7 @@
 
 #include <chrono>
 #include <optional>
+#include <string>
 #include <vector>
 
 class CMenus : public CComponent
@@ -575,6 +576,18 @@ protected:
 	// found in menus_settings_credits.cpp
 	void RenderSettingsCredits(CUIRect MainView);
 
+	// found in menus_settings_ddda.cpp
+	void RenderSettingsDDDa(CUIRect MainView);
+	void RenderSettingsDDDaTees(CUIRect MainView);
+	void RenderSettingsDDDaHook(CUIRect MainView);
+	void RenderSettingsDDDaCrosshair(CUIRect MainView);
+	void RenderSettingsDDDaTiles(CUIRect MainView);
+	void RenderSettingsDDDaMisc(CUIRect MainView);
+	void RenderDDDaTeePreview(const CUIRect *pRect);
+	void RefreshCrosshairList();
+	std::vector<std::string> m_vCrosshairNames;
+	bool m_CrosshairListLoaded = false;
+
 	// found in menus_settings_ddnet.cpp
 	void RenderSettingsDDNet(CUIRect MainView);
 
@@ -711,6 +724,9 @@ public:
 		SETTINGS_DDNET,
 		SETTINGS_ASSETS,
 		SETTINGS_CREDITS,
+		// Appended at the end on purpose: the indices above are shared with the
+		// official client through `ui_settings_page` in settings_ddnet.cfg.
+		SETTINGS_DDDA,
 
 		SETTINGS_LENGTH,
 	};

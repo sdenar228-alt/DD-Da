@@ -2692,3 +2692,145 @@ Always predict frozen players
 
 No country flags match your filter criteria
 == 
+
+# DD-Da client settings
+Tees
+== Тишки
+
+Crosshair
+== Прицел
+
+Tiles
+== Тайлы
+
+Misc
+== Разное
+
+Tee outline
+== Обводка тишек
+
+Draw tees with a custom outline
+== Рисовать тишек с обводкой
+
+Outline your own tee
+== Обводить свою тишку
+
+Outline other tees
+== Обводить чужих тишек
+
+Thickness
+== Толщина
+
+Outline color
+== Цвет обводки
+
+Hook color
+== Цвет крюка
+
+Recolor the hook of
+== Перекрашивать крюк
+
+Nobody
+== Никому
+
+Everyone
+== Всем
+
+Yourself
+== Себе
+
+Other players
+== Другим
+
+Also recolor the hook head
+== Красить и наконечник крюка
+
+Hook chain color
+== Цвет цепи крюка
+
+Custom crosshair
+== Свой прицел
+
+Use a custom crosshair image
+== Использовать своё изображение прицела
+
+Takes precedence over the crosshair of the selected asset pack
+== Имеет приоритет над прицелом из выбранного текстурпака
+
+Tint color
+== Цвет закраски
+
+Image
+== Изображение
+
+No image
+== Без изображения
+
+Refresh
+== Обновить
+
+Put .png files into the 'crosshairs' folder of your config directory.
+== Положи .png файлы в папку 'crosshairs' в каталоге конфигов.
+
+Tile colors
+== Цвета тайлов
+
+Color the game layer tiles
+== Красить тайлы игрового слоя
+
+Works independently from the entities overlay. Set a color to fully transparent to hide that tile type.
+== Работает независимо от отображения энтить. Полностью прозрачный цвет скрывает этот тип тайлов.
+
+Also color the front layer
+== Красить также передний слой
+
+Freeze
+== Фриз
+
+Unfreeze
+== Разфриз
+
+Deep freeze
+== Глубокий фриз
+
+Deep unfreeze
+== Глубокий разфриз
+
+Live freeze
+== Лайв-фриз
+
+Live unfreeze
+== Лайв-разфриз
+
+Kill tiles
+== Килл-тайлы
+
+Hookable
+== Цепляемые блоки
+
+Unhookable
+== Нецепляемые блоки
+
+Hookthrough
+== Хук-сквозь
+
+Laser blocker
+== Блокировка лазера
+
+Spinning tee
+== Кручение тишки
+
+Spin for other players
+== Крутиться для других игроков
+
+Only the aim direction sent to the server rotates. Your own crosshair and view stay where you aim.
+== Крутится только направление прицела, которое уходит на сервер. Твой прицел и обзор не меняются.
+
+Stop spinning while hooking or shooting
+== Не крутиться во время хука и стрельбы
+
+Keep this on, otherwise your hook and your shots fly into a random direction.
+== Держи включённым, иначе хук и выстрелы полетят в случайную сторону.
+
+Spin the dummy as well
+== Крутить также дамми
