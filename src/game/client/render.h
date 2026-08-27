@@ -211,6 +211,8 @@ enum
 	// Draw the outline sprites in `cl_custom_outline_color` instead of the
 	// body/feet color, enlarged by `cl_custom_outline_size`.
 	TEE_CUSTOM_OUTLINE = 8,
+	// Draw this tee with the user supplied shader, see `cl_custom_tee_shader`.
+	TEE_CUSTOM_SHADER = 16,
 };
 
 class CRenderTools
@@ -219,6 +221,8 @@ class CRenderTools
 	class ITextRender *m_pTextRender;
 
 	int m_TeeQuadContainerIndex;
+	// Handed to the user tee shader as `gTime`, updated once per frame.
+	float m_CustomShaderTime = 0.0f;
 
 	static void GetRenderTeeBodyScale(float BaseSize, float &BodyScale);
 	static void GetRenderTeeFeetScale(float BaseSize, float &FeetScaleWidth, float &FeetScaleHeight);
@@ -244,6 +248,7 @@ public:
 	static void GetRenderTeeOffsetToRenderedTee(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, vec2 &TeeOffsetToMid);
 	// object render methods
 	void RenderTee(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, float Alpha = 1.0f) const;
+	void SetCustomShaderTime(float Time) { m_CustomShaderTime = Time; }
 };
 
 #endif

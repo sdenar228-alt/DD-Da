@@ -1100,6 +1100,9 @@ ERunCommandReturnTypes CCommandProcessorFragment_OpenGL::RunCommand(const CComma
 	case CCommandBuffer::CMD_RENDER:
 		Cmd_Render(static_cast<const CCommandBuffer::SCommand_Render *>(pBaseCommand));
 		break;
+	case CCommandBuffer::CMD_SET_CUSTOM_SHADER:
+		Cmd_SetCustomShader(static_cast<const CCommandBuffer::SCommand_SetCustomShader *>(pBaseCommand));
+		break;
 	case CCommandBuffer::CMD_RENDER_TEX3D:
 		Cmd_RenderTex3D(static_cast<const CCommandBuffer::SCommand_RenderTex3D *>(pBaseCommand));
 		break;

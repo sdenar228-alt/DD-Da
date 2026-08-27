@@ -132,6 +132,9 @@ public:
 		CMD_RENDER,
 		CMD_RENDER_TEX3D,
 
+		// switches the sprite drawing to the user supplied tee shader
+		CMD_SET_CUSTOM_SHADER,
+
 		// opengl 2.0+ commands (some are just emulated and only exist in opengl 3.3+)
 		CMD_CREATE_BUFFER_OBJECT, // create vbo
 		CMD_RECREATE_BUFFER_OBJECT, // recreate vbo
@@ -217,6 +220,15 @@ public:
 		SCommand_Signal() :
 			SCommand(CMD_SIGNAL) {}
 		CSemaphore *m_pSemaphore;
+	};
+
+	struct SCommand_SetCustomShader : public SCommand
+	{
+		SCommand_SetCustomShader() :
+			SCommand(CMD_SET_CUSTOM_SHADER) {}
+		bool m_Enabled;
+		// Passed to the shader as `gTime`, so effects can animate.
+		float m_Time;
 	};
 
 	struct SCommand_Render : public SCommand
@@ -814,6 +826,9 @@ class CGraphics_Threaded : public IEngineGraphics
 	std::vector<SVertexArrayInfo> m_vVertexArrayInfo;
 	int m_FirstFreeVertexArrayInfo;
 
+	// Mirrors the backend state, so that the command is only sent on change.
+	bool m_CustomShaderEnabled = false;
+
 	std::vector<int> m_vBufferObjectIndices;
 	int m_FirstFreeBufferObjectIndex;
 
@@ -968,6 +983,7 @@ public:
 	void QuadsEndKeepVertices() override;
 	void QuadsDrawCurrentVertices(bool KeepVertices = true) override;
 	void QuadsSetRotation(float Angle) override;
+	void SetCustomShader(bool Enabled, float Time = 0.0f) override;
 
 	template<typename TName>
 	void SetColor(TName *pVertex, int ColorIndex)

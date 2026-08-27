@@ -140,6 +140,19 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 			&g_Config.m_ClCustomOutlineColor, DefaultConfig::ClCustomOutlineColor);
 	}
 
+	// ***** Shader ***** //
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Tee shader"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShader, Localize("Draw tees with your own shader"), &g_Config.m_ClCustomTeeShader, &LeftView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTeeShader, &LeftView, Localize("Edit shader/tee.frag. Needs the OpenGL 3.3 backend: set gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 and restart."));
+	if(g_Config.m_ClCustomTeeShader)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShaderOwn, Localize("Apply it to your own tee"), &g_Config.m_ClCustomTeeShaderOwn, &LeftView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShaderOthers, Localize("Apply it to other tees"), &g_Config.m_ClCustomTeeShaderOthers, &LeftView, LINE_SIZE);
+	}
+
 	// ***** Avatar ***** //
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	Ui()->DoLabel_AutoLineSize(Localize("Picture instead of the tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);

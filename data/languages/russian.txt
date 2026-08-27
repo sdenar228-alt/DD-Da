@@ -2972,3 +2972,18 @@ Ninja
 
 Pickups
 == Пикапы
+
+Tee shader
+== Шейдер тишки
+
+Draw tees with your own shader
+== Рисовать тишек своим шейдером
+
+Edit shader/tee.frag. Needs the OpenGL 3.3 backend: set gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 and restart.
+== Редактируй shader/tee.frag. Нужен бэкенд OpenGL 3.3: поставь gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 и перезапусти.
+
+Apply it to your own tee
+== Применять к своей тишке
+
+Apply it to other tees
+== Применять к чужим тишкам

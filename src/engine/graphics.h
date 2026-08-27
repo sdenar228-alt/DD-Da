@@ -449,6 +449,16 @@ public:
 	virtual void QuadsEndKeepVertices() = 0;
 	virtual void QuadsDrawCurrentVertices(bool KeepVertices = true) = 0;
 	virtual void QuadsSetRotation(float Angle) = 0;
+
+	/**
+	 * Switches sprite drawing to the user supplied shader from
+	 * `shader/tee.vert` and `shader/tee.frag`. Only implemented by the OpenGL
+	 * backend, other backends ignore it and keep drawing normally.
+	 *
+	 * @param Enabled Whether following sprite draws use the custom shader.
+	 * @param Time Passed to the shader as `gTime` so effects can animate.
+	 */
+	virtual void SetCustomShader(bool Enabled, float Time = 0.0f) = 0;
 	virtual void QuadsSetSubset(float TopLeftU, float TopLeftV, float BottomRightU, float BottomRightV) = 0;
 	virtual void QuadsSetSubsetFree(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, int Index = -1) = 0;
 
