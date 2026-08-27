@@ -16,6 +16,7 @@
 class CTileColors : public CComponent
 {
 public:
+	CTileColors() { m_aBucketForTile.fill(-1); }
 	int Sizeof() const override { return sizeof(*this); }
 	void OnRender() override;
 

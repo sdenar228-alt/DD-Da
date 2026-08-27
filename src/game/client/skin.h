@@ -21,6 +21,13 @@ public:
 		IGraphics::CTextureHandle m_Feet;
 		IGraphics::CTextureHandle m_FeetOutline;
 
+		// The outline sprites of a skin are a pure black alpha mask, so
+		// multiplying them with a vertex color always results in black. These
+		// are copies with white RGB, which can be tinted with any color. Only
+		// filled in on the original skin, see `cl_custom_outline`.
+		IGraphics::CTextureHandle m_BodyOutlineMask;
+		IGraphics::CTextureHandle m_FeetOutlineMask;
+
 		IGraphics::CTextureHandle m_Hands;
 		IGraphics::CTextureHandle m_HandsOutline;
 

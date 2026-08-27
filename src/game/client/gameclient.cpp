@@ -137,13 +137,13 @@ void CGameClient::OnConsoleInit()
 					      &m_Censor,
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
-					      &m_TileColors,
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
 					      &m_Ghost,
 					      &m_Players,
 					      &m_MapLayersForeground,
+					      &m_TileColors, // after the foreground layers, they would paint over it
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,
 					      &m_Particles.m_RenderExtra,
@@ -543,7 +543,11 @@ int CGameClient::OnSnapInput(int *pData, bool Dummy, bool Force)
 		}
 
 		const bool SpinDummy = g_Config.m_ClCustomSpin && g_Config.m_ClCustomSpinDummy;
-		if(!Force && !SpinDummy && (!m_DummyInput.m_Direction && !m_DummyInput.m_Jump && !m_DummyInput.m_Hook))
+		// An idle dummy normally sends nothing, but a spin needs input to keep
+		// flowing. The throttle exists so that a frozen dummy can still be
+		// hammered (see CClient::SendInput), so only force a send at 25 Hz.
+		const bool ForceSpinSend = SpinDummy && Client()->LocalTime() - m_LastSpinDummySend >= 0.04f;
+		if(!Force && !ForceSpinSend && (!m_DummyInput.m_Direction && !m_DummyInput.m_Jump && !m_DummyInput.m_Hook))
 		{
 			return 0;
 		}
@@ -551,7 +555,12 @@ int CGameClient::OnSnapInput(int *pData, bool Dummy, bool Force)
 		// Spin a copy so that the stored dummy input keeps the real aim.
 		CNetObj_PlayerInput DummyInput = m_DummyInput;
 		if(SpinDummy)
-			m_Controls.ApplyVisualSpin(&DummyInput, DummyInput.m_Fire);
+		{
+			m_Controls.ApplyVisualSpin(&DummyInput, m_LastSpinDummyFire);
+			if(ForceSpinSend)
+				m_LastSpinDummySend = Client()->LocalTime();
+		}
+		m_LastSpinDummyFire = m_DummyInput.m_Fire;
 
 		mem_copy(pData, &DummyInput, sizeof(DummyInput));
 		return sizeof(DummyInput);
