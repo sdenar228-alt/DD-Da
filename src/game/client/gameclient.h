@@ -38,6 +38,7 @@
 #include "components/console.h"
 #include "components/controls.h"
 #include "components/countryflags.h"
+#include "components/custom_background.h"
 #include "components/damageind.h"
 #include "components/debughud.h"
 #include "components/effects.h"
@@ -194,6 +195,7 @@ public:
 	CMapLayers m_MapLayersForeground = CMapLayers{ERenderType::RENDERTYPE_FOREGROUND};
 	CBackground m_Background;
 	CMenuBackground m_MenuBackground;
+	CCustomBackground m_CustomBackground;
 
 	CMapSounds m_MapSounds;
 

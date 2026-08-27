@@ -36,6 +36,14 @@ MACRO_CONFIG_INT(ClCustomSpinSpeed, cl_custom_spin_speed, 720, -3600, 3600, CFGF
 MACRO_CONFIG_INT(ClCustomSpinPauseOnAction, cl_custom_spin_pause_on_action, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send the real aim direction while hooking or firing, so hook and shots go where you aim")
 MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also spin the dummy")
 
+// --- custom background -----------------------------------------------------
+MACRO_CONFIG_INT(ClCustomBackground, cl_custom_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a custom image or video behind everything")
+MACRO_CONFIG_STR(ClCustomBackgroundFile, cl_custom_background_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "File inside the 'backgrounds' folder, with its extension")
+MACRO_CONFIG_INT(ClCustomBackgroundOpacity, cl_custom_background_opacity, 100, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the custom background in percent")
+MACRO_CONFIG_INT(ClCustomBackgroundFit, cl_custom_background_fit, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How the background fills the screen (0 = stretch, 1 = cover, 2 = fit)")
+MACRO_CONFIG_INT(ClCustomBackgroundIngame, cl_custom_background_ingame, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the custom background while playing")
+MACRO_CONFIG_INT(ClCustomBackgroundMenu, cl_custom_background_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the custom background in the menus")
+
 // --- tile colors -----------------------------------------------------------
 // Colored overlay for the game layer, independent from `cl_overlay_entities`.
 // Every color has an alpha channel; alpha 0 means the tile type is not drawn.

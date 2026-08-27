@@ -2628,6 +2628,8 @@ if(CLIENT)
     components/controls.h
     components/countryflags.cpp
     components/countryflags.h
+    components/custom_background.cpp
+    components/custom_background.h
     components/damageind.cpp
     components/damageind.h
     components/debughud.cpp

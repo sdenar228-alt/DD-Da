@@ -583,13 +583,18 @@ protected:
 	void RenderSettingsDDDaCrosshair(CUIRect MainView);
 	void RenderSettingsDDDaTiles(CUIRect MainView);
 	void RenderSettingsDDDaMisc(CUIRect MainView);
+	bool RenderCustomMenuBackground();
 	void RenderDDDaTeePreview(const CUIRect *pRect);
 	// A color picker row followed by an opacity row, so that the alpha of a color
 	// is adjustable without having to open the picker popup.
 	void DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default);
+	void RenderSettingsDDDaBackground(CUIRect MainView);
 	void RefreshCrosshairList();
+	void RefreshBackgroundList();
 	std::vector<std::string> m_vCrosshairNames;
+	std::vector<std::string> m_vBackgroundNames;
 	bool m_CrosshairListLoaded = false;
+	bool m_BackgroundListLoaded = false;
 
 	// found in menus_settings_ddnet.cpp
 	void RenderSettingsDDNet(CUIRect MainView);
