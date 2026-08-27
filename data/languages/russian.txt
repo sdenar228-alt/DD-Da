@@ -2840,3 +2840,42 @@ Brightness
 
 The hook art is very dark, so the recolored hook is drawn from a brightened copy. Lower this to tone it down.
 == Спрайт крюка очень тёмный, поэтому перекрашенный крюк рисуется по осветлённой копии. Понижай, если слишком ярко.
+
+Custom background
+== Свой фон
+
+Use a custom background
+== Использовать свой фон
+
+Show it while playing
+== Показывать в игре
+
+The map is drawn on top, so this is only visible where the map is see-through, for example with the entities overlay.
+== Карта рисуется поверх, поэтому фон виден только там, где карта прозрачная — например при включённых энтитях.
+
+Show it in the menus
+== Показывать в меню
+
+Fill mode
+== Заполнение
+
+Stretch
+== Растянуть
+
+Cover
+== Заполнить
+
+Fit
+== Вписать
+
+PNG images work out of the box. Videos need a full FFmpeg build, see the readme.
+== PNG работают сразу. Для видео нужна полная сборка FFmpeg, смотри readme.
+
+Put images or videos into the 'backgrounds' folder of your config directory.
+== Положи картинки или видео в папку 'backgrounds' в каталоге конфигов.
+
+Background
+== Фон
+
+File
+== Файл

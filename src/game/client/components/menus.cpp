@@ -710,7 +710,9 @@ void CMenus::RenderLoadingDirect(const char *pCaption, const char *pContent, std
 		// the menu background is not loaded yet.
 		return;
 	}
-	if(!GameClient()->m_MenuBackground.Render())
+	// A custom background replaces the menu map, otherwise the map would be
+	// drawn on top of it (the components render before the menus).
+	if(!RenderCustomMenuBackground() && !GameClient()->m_MenuBackground.Render())
 	{
 		RenderBackground();
 	}
@@ -1022,7 +1024,7 @@ void CMenus::Render()
 	}
 	else
 	{
-		if(!GameClient()->m_MenuBackground.Render())
+		if(!RenderCustomMenuBackground() && !GameClient()->m_MenuBackground.Render())
 		{
 			RenderBackground();
 		}
@@ -2450,6 +2452,13 @@ void CMenus::UpdateColors()
 		ms_GuiColor.a);
 
 	ms_ColorTabbarHoverIngame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f);
+}
+
+bool CMenus::RenderCustomMenuBackground()
+{
+	if(!g_Config.m_ClCustomBackground || !g_Config.m_ClCustomBackgroundMenu)
+		return false;
+	return GameClient()->m_CustomBackground.RenderFullscreen();
 }
 
 void CMenus::RenderBackground()

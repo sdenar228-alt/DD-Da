@@ -27,6 +27,7 @@ enum
 	DDDA_TAB_HOOK,
 	DDDA_TAB_CROSSHAIR,
 	DDDA_TAB_TILES,
+	DDDA_TAB_BACKGROUND,
 	DDDA_TAB_MISC,
 	NUMBER_OF_DDDA_TABS,
 };
@@ -80,6 +81,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 		Localize("Hook"),
 		Localize("Crosshair"),
 		Localize("Tiles"),
+		Localize("Background"),
 		Localize("Misc")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_DDDA_TABS; ++Tab)
@@ -100,6 +102,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 	case DDDA_TAB_HOOK: RenderSettingsDDDaHook(MainView); break;
 	case DDDA_TAB_CROSSHAIR: RenderSettingsDDDaCrosshair(MainView); break;
 	case DDDA_TAB_TILES: RenderSettingsDDDaTiles(MainView); break;
+	case DDDA_TAB_BACKGROUND: RenderSettingsDDDaBackground(MainView); break;
 	case DDDA_TAB_MISC: RenderSettingsDDDaMisc(MainView); break;
 	default: break;
 	}
@@ -170,25 +173,56 @@ void CMenus::RenderSettingsDDDaHook(CUIRect MainView)
 	}
 }
 
+namespace {
+struct SScanData
+{
+	std::vector<std::string> *m_pvNames;
+	// When set, only files with this extension are listed and it is stripped
+	// from the stored name.
+	const char *m_pExtension;
+};
+
+int ScanFolderCallback(const char *pName, int IsDir, int DirType, void *pUser)
+{
+	auto *pData = static_cast<SScanData *>(pUser);
+	if(IsDir || pName[0] == '.')
+		return 0;
+	if(pData->m_pExtension != nullptr)
+	{
+		const char *pFound = str_endswith_nocase(pName, pData->m_pExtension);
+		if(pFound == nullptr)
+			return 0;
+		pData->m_pvNames->emplace_back(pName, pFound - pName);
+	}
+	else
+	{
+		pData->m_pvNames->emplace_back(pName);
+	}
+	return 0;
+}
+
+void ScanFolder(IStorage *pStorage, const char *pFolder, const char *pExtension, std::vector<std::string> &vNames)
+{
+	vNames.clear();
+	SScanData Data{&vNames, pExtension};
+	pStorage->ListDirectory(IStorage::TYPE_ALL, pFolder, ScanFolderCallback, &Data);
+	std::sort(vNames.begin(), vNames.end());
+	// The same file can exist in several storage paths.
+	vNames.erase(std::unique(vNames.begin(), vNames.end()), vNames.end());
+}
+} // namespace
+
 void CMenus::RefreshCrosshairList()
 {
-	m_vCrosshairNames.clear();
-	Storage()->ListDirectory(IStorage::TYPE_ALL, "crosshairs", [](const char *pName, int IsDir, int DirType, void *pUser) -> int {
-		auto *pvNames = static_cast<std::vector<std::string> *>(pUser);
-		if(IsDir)
-			return 0;
-		const char *pExtension = str_endswith(pName, ".png");
-		if(pExtension == nullptr)
-			return 0;
-		pvNames->emplace_back(pName, pExtension - pName);
-		return 0;
-	},
-		&m_vCrosshairNames);
-
-	std::sort(m_vCrosshairNames.begin(), m_vCrosshairNames.end());
-	// The same file can exist in several storage paths.
-	m_vCrosshairNames.erase(std::unique(m_vCrosshairNames.begin(), m_vCrosshairNames.end()), m_vCrosshairNames.end());
+	ScanFolder(Storage(), "crosshairs", ".png", m_vCrosshairNames);
 	m_CrosshairListLoaded = true;
+}
+
+void CMenus::RefreshBackgroundList()
+{
+	// Backgrounds keep their extension, it decides how the file is decoded.
+	ScanFolder(Storage(), "backgrounds", nullptr, m_vBackgroundNames);
+	m_BackgroundListLoaded = true;
 }
 
 void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
@@ -391,4 +425,114 @@ void CMenus::RenderDDDaTeePreview(const CUIRect *pRect)
 	CRenderTools::GetRenderTeeOffsetToRenderedTee(CAnimState::GetIdle(), &Info, OffsetToMid);
 	const vec2 TeeRenderPos = vec2(pRect->x + pRect->w / 2.0f, pRect->y + pRect->h / 2.0f + OffsetToMid.y);
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeeRenderPos);
+}
+
+void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Custom background"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackground, Localize("Use a custom background"), &g_Config.m_ClCustomBackground, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackgroundIngame, Localize("Show it while playing"), &g_Config.m_ClCustomBackgroundIngame, &LeftView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomBackgroundIngame, &LeftView, Localize("The map is drawn on top, so this is only visible where the map is see-through, for example with the entities overlay."));
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackgroundMenu, Localize("Show it in the menus"), &g_Config.m_ClCustomBackgroundMenu, &LeftView, LINE_SIZE);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClCustomBackgroundOpacity, &g_Config.m_ClCustomBackgroundOpacity, &Button, Localize("Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	static std::vector<CButtonContainer> s_vFitButtons(3);
+	DoLine_RadioMenu(LeftView, Localize("Fill mode"),
+		s_vFitButtons,
+		{Localize("Stretch"), Localize("Cover"), Localize("Fit")},
+		{0, 1, 2},
+		g_Config.m_ClCustomBackgroundFit);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	CUIRect Hint;
+	LeftView.HSplitTop(48.0f, &Hint, &LeftView);
+	TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+	SLabelProperties HintProps;
+	HintProps.m_MaxWidth = Hint.w;
+	Ui()->DoLabel(&Hint, Localize("PNG images work out of the box. Videos need a full FFmpeg build, see the readme."), 11.0f, TEXTALIGN_TL, HintProps);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	// File list
+	Ui()->DoLabel_AutoLineSize(Localize("File"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	if(!m_BackgroundListLoaded)
+		RefreshBackgroundList();
+
+	CUIRect RefreshButton;
+	RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
+	RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
+
+	if(m_vBackgroundNames.empty())
+	{
+		CUIRect Empty;
+		RightView.HSplitTop(40.0f, &Empty, &RightView);
+		TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+		SLabelProperties Props;
+		Props.m_MaxWidth = Empty.w;
+		Ui()->DoLabel(&Empty, Localize("Put images or videos into the 'backgrounds' folder of your config directory."), 12.0f, TEXTALIGN_TL, Props);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+	else
+	{
+		int Selected = 0;
+		for(size_t i = 0; i < m_vBackgroundNames.size(); ++i)
+		{
+			if(str_comp(m_vBackgroundNames[i].c_str(), g_Config.m_ClCustomBackgroundFile) == 0)
+			{
+				Selected = (int)i + 1;
+				break;
+			}
+		}
+		if(Selected == 0 && g_Config.m_ClCustomBackgroundFile[0] != '\0')
+			g_Config.m_ClCustomBackgroundFile[0] = '\0';
+
+		static CListBox s_ListBox;
+		s_ListBox.DoStart(20.0f, (int)m_vBackgroundNames.size() + 1, 1, 3, Selected, &RightView);
+
+		{
+			static int s_NoneId;
+			const CListboxItem Item = s_ListBox.DoNextItem(&s_NoneId, Selected == 0);
+			if(Item.m_Visible)
+			{
+				CUIRect Label = Item.m_Rect;
+				Label.VMargin(MARGIN_SMALL, &Label);
+				Ui()->DoLabel(&Label, Localize("No image"), 14.0f, TEXTALIGN_ML);
+			}
+		}
+
+		for(size_t i = 0; i < m_vBackgroundNames.size(); ++i)
+		{
+			const CListboxItem Item = s_ListBox.DoNextItem(&m_vBackgroundNames[i], Selected == (int)i + 1);
+			if(!Item.m_Visible)
+				continue;
+			CUIRect Label = Item.m_Rect;
+			Label.VMargin(MARGIN_SMALL, &Label);
+			Ui()->DoLabel(&Label, m_vBackgroundNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+		}
+
+		const int NewSelected = s_ListBox.DoEnd();
+		if(NewSelected != Selected)
+		{
+			if(NewSelected == 0)
+				g_Config.m_ClCustomBackgroundFile[0] = '\0';
+			else
+				str_copy(g_Config.m_ClCustomBackgroundFile, m_vBackgroundNames[NewSelected - 1].c_str());
+		}
+	}
+
+	static CButtonContainer s_RefreshButton;
+	if(DoButton_Menu(&s_RefreshButton, Localize("Refresh"), 0, &RefreshButton))
+	{
+		RefreshBackgroundList();
+	}
 }
