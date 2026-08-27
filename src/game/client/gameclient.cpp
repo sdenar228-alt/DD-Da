@@ -130,6 +130,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Controls,
 					      &m_Camera,
 					      &m_Sounds,
+					      &m_CustomSounds,
 					      &m_Voting,
 					      &m_Particles, // doesn't render anything, just updates all the particles
 					      &m_RaceDemo,

@@ -95,6 +95,7 @@ public:
 				"screenshots/auto/stats",
 				"skins",
 				"skins7",
+				"sounds",
 				"themes",
 #if defined(CONF_VIDEORECORDER)
 				"videos"

@@ -36,6 +36,12 @@ MACRO_CONFIG_INT(ClCustomSpinSpeed, cl_custom_spin_speed, 720, -3600, 3600, CFGF
 MACRO_CONFIG_INT(ClCustomSpinPauseOnAction, cl_custom_spin_pause_on_action, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send the real aim direction while hooking or firing, so hook and shots go where you aim")
 MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also spin the dummy")
 
+// --- sounds ----------------------------------------------------------------
+MACRO_CONFIG_STR(ClCustomSoundPack, cl_custom_sound_pack, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound pack folder inside 'sounds'")
+MACRO_CONFIG_INT(ClCustomSoundJoin, cl_custom_sound_join, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play a sound when a player joins the server")
+MACRO_CONFIG_INT(ClCustomSoundLeave, cl_custom_sound_leave, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play a sound when a player leaves the server")
+MACRO_CONFIG_INT(ClCustomSoundEventVolume, cl_custom_sound_event_volume, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Volume of the join and leave sounds in percent")
+
 // --- avatar instead of the tee body ----------------------------------------
 MACRO_CONFIG_INT(ClCustomAvatar, cl_custom_avatar, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a round picture instead of the tee body")
 MACRO_CONFIG_STR(ClCustomAvatarFile, cl_custom_avatar_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Picture inside the 'avatars' folder, without the .png extension")

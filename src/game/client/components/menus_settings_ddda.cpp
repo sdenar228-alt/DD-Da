@@ -28,6 +28,7 @@ enum
 	DDDA_TAB_CROSSHAIR,
 	DDDA_TAB_TILES,
 	DDDA_TAB_BACKGROUND,
+	DDDA_TAB_SOUNDS,
 	DDDA_TAB_MISC,
 	NUMBER_OF_DDDA_TABS,
 };
@@ -82,6 +83,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 		Localize("Crosshair"),
 		Localize("Tiles"),
 		Localize("Background"),
+		Localize("Sounds"),
 		Localize("Misc")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_DDDA_TABS; ++Tab)
@@ -103,6 +105,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 	case DDDA_TAB_CROSSHAIR: RenderSettingsDDDaCrosshair(MainView); break;
 	case DDDA_TAB_TILES: RenderSettingsDDDaTiles(MainView); break;
 	case DDDA_TAB_BACKGROUND: RenderSettingsDDDaBackground(MainView); break;
+	case DDDA_TAB_SOUNDS: RenderSettingsDDDaSounds(MainView); break;
 	case DDDA_TAB_MISC: RenderSettingsDDDaMisc(MainView); break;
 	default: break;
 	}
@@ -325,6 +328,22 @@ void CMenus::RefreshAvatarList()
 {
 	ScanFolder(Storage(), "avatars", ".png", m_vAvatarNames);
 	m_AvatarListLoaded = true;
+}
+
+void CMenus::RefreshSoundPackList()
+{
+	// A sound pack is a folder, not a file.
+	m_vSoundPackNames.clear();
+	Storage()->ListDirectory(IStorage::TYPE_ALL, "sounds", [](const char *pName, int IsDir, int DirType, void *pUser) -> int {
+		if(!IsDir || pName[0] == '.')
+			return 0;
+		static_cast<std::vector<std::string> *>(pUser)->emplace_back(pName);
+		return 0;
+	},
+		&m_vSoundPackNames);
+	std::sort(m_vSoundPackNames.begin(), m_vSoundPackNames.end());
+	m_vSoundPackNames.erase(std::unique(m_vSoundPackNames.begin(), m_vSoundPackNames.end()), m_vSoundPackNames.end());
+	m_SoundPackListLoaded = true;
 }
 
 void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
@@ -643,5 +662,110 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 	if(DoButton_Menu(&s_RefreshButton, Localize("Refresh"), 0, &RefreshButton))
 	{
 		RefreshBackgroundList();
+	}
+}
+
+void CMenus::RenderSettingsDDDaSounds(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Sound pack"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	CUIRect Hint;
+	LeftView.HSplitTop(72.0f, &Hint, &LeftView);
+	TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+	SLabelProperties HintProps;
+	HintProps.m_MaxWidth = Hint.w;
+	Ui()->DoLabel(&Hint, Localize("A pack is a folder inside 'sounds' with files named after the game sounds, for example hook_attach_ground.wav, hammer_hit.wav or gun_fire.wav. Supported formats: wav, opus, wv."), 11.0f, TEXTALIGN_TL, HintProps);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Player join and leave"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSoundJoin, Localize("Play a sound when a player joins"), &g_Config.m_ClCustomSoundJoin, &LeftView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundJoin, &LeftView, Localize("Put player_join.wav into the pack folder"));
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSoundLeave, Localize("Play a sound when a player leaves"), &g_Config.m_ClCustomSoundLeave, &LeftView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundLeave, &LeftView, Localize("Put player_leave.wav into the pack folder"));
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClCustomSoundEventVolume, &g_Config.m_ClCustomSoundEventVolume, &Button, Localize("Volume"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+	// Pack list
+	Ui()->DoLabel_AutoLineSize(Localize("Pack"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	if(!m_SoundPackListLoaded)
+		RefreshSoundPackList();
+
+	CUIRect RefreshButton;
+	RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
+	RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
+
+	if(m_vSoundPackNames.empty())
+	{
+		CUIRect Empty;
+		RightView.HSplitTop(40.0f, &Empty, &RightView);
+		TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+		SLabelProperties Props;
+		Props.m_MaxWidth = Empty.w;
+		Ui()->DoLabel(&Empty, Localize("Create a folder inside the 'sounds' folder of your config directory."), 12.0f, TEXTALIGN_TL, Props);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+	else
+	{
+		int Selected = 0;
+		for(size_t i = 0; i < m_vSoundPackNames.size(); ++i)
+		{
+			if(str_comp(m_vSoundPackNames[i].c_str(), g_Config.m_ClCustomSoundPack) == 0)
+			{
+				Selected = (int)i + 1;
+				break;
+			}
+		}
+		if(Selected == 0 && g_Config.m_ClCustomSoundPack[0] != 0)
+			g_Config.m_ClCustomSoundPack[0] = 0;
+
+		static CListBox s_ListBox;
+		s_ListBox.DoStart(20.0f, (int)m_vSoundPackNames.size() + 1, 1, 3, Selected, &RightView);
+
+		{
+			static int s_NoneId;
+			const CListboxItem Item = s_ListBox.DoNextItem(&s_NoneId, Selected == 0);
+			if(Item.m_Visible)
+			{
+				CUIRect Label = Item.m_Rect;
+				Label.VMargin(MARGIN_SMALL, &Label);
+				Ui()->DoLabel(&Label, Localize("Default sounds"), 14.0f, TEXTALIGN_ML);
+			}
+		}
+
+		for(size_t i = 0; i < m_vSoundPackNames.size(); ++i)
+		{
+			const CListboxItem Item = s_ListBox.DoNextItem(&m_vSoundPackNames[i], Selected == (int)i + 1);
+			if(!Item.m_Visible)
+				continue;
+			CUIRect Label = Item.m_Rect;
+			Label.VMargin(MARGIN_SMALL, &Label);
+			Ui()->DoLabel(&Label, m_vSoundPackNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+		}
+
+		const int NewSelected = s_ListBox.DoEnd();
+		if(NewSelected != Selected)
+		{
+			if(NewSelected == 0)
+				g_Config.m_ClCustomSoundPack[0] = 0;
+			else
+				str_copy(g_Config.m_ClCustomSoundPack, m_vSoundPackNames[NewSelected - 1].c_str());
+		}
+	}
+
+	static CButtonContainer s_RefreshSoundButton;
+	if(DoButton_Menu(&s_RefreshSoundButton, Localize("Refresh"), 0, &RefreshButton))
+	{
+		RefreshSoundPackList();
 	}
 }
