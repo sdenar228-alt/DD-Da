@@ -23,6 +23,7 @@ extern "C" {
 #include <wavpack.h>
 }
 
+#include <algorithm>
 #include <cmath>
 
 static constexpr int SAMPLE_INDEX_USED = -2;
@@ -587,6 +588,177 @@ int CSound::LoadOpus(const char *pFilename, int StorageType)
 
 	if(g_Config.m_Debug)
 		log_trace("sound/opus", "Loaded '%s' (index %d)", pFilename, pSample->m_Index);
+
+	RateConvert(*pSample);
+	return pSample->m_Index;
+}
+
+// Minimal RIFF/WAVE reader. Only uncompressed PCM is supported, which is what
+// virtually every sound editor exports by default; anything else should be
+// converted to Opus.
+bool CSound::DecodeWav(CSample &Sample, const void *pData, unsigned DataSize, const char *pContextName) const
+{
+	const uint8_t *pBytes = static_cast<const uint8_t *>(pData);
+
+	const auto &&ReadU16 = [&](unsigned Offset) -> uint16_t {
+		return (uint16_t)(pBytes[Offset] | (pBytes[Offset + 1] << 8));
+	};
+	const auto &&ReadU32 = [&](unsigned Offset) -> uint32_t {
+		return (uint32_t)pBytes[Offset] | ((uint32_t)pBytes[Offset + 1] << 8) |
+		       ((uint32_t)pBytes[Offset + 2] << 16) | ((uint32_t)pBytes[Offset + 3] << 24);
+	};
+
+	if(DataSize < 44 || mem_comp(pBytes, "RIFF", 4) != 0 || mem_comp(pBytes + 8, "WAVE", 4) != 0)
+	{
+		log_error("sound/wav", "Not a RIFF/WAVE file. Filename='%s'", pContextName);
+		return false;
+	}
+
+	uint16_t Format = 0;
+	uint16_t Channels = 0;
+	uint32_t Rate = 0;
+	uint16_t BitsPerSample = 0;
+	const uint8_t *pSamples = nullptr;
+	uint32_t SamplesSize = 0;
+
+	// Walk the chunk list, the format and data chunks can be in any order and
+	// other chunks (LIST, fact, ...) may sit between them.
+	unsigned Offset = 12;
+	while(Offset + 8 <= DataSize)
+	{
+		const uint32_t ChunkSize = ReadU32(Offset + 4);
+		const unsigned ChunkStart = Offset + 8;
+		if(ChunkSize > DataSize - ChunkStart)
+			break;
+
+		if(mem_comp(pBytes + Offset, "fmt ", 4) == 0 && ChunkSize >= 16)
+		{
+			Format = ReadU16(ChunkStart);
+			Channels = ReadU16(ChunkStart + 2);
+			Rate = ReadU32(ChunkStart + 4);
+			BitsPerSample = ReadU16(ChunkStart + 14);
+			// WAVE_FORMAT_EXTENSIBLE stores the real format in the sub format guid.
+			if(Format == 0xFFFE && ChunkSize >= 26)
+				Format = ReadU16(ChunkStart + 24);
+		}
+		else if(mem_comp(pBytes + Offset, "data", 4) == 0)
+		{
+			pSamples = pBytes + ChunkStart;
+			SamplesSize = ChunkSize;
+		}
+
+		// Chunks are padded to an even size.
+		Offset = ChunkStart + ChunkSize + (ChunkSize & 1);
+	}
+
+	if(pSamples == nullptr || Channels == 0 || Rate == 0)
+	{
+		log_error("sound/wav", "Missing or broken format/data chunk. Filename='%s'", pContextName);
+		return false;
+	}
+	if(Channels > 2)
+	{
+		log_error("sound/wav", "File is not mono or stereo. Channels=%d Filename='%s'", Channels, pContextName);
+		return false;
+	}
+	// 1 = PCM integer, 3 = IEEE float
+	if((Format != 1 && Format != 3) || (Format == 3 && BitsPerSample != 32))
+	{
+		log_error("sound/wav", "Only uncompressed PCM is supported. Format=%d Bits=%d Filename='%s'", Format, BitsPerSample, pContextName);
+		return false;
+	}
+
+	const unsigned BytesPerSample = BitsPerSample / 8;
+	if(BytesPerSample == 0 || (Format == 1 && BitsPerSample != 8 && BitsPerSample != 16 && BitsPerSample != 24 && BitsPerSample != 32))
+	{
+		log_error("sound/wav", "Unsupported sample size. Bits=%d Filename='%s'", BitsPerSample, pContextName);
+		return false;
+	}
+
+	const unsigned NumFrames = SamplesSize / (BytesPerSample * Channels);
+	if(NumFrames == 0)
+	{
+		log_error("sound/wav", "File contains no samples. Filename='%s'", pContextName);
+		return false;
+	}
+
+	short *pOut = static_cast<short *>(calloc((size_t)NumFrames * Channels, sizeof(short)));
+	if(pOut == nullptr)
+		return false;
+
+	for(unsigned i = 0; i < NumFrames * Channels; ++i)
+	{
+		const uint8_t *pIn = pSamples + (size_t)i * BytesPerSample;
+		int Value;
+		if(Format == 3)
+		{
+			float Float;
+			mem_copy(&Float, pIn, sizeof(Float));
+			Value = round_to_int(std::clamp(Float, -1.0f, 1.0f) * 32767.0f);
+		}
+		else if(BitsPerSample == 8)
+		{
+			// 8 bit wav samples are unsigned.
+			Value = ((int)pIn[0] - 128) * 256;
+		}
+		else if(BitsPerSample == 16)
+		{
+			Value = (int16_t)(pIn[0] | (pIn[1] << 8));
+		}
+		else if(BitsPerSample == 24)
+		{
+			const int32_t Raw = (int32_t)((pIn[0] << 8) | (pIn[1] << 16) | (pIn[2] << 24));
+			Value = Raw >> 16;
+		}
+		else
+		{
+			const int32_t Raw = (int32_t)((uint32_t)pIn[0] | ((uint32_t)pIn[1] << 8) | ((uint32_t)pIn[2] << 16) | ((uint32_t)pIn[3] << 24));
+			Value = Raw >> 16;
+		}
+		pOut[i] = (short)std::clamp(Value, -32768, 32767);
+	}
+
+	Sample.m_pData = pOut;
+	Sample.m_NumFrames = (int)NumFrames;
+	Sample.m_Rate = (int)Rate;
+	Sample.m_Channels = Channels;
+	Sample.m_LoopStart = -1;
+	Sample.m_PausedAt = 0;
+	return true;
+}
+
+int CSound::LoadWav(const char *pFilename, int StorageType)
+{
+	// no need to load sound when we are running with no sound
+	if(!m_SoundEnabled)
+		return -1;
+
+	CSample *pSample = AllocSample();
+	if(!pSample)
+	{
+		log_error("sound/wav", "Failed to allocate sample ID. Filename='%s'", pFilename);
+		return -1;
+	}
+
+	void *pData;
+	unsigned DataSize;
+	if(!m_pStorage->ReadFile(pFilename, StorageType, &pData, &DataSize))
+	{
+		UnloadSample(pSample->m_Index);
+		log_error("sound/wav", "Failed to open file. Filename='%s'", pFilename);
+		return -1;
+	}
+
+	const bool DecodeSuccess = DecodeWav(*pSample, pData, DataSize, pFilename);
+	free(pData);
+	if(!DecodeSuccess)
+	{
+		UnloadSample(pSample->m_Index);
+		return -1;
+	}
+
+	if(g_Config.m_Debug)
+		log_trace("sound/wav", "Loaded '%s' (index %d)", pFilename, pSample->m_Index);
 
 	RateConvert(*pSample);
 	return pSample->m_Index;

@@ -2903,3 +2903,36 @@ Picture
 
 Put .png files into the 'avatars' folder of your config directory.
 == Положи .png файлы в папку 'avatars' в каталоге конфигов.
+
+Sounds
+== Звуки
+
+Sound pack
+== Звуковой пак
+
+A pack is a folder inside 'sounds' with files named after the game sounds, for example hook_attach_ground.wav, hammer_hit.wav or gun_fire.wav. Supported formats: wav, opus, wv.
+== Пак — это папка внутри 'sounds' с файлами, названными как звуки игры: hook_attach_ground.wav, hammer_hit.wav, gun_fire.wav и т.п. Поддерживаются wav, opus, wv.
+
+Player join and leave
+== Вход и выход игроков
+
+Play a sound when a player joins
+== Звук при входе игрока
+
+Play a sound when a player leaves
+== Звук при выходе игрока
+
+Put player_join.wav into the pack folder
+== Положи player_join.wav в папку пака
+
+Put player_leave.wav into the pack folder
+== Положи player_leave.wav в папку пака
+
+Pack
+== Пак
+
+Default sounds
+== Стандартные звуки
+
+Create a folder inside the 'sounds' folder of your config directory.
+== Создай папку внутри 'sounds' в каталоге конфигов.

@@ -67,6 +67,11 @@ public:
 
 	virtual int LoadOpus(const char *pFilename, int StorageType = IStorage::TYPE_ALL) = 0;
 	virtual int LoadWV(const char *pFilename, int StorageType = IStorage::TYPE_ALL) = 0;
+	/**
+	 * Loads an uncompressed RIFF/WAVE file. Supports 8, 16, 24 and 32 bit
+	 * integer as well as 32 bit float samples, mono or stereo.
+	 */
+	virtual int LoadWav(const char *pFilename, int StorageType = IStorage::TYPE_ALL) = 0;
 	virtual int LoadOpusFromMem(const void *pData, unsigned DataSize, bool ForceLoad, const char *pContextName) = 0;
 	virtual int LoadWVFromMem(const void *pData, unsigned DataSize, bool ForceLoad, const char *pContextName) = 0;
 	virtual void UnloadSample(int SampleId) = 0;

@@ -592,6 +592,10 @@ protected:
 	void RefreshCrosshairList();
 	void RefreshBackgroundList();
 	void RefreshAvatarList();
+	void RefreshSoundPackList();
+	void RenderSettingsDDDaSounds(CUIRect MainView);
+	std::vector<std::string> m_vSoundPackNames;
+	bool m_SoundPackListLoaded = false;
 	std::vector<std::string> m_vAvatarNames;
 	bool m_AvatarListLoaded = false;
 	std::vector<std::string> m_vCrosshairNames;

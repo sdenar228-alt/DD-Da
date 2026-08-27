@@ -2630,6 +2630,8 @@ if(CLIENT)
     components/countryflags.h
     components/custom_background.cpp
     components/custom_background.h
+    components/custom_sounds.cpp
+    components/custom_sounds.h
     components/damageind.cpp
     components/damageind.h
     components/debughud.cpp
