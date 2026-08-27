@@ -93,6 +93,7 @@ public:
 				"screenshots",
 				"screenshots/auto",
 				"screenshots/auto/stats",
+				"shader",
 				"skins",
 				"skins7",
 				"sounds",
