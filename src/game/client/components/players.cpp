@@ -5,12 +5,16 @@
 
 #include <base/color.h>
 #include <base/dbg.h>
+#include <base/log.h>
 #include <base/math.h>
+#include <base/str.h>
 
 #include <engine/client/enums.h>
 #include <engine/demo.h>
 #include <engine/graphics.h>
+#include <engine/image.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 
 #include <generated/client_data.h>
 #include <generated/client_data7.h>
@@ -973,10 +977,71 @@ inline bool CPlayers::IsPlayerInfoAvailable(int ClientId) const
 	       GameClient()->m_Snap.m_apPlayerInfos[ClientId] != nullptr;
 }
 
+// Loads `cl_custom_avatar_file` and masks it into a circle, so that it looks
+// like a chat style profile picture instead of a square photo.
+void CPlayers::UpdateAvatar()
+{
+	if(str_comp(m_aAvatarName, g_Config.m_ClCustomAvatarFile) == 0)
+		return;
+	str_copy(m_aAvatarName, g_Config.m_ClCustomAvatarFile);
+
+	if(m_AvatarTexture.IsValid())
+		Graphics()->UnloadTexture(&m_AvatarTexture);
+
+	if(m_aAvatarName[0] == 0)
+		return;
+
+	char aPath[IO_MAX_PATH_LENGTH];
+	str_format(aPath, sizeof(aPath), "avatars/%s.png", m_aAvatarName);
+	CImageInfo Image;
+	if(!Graphics()->LoadPng(Image, aPath, IStorage::TYPE_ALL))
+	{
+		log_error("players", "Could not load avatar '%s'", aPath);
+		return;
+	}
+	if(Image.m_Format != CImageInfo::FORMAT_RGBA)
+	{
+		log_error("players", "Avatar '%s' is not an RGBA image", aPath);
+		Image.Free();
+		return;
+	}
+
+	// Cut a circle out of the picture. The radius is half of the shorter side,
+	// so a non square picture is cropped rather than squashed.
+	const float CenterX = Image.m_Width / 2.0f;
+	const float CenterY = Image.m_Height / 2.0f;
+	const float Radius = std::min(CenterX, CenterY);
+	// One pixel of fade keeps the edge from looking jagged.
+	const float InnerRadius = std::max(0.0f, Radius - 1.0f);
+	for(size_t y = 0; y < Image.m_Height; ++y)
+	{
+		for(size_t x = 0; x < Image.m_Width; ++x)
+		{
+			const float Distance = length(vec2(x + 0.5f - CenterX, y + 0.5f - CenterY));
+			float Factor = 1.0f;
+			if(Distance >= Radius)
+				Factor = 0.0f;
+			else if(Distance > InnerRadius)
+				Factor = 1.0f - (Distance - InnerRadius) / (Radius - InnerRadius);
+			if(Factor >= 1.0f)
+				continue;
+			uint8_t *pAlpha = &Image.m_pData[(y * Image.m_Width + x) * 4 + 3];
+			*pAlpha = (uint8_t)(*pAlpha * Factor);
+		}
+	}
+
+	m_AvatarTexture = Graphics()->LoadTextureRawMove(Image, 0, aPath);
+	if(m_AvatarTexture.IsNullTexture())
+		m_AvatarTexture.Invalidate();
+}
+
 void CPlayers::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+
+	if(g_Config.m_ClCustomAvatar)
+		UpdateAvatar();
 
 	// update render info for ninja
 	CTeeRenderInfo aRenderInfo[MAX_CLIENTS];
@@ -985,6 +1050,13 @@ void CPlayers::OnRender()
 	{
 		aRenderInfo[i] = GameClient()->m_aClients[i].m_RenderInfo;
 		aRenderInfo[i].m_TeeRenderFlags = 0;
+
+		if(g_Config.m_ClCustomAvatar && m_AvatarTexture.IsValid())
+		{
+			const bool Own = i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1];
+			if(Own ? g_Config.m_ClCustomAvatarOwn : g_Config.m_ClCustomAvatarOthers)
+				aRenderInfo[i].m_AvatarTexture = m_AvatarTexture;
+		}
 
 		if(g_Config.m_ClCustomOutline)
 		{

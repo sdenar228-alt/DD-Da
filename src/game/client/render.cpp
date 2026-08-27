@@ -517,24 +517,54 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 			{
 				Graphics()->QuadsSetRotation(pAnim->GetBody()->m_Angle * pi * 2);
 
-				// draw body
-				if(RecolorOutline)
+				bool SkipBody = false;
+				bool DrawEyes = false;
+				vec2 EyeBodyPos = Position;
+
+				// draw body, or the avatar picture in its place
+				if(pInfo->m_AvatarTexture.IsValid() && OutLine == 0)
+				{
+					const float AvatarScale = g_Config.m_ClCustomAvatarSize / 100.0f;
+					const vec2 AvatarPos = Position + vec2(pAnim->GetBody()->m_X, pAnim->GetBody()->m_Y) * AnimScale;
+					float AvatarBodyScale;
+					GetRenderTeeBodyScale(BaseSize, AvatarBodyScale);
+					Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+					Graphics()->TextureSet(pInfo->m_AvatarTexture);
+					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, 0, AvatarPos.x, AvatarPos.y, AvatarBodyScale * AvatarScale, AvatarBodyScale * AvatarScale);
+					// The eyes would sit on top of the picture.
+					if(!g_Config.m_ClCustomAvatarHideEyes)
+					{
+						DrawEyes = true;
+						EyeBodyPos = AvatarPos;
+					}
+					SkipBody = true;
+				}
+
+				if(!SkipBody && RecolorOutline)
 					Graphics()->SetColor(CustomOutlineColor.r, CustomOutlineColor.g, CustomOutlineColor.b, CustomOutlineColor.a * Alpha);
-				else
+				else if(!SkipBody)
 					Graphics()->SetColor(pInfo->m_ColorBody.r, pInfo->m_ColorBody.g, pInfo->m_ColorBody.b, Alpha);
 				vec2 BodyPos = Position + vec2(pAnim->GetBody()->m_X, pAnim->GetBody()->m_Y) * AnimScale;
-				float BodyScale;
-				GetRenderTeeBodyScale(BaseSize, BodyScale);
-				if(RecolorOutline)
-					BodyScale *= CustomOutlineScale;
-				if(RecolorOutline)
-					Graphics()->TextureSet(pInfo->m_OriginalRenderSkin.m_BodyOutlineMask);
-				else
-					Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_BodyOutline : pSkinTextures->m_Body);
-				Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, OutLine, BodyPos.x, BodyPos.y, BodyScale, BodyScale);
+				if(!SkipBody)
+				{
+					float BodyScale;
+					GetRenderTeeBodyScale(BaseSize, BodyScale);
+					if(RecolorOutline)
+					{
+						BodyScale *= CustomOutlineScale;
+						Graphics()->TextureSet(pInfo->m_OriginalRenderSkin.m_BodyOutlineMask);
+					}
+					else
+					{
+						Graphics()->TextureSet(OutLine == 1 ? pSkinTextures->m_BodyOutline : pSkinTextures->m_Body);
+					}
+					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, OutLine, BodyPos.x, BodyPos.y, BodyScale, BodyScale);
+					DrawEyes = Pass == 1;
+					EyeBodyPos = BodyPos;
+				}
 
 				// draw eyes
-				if(Pass == 1)
+				if(DrawEyes)
 				{
 					int QuadOffset = 2;
 					int EyeQuadOffset = 0;
@@ -569,8 +599,8 @@ void CRenderTools::RenderTee6(const CAnimState *pAnim, const CTeeRenderInfo *pIn
 					vec2 Offset = vec2(Direction.x * 0.125f, -0.05f + Direction.y * 0.10f) * BaseSize;
 
 					Graphics()->TextureSet(pSkinTextures->m_aEyes[TeeEye]);
-					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset + EyeQuadOffset, BodyPos.x - EyeSeparation + Offset.x, BodyPos.y + Offset.y, EyeScale / (64.f * 0.4f), h / (64.f * 0.4f));
-					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset + EyeQuadOffset, BodyPos.x + EyeSeparation + Offset.x, BodyPos.y + Offset.y, -EyeScale / (64.f * 0.4f), h / (64.f * 0.4f));
+					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset + EyeQuadOffset, EyeBodyPos.x - EyeSeparation + Offset.x, EyeBodyPos.y + Offset.y, EyeScale / (64.f * 0.4f), h / (64.f * 0.4f));
+					Graphics()->RenderQuadContainerAsSprite(m_TeeQuadContainerIndex, QuadOffset + EyeQuadOffset, EyeBodyPos.x + EyeSeparation + Offset.x, EyeBodyPos.y + Offset.y, -EyeScale / (64.f * 0.4f), h / (64.f * 0.4f));
 				}
 			}
 

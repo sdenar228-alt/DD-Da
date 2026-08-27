@@ -591,6 +591,9 @@ protected:
 	void RenderSettingsDDDaBackground(CUIRect MainView);
 	void RefreshCrosshairList();
 	void RefreshBackgroundList();
+	void RefreshAvatarList();
+	std::vector<std::string> m_vAvatarNames;
+	bool m_AvatarListLoaded = false;
 	std::vector<std::string> m_vCrosshairNames;
 	std::vector<std::string> m_vBackgroundNames;
 	bool m_CrosshairListLoaded = false;
