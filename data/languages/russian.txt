@@ -2936,3 +2936,39 @@ Default sounds
 
 Create a folder inside the 'sounds' folder of your config directory.
 == Создай папку внутри 'sounds' в каталоге конфигов.
+
+Models
+== Модельки
+
+Model
+== Моделька
+
+Texture pack
+== Текстурпак
+
+from the Assets page
+== из вкладки Текстуры
+
+Pick a model on the left and the texture pack it should come from on the right. Everything else keeps using the pack from the Assets page.
+== Слева выбери модельку, справа — текстурпак, откуда её взять. Всё остальное останется из пака во вкладке Текстуры.
+
+Hammer
+== Молоток
+
+Gun
+== Пистолет
+
+Shotgun
+== Дробовик
+
+Grenade
+== Базука
+
+Laser
+== Лазер
+
+Ninja
+== Ниндзя
+
+Pickups
+== Пикапы
