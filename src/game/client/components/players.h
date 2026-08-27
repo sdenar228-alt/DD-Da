@@ -36,6 +36,17 @@ class CPlayers : public CComponent
 		int ClientId);
 	bool IsPlayerInfoAvailable(int ClientId) const;
 
+	// Round avatar picture that can replace the tee body, see `cl_custom_avatar`.
+	IGraphics::CTextureHandle m_AvatarTexture;
+	char m_aAvatarName[128] = {};
+
+public:
+	// Reloads the avatar when `cl_custom_avatar_file` changed.
+	void UpdateAvatar();
+	IGraphics::CTextureHandle AvatarTexture() const { return m_AvatarTexture; }
+
+private:
+
 	int m_WeaponEmoteQuadContainerIndex;
 	int m_aWeaponSpriteMuzzleQuadContainerIndex[NUM_WEAPONS];
 

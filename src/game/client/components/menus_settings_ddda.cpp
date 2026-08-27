@@ -134,11 +134,107 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 			&g_Config.m_ClCustomOutlineColor, DefaultConfig::ClCustomOutlineColor);
 	}
 
+	// ***** Avatar ***** //
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Picture instead of the tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomAvatar, Localize("Draw a round picture instead of the tee body"), &g_Config.m_ClCustomAvatar, &LeftView, LINE_SIZE);
+	if(g_Config.m_ClCustomAvatar)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomAvatarOwn, Localize("Use it for your own tee"), &g_Config.m_ClCustomAvatarOwn, &LeftView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomAvatarOthers, Localize("Use it for other tees as well"), &g_Config.m_ClCustomAvatarOthers, &LeftView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomAvatarHideEyes, Localize("Hide the tee eyes"), &g_Config.m_ClCustomAvatarHideEyes, &LeftView, LINE_SIZE);
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomAvatarSize, &g_Config.m_ClCustomAvatarSize, &Button, Localize("Picture size"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
+
 	Ui()->DoLabel_AutoLineSize(Localize("Preview"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-	RightView.HSplitTop(60.0f, &Button, &RightView);
+	RightView.HSplitTop(70.0f, &Button, &RightView);
 	RenderDDDaTeePreview(&Button);
+
+	if(g_Config.m_ClCustomAvatar)
+	{
+		// Picture list
+		Ui()->DoLabel_AutoLineSize(Localize("Picture"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+		if(!m_AvatarListLoaded)
+			RefreshAvatarList();
+
+		CUIRect RefreshButton;
+		RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
+		RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
+
+		if(m_vAvatarNames.empty())
+		{
+			CUIRect Empty;
+			RightView.HSplitTop(40.0f, &Empty, &RightView);
+			TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+			SLabelProperties Props;
+			Props.m_MaxWidth = Empty.w;
+			Ui()->DoLabel(&Empty, Localize("Put .png files into the 'avatars' folder of your config directory."), 12.0f, TEXTALIGN_TL, Props);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+		else
+		{
+			int Selected = 0;
+			for(size_t i = 0; i < m_vAvatarNames.size(); ++i)
+			{
+				if(str_comp(m_vAvatarNames[i].c_str(), g_Config.m_ClCustomAvatarFile) == 0)
+				{
+					Selected = (int)i + 1;
+					break;
+				}
+			}
+			if(Selected == 0 && g_Config.m_ClCustomAvatarFile[0] != 0)
+				g_Config.m_ClCustomAvatarFile[0] = 0;
+
+			static CListBox s_ListBox;
+			s_ListBox.DoStart(20.0f, (int)m_vAvatarNames.size() + 1, 1, 3, Selected, &RightView);
+
+			{
+				static int s_NoneId;
+				const CListboxItem Item = s_ListBox.DoNextItem(&s_NoneId, Selected == 0);
+				if(Item.m_Visible)
+				{
+					CUIRect Label = Item.m_Rect;
+					Label.VMargin(MARGIN_SMALL, &Label);
+					Ui()->DoLabel(&Label, Localize("No image"), 14.0f, TEXTALIGN_ML);
+				}
+			}
+
+			for(size_t i = 0; i < m_vAvatarNames.size(); ++i)
+			{
+				const CListboxItem Item = s_ListBox.DoNextItem(&m_vAvatarNames[i], Selected == (int)i + 1);
+				if(!Item.m_Visible)
+					continue;
+				CUIRect Label = Item.m_Rect;
+				Label.VMargin(MARGIN_SMALL, &Label);
+				Ui()->DoLabel(&Label, m_vAvatarNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+			}
+
+			const int NewSelected = s_ListBox.DoEnd();
+			if(NewSelected != Selected)
+			{
+				if(NewSelected == 0)
+					g_Config.m_ClCustomAvatarFile[0] = 0;
+				else
+					str_copy(g_Config.m_ClCustomAvatarFile, m_vAvatarNames[NewSelected - 1].c_str());
+			}
+		}
+
+		static CButtonContainer s_RefreshAvatarButton;
+		if(DoButton_Menu(&s_RefreshAvatarButton, Localize("Refresh"), 0, &RefreshButton))
+		{
+			RefreshAvatarList();
+		}
+	}
 }
+
 
 void CMenus::RenderSettingsDDDaHook(CUIRect MainView)
 {
@@ -223,6 +319,12 @@ void CMenus::RefreshBackgroundList()
 	// Backgrounds keep their extension, it decides how the file is decoded.
 	ScanFolder(Storage(), "backgrounds", nullptr, m_vBackgroundNames);
 	m_BackgroundListLoaded = true;
+}
+
+void CMenus::RefreshAvatarList()
+{
+	ScanFolder(Storage(), "avatars", ".png", m_vAvatarNames);
+	m_AvatarListLoaded = true;
 }
 
 void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
@@ -420,6 +522,13 @@ void CMenus::RenderDDDaTeePreview(const CUIRect *pRect)
 	Info.m_Size = 50.0f;
 	if(g_Config.m_ClCustomOutline && g_Config.m_ClCustomOutlineOwn)
 		Info.m_TeeRenderFlags |= TEE_CUSTOM_OUTLINE;
+	if(g_Config.m_ClCustomAvatar && g_Config.m_ClCustomAvatarOwn)
+	{
+		// The component only reloads while rendering the world, so refresh here
+		// as well to make the preview follow the selection right away.
+		GameClient()->m_Players.UpdateAvatar();
+		Info.m_AvatarTexture = GameClient()->m_Players.AvatarTexture();
+	}
 
 	vec2 OffsetToMid;
 	CRenderTools::GetRenderTeeOffsetToRenderedTee(CAnimState::GetIdle(), &Info, OffsetToMid);

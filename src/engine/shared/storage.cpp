@@ -81,6 +81,7 @@ public:
 				"assets/hud",
 				"assets/particles",
 				"audio",
+				"avatars",
 				"backgrounds",
 				"communityicons",
 				"crosshairs",

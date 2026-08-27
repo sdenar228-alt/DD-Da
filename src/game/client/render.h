@@ -82,6 +82,7 @@ public:
 		m_GotAirJump = true;
 		m_TeeRenderFlags = 0;
 		m_FeetFlipped = false;
+		m_AvatarTexture.Invalidate();
 
 		for(auto &Sixup : m_aSixup)
 			Sixup.Reset();
@@ -132,6 +133,8 @@ public:
 	bool m_GotAirJump;
 	int m_TeeRenderFlags;
 	bool m_FeetFlipped;
+	// When valid, drawn instead of the tee body, see `cl_custom_avatar`.
+	IGraphics::CTextureHandle m_AvatarTexture;
 
 	bool Valid() const
 	{

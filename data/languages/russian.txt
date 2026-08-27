@@ -2879,3 +2879,27 @@ Background
 
 File
 == Файл
+
+Picture instead of the tee
+== Фото вместо тишки
+
+Draw a round picture instead of the tee body
+== Рисовать круглое фото вместо тела тишки
+
+Use it for your own tee
+== Использовать для своей тишки
+
+Use it for other tees as well
+== Использовать и для чужих тишек
+
+Hide the tee eyes
+== Скрывать глаза тишки
+
+Picture size
+== Размер фото
+
+Picture
+== Фото
+
+Put .png files into the 'avatars' folder of your config directory.
+== Положи .png файлы в папку 'avatars' в каталоге конфигов.

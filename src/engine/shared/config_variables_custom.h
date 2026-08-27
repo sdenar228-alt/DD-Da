@@ -36,6 +36,14 @@ MACRO_CONFIG_INT(ClCustomSpinSpeed, cl_custom_spin_speed, 720, -3600, 3600, CFGF
 MACRO_CONFIG_INT(ClCustomSpinPauseOnAction, cl_custom_spin_pause_on_action, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send the real aim direction while hooking or firing, so hook and shots go where you aim")
 MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also spin the dummy")
 
+// --- avatar instead of the tee body ----------------------------------------
+MACRO_CONFIG_INT(ClCustomAvatar, cl_custom_avatar, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a round picture instead of the tee body")
+MACRO_CONFIG_STR(ClCustomAvatarFile, cl_custom_avatar_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Picture inside the 'avatars' folder, without the .png extension")
+MACRO_CONFIG_INT(ClCustomAvatarOwn, cl_custom_avatar_own, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the avatar for your own tee")
+MACRO_CONFIG_INT(ClCustomAvatarOthers, cl_custom_avatar_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the avatar for other tees as well")
+MACRO_CONFIG_INT(ClCustomAvatarSize, cl_custom_avatar_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Avatar size relative to the tee body in percent")
+MACRO_CONFIG_INT(ClCustomAvatarHideEyes, cl_custom_avatar_hide_eyes, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hide the tee eyes while an avatar is drawn")
+
 // --- custom background -----------------------------------------------------
 MACRO_CONFIG_INT(ClCustomBackground, cl_custom_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a custom image or video behind everything")
 MACRO_CONFIG_STR(ClCustomBackgroundFile, cl_custom_background_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "File inside the 'backgrounds' folder, with its extension")
