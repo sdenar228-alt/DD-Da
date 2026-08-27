@@ -536,21 +536,26 @@ void CPlayers::RenderHook(
 
 	// custom hook color
 	ColorRGBA HookColor(1.0f, 1.0f, 1.0f, Alpha);
+	bool RecolorHook = false;
 	if(g_Config.m_ClCustomHookColor != 0)
 	{
 		const bool OwnHook = ClientId >= 0 && (ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1]);
-		const bool Apply =
+		RecolorHook =
 			g_Config.m_ClCustomHookColor == 1 ||
 			(g_Config.m_ClCustomHookColor == 2 && OwnHook) ||
 			(g_Config.m_ClCustomHookColor == 3 && !OwnHook);
-		if(Apply)
+		if(RecolorHook)
 		{
 			const ColorRGBA Custom = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClCustomHookColorValue, true));
-			HookColor = Custom.WithMultipliedAlpha(Alpha);
+			const float Brightness = g_Config.m_ClCustomHookColorBrightness / 100.0f;
+			HookColor = ColorRGBA(Custom.r * Brightness, Custom.g * Brightness, Custom.b * Brightness, Custom.a * Alpha);
 		}
 	}
+	// The regular hook art is very dark, so a multiplied color would always come
+	// out dim. The brightness normalized copies make the picked color show up.
+	const bool UseBrightHook = RecolorHook && GameClient()->m_GameSkin.m_SpriteHookChainBright.IsValid() && GameClient()->m_GameSkin.m_SpriteHookHeadBright.IsValid();
 
-	Graphics()->TextureSet(GameClient()->m_GameSkin.m_SpriteHookHead);
+	Graphics()->TextureSet(UseBrightHook && g_Config.m_ClCustomHookColorHead ? GameClient()->m_GameSkin.m_SpriteHookHeadBright : GameClient()->m_GameSkin.m_SpriteHookHead);
 	Graphics()->QuadsSetRotation(angle(Dir) + pi);
 	// render head
 	int QuadOffset = NUM_WEAPONS * 2 + 2;
@@ -572,7 +577,7 @@ void CPlayers::RenderHook(
 		s_aHookChainRenderInfo[HookChainCount].m_Scale = 1;
 		s_aHookChainRenderInfo[HookChainCount].m_Rotation = angle(Dir) + pi;
 	}
-	Graphics()->TextureSet(GameClient()->m_GameSkin.m_SpriteHookChain);
+	Graphics()->TextureSet(UseBrightHook ? GameClient()->m_GameSkin.m_SpriteHookChainBright : GameClient()->m_GameSkin.m_SpriteHookChain);
 	Graphics()->SetColor(HookColor);
 	Graphics()->RenderQuadContainerAsSpriteMultiple(m_WeaponEmoteQuadContainerIndex, QuadOffset, HookChainCount, s_aHookChainRenderInfo);
 

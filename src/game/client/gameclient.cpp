@@ -4098,6 +4098,66 @@ CGameClient::CImageAsset CGameClient::LoadAssetFromPath(const char *pPath, bool 
 	return LoadedAsset;
 }
 
+// Builds brightness normalized copies of the hook sprites. The hook art is very
+// dark, and `Graphics()->SetColor` can only ever multiply the texture down
+// (vertex colors are 8 bit, so a factor above 1.0 is not representable), which
+// would make every custom hook color look washed out and dim.
+void CGameClient::LoadBrightHookSprites(const CImageInfo &ImgInfo, const std::optional<CImageInfo> &FallbackImgInfo)
+{
+	m_GameSkin.m_SpriteHookChainBright = IGraphics::CTextureHandle();
+	m_GameSkin.m_SpriteHookHeadBright = IGraphics::CTextureHandle();
+
+	if(ImgInfo.m_Format != CImageInfo::FORMAT_RGBA || ImgInfo.m_pData == nullptr)
+		return;
+
+	// Find the brightest channel of the two hook sprites, so that the gain is
+	// derived from the hook art only and not from the bright weapon sprites.
+	uint8_t Max = 0;
+	const auto &&ScanSprite = [&](const CDataSprite *pSprite) {
+		const int GridX = ImgInfo.m_Width / pSprite->m_pSet->m_Gridx;
+		const int GridY = ImgInfo.m_Height / pSprite->m_pSet->m_Gridy;
+		const int StartX = pSprite->m_X * GridX;
+		const int StartY = pSprite->m_Y * GridY;
+		const int Width = pSprite->m_W * GridX;
+		const int Height = pSprite->m_H * GridY;
+		for(int y = StartY; y < StartY + Height; ++y)
+		{
+			for(int x = StartX; x < StartX + Width; ++x)
+			{
+				const size_t Offset = (y * ImgInfo.m_Width + x) * 4;
+				if(ImgInfo.m_pData[Offset + 3] == 0)
+					continue;
+				Max = std::max({Max, ImgInfo.m_pData[Offset], ImgInfo.m_pData[Offset + 1], ImgInfo.m_pData[Offset + 2]});
+			}
+		}
+	};
+	ScanSprite(&g_pData->m_aSprites[SPRITE_HOOK_CHAIN]);
+	ScanSprite(&g_pData->m_aSprites[SPRITE_HOOK_HEAD]);
+
+	if(Max == 0 || Max == 255)
+	{
+		// Fully black or already using the full range, nothing to gain.
+		m_GameSkin.m_SpriteHookChainBright = m_GameSkin.m_SpriteHookChain;
+		m_GameSkin.m_SpriteHookHeadBright = m_GameSkin.m_SpriteHookHead;
+		m_GameSkinBrightHookShared = true;
+		return;
+	}
+	m_GameSkinBrightHookShared = false;
+
+	CImageInfo BrightInfo = ImgInfo.DeepCopy();
+	const size_t DataSize = BrightInfo.DataSize();
+	for(size_t Offset = 0; Offset < DataSize; Offset += 4)
+	{
+		for(size_t Channel = 0; Channel < 3; ++Channel)
+		{
+			BrightInfo.m_pData[Offset + Channel] = (uint8_t)std::min(255, BrightInfo.m_pData[Offset + Channel] * 255 / Max);
+		}
+	}
+	m_GameSkin.m_SpriteHookChainBright = Graphics()->LoadSpriteTexture(BrightInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HOOK_CHAIN]);
+	m_GameSkin.m_SpriteHookHeadBright = Graphics()->LoadSpriteTexture(BrightInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HOOK_HEAD]);
+	BrightInfo.Free();
+}
+
 void CGameClient::LoadGameSkin(const char *pPath, bool AsDir)
 {
 	if(m_GameSkinLoaded)
@@ -4119,6 +4179,16 @@ void CGameClient::LoadGameSkin(const char *pPath, bool AsDir)
 			SpriteWeaponCursor = IGraphics::CTextureHandle();
 		}
 
+		if(m_GameSkinBrightHookShared)
+		{
+			m_GameSkin.m_SpriteHookChainBright = IGraphics::CTextureHandle();
+			m_GameSkin.m_SpriteHookHeadBright = IGraphics::CTextureHandle();
+		}
+		else
+		{
+			Graphics()->UnloadTexture(&m_GameSkin.m_SpriteHookChainBright);
+			Graphics()->UnloadTexture(&m_GameSkin.m_SpriteHookHeadBright);
+		}
 		Graphics()->UnloadTexture(&m_GameSkin.m_SpriteHookChain);
 		Graphics()->UnloadTexture(&m_GameSkin.m_SpriteHookHead);
 		Graphics()->UnloadTexture(&m_GameSkin.m_SpriteWeaponHammer);
@@ -4238,6 +4308,7 @@ void CGameClient::LoadGameSkin(const char *pPath, bool AsDir)
 		// weapons and hook
 		m_GameSkin.m_SpriteHookChain = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HOOK_CHAIN]);
 		m_GameSkin.m_SpriteHookHead = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_HOOK_HEAD]);
+		LoadBrightHookSprites(ImgInfo, FallbackImgInfo);
 		m_GameSkin.m_SpriteWeaponHammer = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_WEAPON_HAMMER_BODY]);
 		m_GameSkin.m_SpriteWeaponGun = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_WEAPON_GUN_BODY]);
 		m_GameSkin.m_SpriteWeaponShotgun = Graphics()->LoadSpriteTexture(ImgInfo, FallbackImgInfo, &g_pData->m_aSprites[SPRITE_WEAPON_SHOTGUN_BODY]);
