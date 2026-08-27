@@ -160,3 +160,6 @@ tags
 # local build & vendored libs
 /build/
 /ddnet-libs/
+
+# our own build helper, not caught by the /build* rule above
+!/build.bat
