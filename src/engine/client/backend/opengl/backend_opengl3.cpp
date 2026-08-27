@@ -76,6 +76,78 @@ void CCommandProcessorFragment_OpenGL3_3::InitPrimExProgram(CGLSLPrimitiveExProg
 	}
 }
 
+bool CCommandProcessorFragment_OpenGL3_3::InitCustomProgram(CGLSLPrimitiveExProgram *pProgram, CGLSLCompiler *pCompiler, IStorage *pStorage, bool Textured, bool Rotationless)
+{
+	CGLSL VertexShader;
+	CGLSL FragmentShader;
+	if(Textured)
+		pCompiler->AddDefine("TW_TEXTURED", "");
+	if(Rotationless)
+		pCompiler->AddDefine("TW_ROTATIONLESS", "");
+	const bool Loaded =
+		VertexShader.LoadShader(pCompiler, pStorage, "shader/tee.vert", GL_VERTEX_SHADER) &&
+		FragmentShader.LoadShader(pCompiler, pStorage, "shader/tee.frag", GL_FRAGMENT_SHADER);
+	if(Textured || Rotationless)
+		pCompiler->ClearDefines();
+
+	if(!Loaded)
+		return false;
+
+	pProgram->CreateProgram();
+	pProgram->AddShader(&VertexShader);
+	pProgram->AddShader(&FragmentShader);
+	pProgram->LinkProgram();
+
+	UseProgram(pProgram);
+
+	pProgram->m_LocPos = pProgram->GetUniformLoc("gPos");
+	pProgram->m_LocTextureSampler = pProgram->GetUniformLoc("gTextureSampler");
+	pProgram->m_LocRotation = pProgram->GetUniformLoc("gRotation");
+	pProgram->m_LocCenter = pProgram->GetUniformLoc("gCenter");
+	pProgram->m_LocVertciesColor = pProgram->GetUniformLoc("gVerticesColor");
+	// Optional, a shader that does not animate can leave it out.
+	pProgram->m_LocTime = pProgram->GetUniformLoc("gTime");
+
+	if(pProgram->m_LocPos == -1 || pProgram->m_LocVertciesColor == -1)
+		return false;
+
+	if(!Rotationless)
+	{
+		pProgram->SetUniform(pProgram->m_LocRotation, 0.0f);
+		float aCenter[2] = {0.f, 0.f};
+		pProgram->SetUniformVec2(pProgram->m_LocCenter, 1, aCenter);
+	}
+	return true;
+}
+
+CGLSLPrimitiveExProgram *CCommandProcessorFragment_OpenGL3_3::SelectPrimExProgram(CGLSLPrimitiveExProgram *pDefault, bool Textured, bool Rotationless)
+{
+	if(!m_CustomShaderEnabled || !m_CustomShaderAvailable)
+		return pDefault;
+
+	CGLSLPrimitiveExProgram *pCustom;
+	if(Textured)
+		pCustom = Rotationless ? m_pCustomProgramTexturedRotationless : m_pCustomProgramTextured;
+	else
+		pCustom = Rotationless ? m_pCustomProgramRotationless : m_pCustomProgram;
+	if(pCustom == nullptr)
+		return pDefault;
+
+	if(pCustom->m_LocTime != -1 && pCustom->m_LastTime != m_CustomShaderTime)
+	{
+		UseProgram(pCustom);
+		pCustom->SetUniform(pCustom->m_LocTime, m_CustomShaderTime);
+		pCustom->m_LastTime = m_CustomShaderTime;
+	}
+	return pCustom;
+}
+
+void CCommandProcessorFragment_OpenGL3_3::Cmd_SetCustomShader(const CCommandBuffer::SCommand_SetCustomShader *pCommand)
+{
+	m_CustomShaderEnabled = pCommand->m_Enabled;
+	m_CustomShaderTime = pCommand->m_Time;
+}
+
 bool CCommandProcessorFragment_OpenGL3_3::Cmd_Init(const SCommand_Init *pCommand)
 {
 	if(!InitOpenGL(pCommand))
@@ -384,6 +456,21 @@ bool CCommandProcessorFragment_OpenGL3_3::Cmd_Init(const SCommand_Init *pCommand
 	InitPrimExProgram(m_pPrimitiveExProgramTextured, &ShaderCompiler, pCommand->m_pStorage, true, false);
 	InitPrimExProgram(m_pPrimitiveExProgramRotationless, &ShaderCompiler, pCommand->m_pStorage, false, true);
 	InitPrimExProgram(m_pPrimitiveExProgramTexturedRotationless, &ShaderCompiler, pCommand->m_pStorage, true, true);
+
+	// Optional user shader, the game runs normally when it is missing.
+	m_pCustomProgram = new CGLSLPrimitiveExProgram;
+	m_pCustomProgramTextured = new CGLSLPrimitiveExProgram;
+	m_pCustomProgramRotationless = new CGLSLPrimitiveExProgram;
+	m_pCustomProgramTexturedRotationless = new CGLSLPrimitiveExProgram;
+	m_CustomShaderAvailable =
+		InitCustomProgram(m_pCustomProgram, &ShaderCompiler, pCommand->m_pStorage, false, false) &&
+		InitCustomProgram(m_pCustomProgramTextured, &ShaderCompiler, pCommand->m_pStorage, true, false) &&
+		InitCustomProgram(m_pCustomProgramRotationless, &ShaderCompiler, pCommand->m_pStorage, false, true) &&
+		InitCustomProgram(m_pCustomProgramTexturedRotationless, &ShaderCompiler, pCommand->m_pStorage, true, true);
+	if(!m_CustomShaderAvailable)
+	{
+		log_info("opengl", "No usable shader/tee.vert and shader/tee.frag, the custom tee shader stays off");
+	}
 	{
 		CGLSL PrimitiveVertexShader;
 		CGLSL PrimitiveFragmentShader;
@@ -493,6 +580,13 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Shutdown(const SCommand_Shutdown *
 	m_pPrimitiveExProgramTextured->DeleteProgram();
 	m_pPrimitiveExProgramRotationless->DeleteProgram();
 	m_pPrimitiveExProgramTexturedRotationless->DeleteProgram();
+	if(m_CustomShaderAvailable)
+	{
+		m_pCustomProgram->DeleteProgram();
+		m_pCustomProgramTextured->DeleteProgram();
+		m_pCustomProgramRotationless->DeleteProgram();
+		m_pCustomProgramTexturedRotationless->DeleteProgram();
+	}
 	m_pSpriteProgramMultiple->DeleteProgram();
 
 	// clean up everything
@@ -509,6 +603,15 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Shutdown(const SCommand_Shutdown *
 	delete m_pPrimitive3DProgram;
 	delete m_pPrimitive3DProgramTextured;
 	delete m_pTextProgram;
+	delete m_pCustomProgram;
+	delete m_pCustomProgramTextured;
+	delete m_pCustomProgramRotationless;
+	delete m_pCustomProgramTexturedRotationless;
+	m_pCustomProgram = nullptr;
+	m_pCustomProgramTextured = nullptr;
+	m_pCustomProgramRotationless = nullptr;
+	m_pCustomProgramTexturedRotationless = nullptr;
+	m_CustomShaderAvailable = false;
 	delete m_pPrimitiveExProgram;
 	delete m_pPrimitiveExProgramTextured;
 	delete m_pPrimitiveExProgramRotationless;
@@ -1341,19 +1444,14 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_RenderQuadContainerEx(const CComma
 		BufferContainer.m_LastIndexBufferBound = m_QuadDrawIndexBufferId;
 	}
 
+	const bool Textured = IsTexturedState(pCommand->m_State);
+	const bool Rotationless = pCommand->m_Rotation == 0.0f;
 	CGLSLPrimitiveExProgram *pProgram = m_pPrimitiveExProgramRotationless;
-	if(IsTexturedState(pCommand->m_State))
-	{
-		if(pCommand->m_Rotation != 0.0f)
-			pProgram = m_pPrimitiveExProgramTextured;
-		else
-			pProgram = m_pPrimitiveExProgramTexturedRotationless;
-	}
-	else
-	{
-		if(pCommand->m_Rotation != 0.0f)
-			pProgram = m_pPrimitiveExProgram;
-	}
+	if(Textured)
+		pProgram = Rotationless ? m_pPrimitiveExProgramTexturedRotationless : m_pPrimitiveExProgramTextured;
+	else if(!Rotationless)
+		pProgram = m_pPrimitiveExProgram;
+	pProgram = SelectPrimExProgram(pProgram, Textured, Rotationless);
 
 	UseProgram(pProgram);
 	SetState(pCommand->m_State, pProgram);

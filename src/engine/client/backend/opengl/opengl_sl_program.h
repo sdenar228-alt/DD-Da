@@ -114,6 +114,9 @@ public:
 	int m_LocRotation;
 	int m_LocCenter;
 	int m_LocVertciesColor;
+	// Only set for the user supplied tee shader, -1 otherwise.
+	int m_LocTime = -1;
+	float m_LastTime = -1.0f;
 
 	float m_LastRotation;
 	vec2 m_LastCenter;

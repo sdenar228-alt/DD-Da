@@ -1043,6 +1043,8 @@ void CPlayers::OnRender()
 	if(g_Config.m_ClCustomAvatar)
 		UpdateAvatar();
 
+	RenderTools()->SetCustomShaderTime(Client()->GlobalTime());
+
 	// update render info for ninja
 	CTeeRenderInfo aRenderInfo[MAX_CLIENTS];
 	const bool IsTeamPlay = GameClient()->IsTeamPlay();
@@ -1063,6 +1065,13 @@ void CPlayers::OnRender()
 			const bool Own = i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1];
 			if(Own ? g_Config.m_ClCustomOutlineOwn : g_Config.m_ClCustomOutlineOthers)
 				aRenderInfo[i].m_TeeRenderFlags |= TEE_CUSTOM_OUTLINE;
+		}
+
+		if(g_Config.m_ClCustomTeeShader)
+		{
+			const bool Own = i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1];
+			if(Own ? g_Config.m_ClCustomTeeShaderOwn : g_Config.m_ClCustomTeeShaderOthers)
+				aRenderInfo[i].m_TeeRenderFlags |= TEE_CUSTOM_SHADER;
 		}
 
 		// predict freeze skin only for local players

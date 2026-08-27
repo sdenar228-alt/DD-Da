@@ -36,6 +36,11 @@ MACRO_CONFIG_INT(ClCustomSpinSpeed, cl_custom_spin_speed, 720, -3600, 3600, CFGF
 MACRO_CONFIG_INT(ClCustomSpinPauseOnAction, cl_custom_spin_pause_on_action, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Send the real aim direction while hooking or firing, so hook and shots go where you aim")
 MACRO_CONFIG_INT(ClCustomSpinDummy, cl_custom_spin_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Also spin the dummy")
 
+// --- custom tee shader -----------------------------------------------------
+MACRO_CONFIG_INT(ClCustomTeeShader, cl_custom_tee_shader, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw tees with the shader from shader/tee.vert and shader/tee.frag (OpenGL backend only)")
+MACRO_CONFIG_INT(ClCustomTeeShaderOwn, cl_custom_tee_shader_own, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply the tee shader to your own tee")
+MACRO_CONFIG_INT(ClCustomTeeShaderOthers, cl_custom_tee_shader_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply the tee shader to other tees")
+
 // --- per weapon asset packs ------------------------------------------------
 // Each of these names an asset pack from 'assets/game'. The sprites of that
 // group are copied out of it into the pack selected with `cl_asset_game`, so

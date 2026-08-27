@@ -809,6 +809,18 @@ void CGraphics_Threaded::QuadsSetRotation(float Angle)
 	m_Rotation = Angle;
 }
 
+void CGraphics_Threaded::SetCustomShader(bool Enabled, float Time)
+{
+	if(m_CustomShaderEnabled == Enabled)
+		return;
+	m_CustomShaderEnabled = Enabled;
+
+	CCommandBuffer::SCommand_SetCustomShader Cmd;
+	Cmd.m_Enabled = Enabled;
+	Cmd.m_Time = Time;
+	AddCmd(Cmd);
+}
+
 static unsigned char NormalizeColorComponent(float ColorComponent)
 {
 	return (unsigned char)(std::clamp(ColorComponent, 0.0f, 1.0f) * 255.0f + 0.5f); // +0.5f to round to nearest

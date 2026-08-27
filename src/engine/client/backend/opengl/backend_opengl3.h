@@ -37,6 +37,17 @@ protected:
 	CGLSLPrimitiveExProgram *m_pPrimitiveExProgramTextured;
 	CGLSLPrimitiveExProgram *m_pPrimitiveExProgramRotationless;
 	CGLSLPrimitiveExProgram *m_pPrimitiveExProgramTexturedRotationless;
+
+	// User supplied shader from `shader/tee.vert` and `shader/tee.frag`, used
+	// for sprite draws while `CMD_SET_CUSTOM_SHADER` is enabled. Same four
+	// variants as the built in one; null when the files are missing or broken.
+	CGLSLPrimitiveExProgram *m_pCustomProgram = nullptr;
+	CGLSLPrimitiveExProgram *m_pCustomProgramTextured = nullptr;
+	CGLSLPrimitiveExProgram *m_pCustomProgramRotationless = nullptr;
+	CGLSLPrimitiveExProgram *m_pCustomProgramTexturedRotationless = nullptr;
+	bool m_CustomShaderAvailable = false;
+	bool m_CustomShaderEnabled = false;
+	float m_CustomShaderTime = 0.0f;
 	CGLSLSpriteMultipleProgram *m_pSpriteProgramMultiple;
 
 	TWGLuint m_LastProgramId;
@@ -72,6 +83,13 @@ protected:
 	CCommandBuffer::SColorf m_ClearColor;
 
 	void InitPrimExProgram(CGLSLPrimitiveExProgram *pProgram, class CGLSLCompiler *pCompiler, class IStorage *pStorage, bool Textured, bool Rotationless);
+	// Same as InitPrimExProgram but with the user shader files; returns false
+	// when they are missing or do not compile.
+	bool InitCustomProgram(CGLSLPrimitiveExProgram *pProgram, class CGLSLCompiler *pCompiler, class IStorage *pStorage, bool Textured, bool Rotationless);
+	// Picks the custom variant matching the built in program, or the built in
+	// one when the custom shader is off or unavailable.
+	CGLSLPrimitiveExProgram *SelectPrimExProgram(CGLSLPrimitiveExProgram *pDefault, bool Textured, bool Rotationless);
+	void Cmd_SetCustomShader(const CCommandBuffer::SCommand_SetCustomShader *pCommand) override;
 
 	bool IsNewApi() override { return true; }
 
