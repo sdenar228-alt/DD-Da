@@ -8,11 +8,14 @@
 #include "voting.h"
 
 #include <base/color.h>
+#include <base/log.h>
+#include <base/str.h>
 #include <base/time.h>
 
 #include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <generated/client_data.h>
@@ -40,6 +43,31 @@ CHud::CHud()
 		m_aPlayerPrevSpeed[i] = -INFINITY;
 		m_aPlayerPositionContainers[i].Reset();
 		m_aPlayerPrevPosition[i] = -INFINITY;
+	}
+
+	m_CustomCrosshairTexture.Invalidate();
+	m_aCustomCrosshairName[0] = '\0';
+}
+
+void CHud::UpdateCustomCrosshair()
+{
+	if(str_comp(m_aCustomCrosshairName, g_Config.m_ClCustomCrosshairFile) == 0)
+		return;
+	str_copy(m_aCustomCrosshairName, g_Config.m_ClCustomCrosshairFile);
+
+	if(m_CustomCrosshairTexture.IsValid())
+		Graphics()->UnloadTexture(&m_CustomCrosshairTexture);
+
+	if(m_aCustomCrosshairName[0] == '\0')
+		return;
+
+	char aPath[IO_MAX_PATH_LENGTH];
+	str_format(aPath, sizeof(aPath), "crosshairs/%s.png", m_aCustomCrosshairName);
+	m_CustomCrosshairTexture = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
+	if(m_CustomCrosshairTexture.IsNullTexture())
+	{
+		log_error("hud", "Failed to load custom crosshair '%s'", aPath);
+		m_CustomCrosshairTexture.Invalidate();
 	}
 }
 
@@ -658,6 +686,24 @@ void CHud::RenderCursor()
 		TargetPos = ScreenPos / ClampFactor + Center;
 		if(ClampFactor != 1.0f)
 			Alpha /= 2.0f;
+	}
+
+	// A custom crosshair takes precedence over the one from the asset pack.
+	if(g_Config.m_ClCustomCrosshair)
+	{
+		UpdateCustomCrosshair();
+		if(m_CustomCrosshairTexture.IsValid())
+		{
+			const ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClCustomCrosshairColor, true));
+			const float Size = g_Config.m_ClCustomCrosshairSize;
+			Graphics()->TextureSet(m_CustomCrosshairTexture);
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(Color.WithMultipliedAlpha(Alpha));
+			IGraphics::CQuadItem QuadItem(TargetPos.x, TargetPos.y, Size, Size);
+			Graphics()->QuadsDraw(&QuadItem, 1);
+			Graphics()->QuadsEnd();
+			return;
+		}
 	}
 
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);

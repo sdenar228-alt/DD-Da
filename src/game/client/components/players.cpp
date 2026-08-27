@@ -534,11 +534,30 @@ void CPlayers::RenderHook(
 	float d = distance(Pos, HookPos);
 	vec2 Dir = normalize(Pos - HookPos);
 
+	// custom hook color
+	ColorRGBA HookColor(1.0f, 1.0f, 1.0f, Alpha);
+	if(g_Config.m_ClCustomHookColor != 0)
+	{
+		const bool OwnHook = ClientId >= 0 && (ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1]);
+		const bool Apply =
+			g_Config.m_ClCustomHookColor == 1 ||
+			(g_Config.m_ClCustomHookColor == 2 && OwnHook) ||
+			(g_Config.m_ClCustomHookColor == 3 && !OwnHook);
+		if(Apply)
+		{
+			const ColorRGBA Custom = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClCustomHookColorValue, true));
+			HookColor = Custom.WithMultipliedAlpha(Alpha);
+		}
+	}
+
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_SpriteHookHead);
 	Graphics()->QuadsSetRotation(angle(Dir) + pi);
 	// render head
 	int QuadOffset = NUM_WEAPONS * 2 + 2;
-	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+	if(g_Config.m_ClCustomHookColorHead)
+		Graphics()->SetColor(HookColor);
+	else
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 	Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, HookPos.x, HookPos.y);
 
 	// render chain
@@ -554,6 +573,7 @@ void CPlayers::RenderHook(
 		s_aHookChainRenderInfo[HookChainCount].m_Rotation = angle(Dir) + pi;
 	}
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_SpriteHookChain);
+	Graphics()->SetColor(HookColor);
 	Graphics()->RenderQuadContainerAsSpriteMultiple(m_WeaponEmoteQuadContainerIndex, QuadOffset, HookChainCount, s_aHookChainRenderInfo);
 
 	Graphics()->QuadsSetRotation(0);
@@ -960,6 +980,13 @@ void CPlayers::OnRender()
 	{
 		aRenderInfo[i] = GameClient()->m_aClients[i].m_RenderInfo;
 		aRenderInfo[i].m_TeeRenderFlags = 0;
+
+		if(g_Config.m_ClCustomOutline)
+		{
+			const bool Own = i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1];
+			if(Own ? g_Config.m_ClCustomOutlineOwn : g_Config.m_ClCustomOutlineOthers)
+				aRenderInfo[i].m_TeeRenderFlags |= TEE_CUSTOM_OUTLINE;
+		}
 
 		// predict freeze skin only for local players
 		bool Frozen = false;

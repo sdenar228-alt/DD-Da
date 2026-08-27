@@ -205,6 +205,9 @@ enum
 	TEE_EFFECT_FROZEN = 1,
 	TEE_NO_WEAPON = 2,
 	TEE_EFFECT_SPARKLE = 4,
+	// Draw the outline sprites in `cl_custom_outline_color` instead of the
+	// body/feet color, enlarged by `cl_custom_outline_size`.
+	TEE_CUSTOM_OUTLINE = 8,
 };
 
 class CRenderTools

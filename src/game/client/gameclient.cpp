@@ -541,13 +541,19 @@ int CGameClient::OnSnapInput(int *pData, bool Dummy, bool Force)
 			m_DummyFire = 0;
 		}
 
-		if(!Force && (!m_DummyInput.m_Direction && !m_DummyInput.m_Jump && !m_DummyInput.m_Hook))
+		const bool SpinDummy = g_Config.m_ClCustomSpin && g_Config.m_ClCustomSpinDummy;
+		if(!Force && !SpinDummy && (!m_DummyInput.m_Direction && !m_DummyInput.m_Jump && !m_DummyInput.m_Hook))
 		{
 			return 0;
 		}
 
-		mem_copy(pData, &m_DummyInput, sizeof(m_DummyInput));
-		return sizeof(m_DummyInput);
+		// Spin a copy so that the stored dummy input keeps the real aim.
+		CNetObj_PlayerInput DummyInput = m_DummyInput;
+		if(SpinDummy)
+			m_Controls.ApplyVisualSpin(&DummyInput, DummyInput.m_Fire);
+
+		mem_copy(pData, &DummyInput, sizeof(DummyInput));
+		return sizeof(DummyInput);
 	}
 	else
 	{

@@ -184,6 +184,25 @@ void CControls::OnMessage(int Msg, void *pRawMsg)
 	}
 }
 
+bool CControls::ApplyVisualSpin(CNetObj_PlayerInput *pInput, int PrevFire) const
+{
+	if(!g_Config.m_ClCustomSpin || g_Config.m_ClCustomSpinSpeed == 0)
+		return false;
+
+	// Hooking and firing use the aim direction that we send, so the real one
+	// has to be sent while either is happening, otherwise the hook and the
+	// shots would fly into a random direction.
+	if(g_Config.m_ClCustomSpinPauseOnAction &&
+		(pInput->m_Hook != 0 || (pInput->m_Fire & 1) != 0 || pInput->m_Fire != PrevFire))
+		return false;
+
+	const float Radius = std::max(1.0f, length(vec2(pInput->m_TargetX, pInput->m_TargetY)));
+	const float Angle = Client()->LocalTime() * g_Config.m_ClCustomSpinSpeed * pi / 180.0f;
+	pInput->m_TargetX = round_to_int(std::cos(Angle) * Radius);
+	pInput->m_TargetY = round_to_int(std::sin(Angle) * Radius);
+	return true;
+}
+
 int CControls::SnapInput(int *pData)
 {
 	// update player state
@@ -300,6 +319,10 @@ int CControls::SnapInput(int *pData)
 			pDummyInput->m_Hook = g_Config.m_ClDummyHook;
 			m_aInputData[!g_Config.m_ClDummy] = *pDummyInput;
 		}
+
+		// Applied after `cl_dummy_copy_moves` so that the dummy keeps copying
+		// the real aim; the dummy has its own `cl_custom_spin_dummy` option.
+		ApplyVisualSpin(&m_aInputData[g_Config.m_ClDummy], m_aLastData[g_Config.m_ClDummy].m_Fire);
 
 		// stress testing
 		if(g_Config.m_DbgStress)

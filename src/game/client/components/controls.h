@@ -54,6 +54,12 @@ public:
 	void ClampMousePos();
 	void ResetInput(int Dummy);
 
+	// Rotates the aim direction that gets sent to the server, so that other
+	// players see the tee spinning. The locally rendered aim is derived from
+	// `m_aMousePos` and therefore stays unaffected. Returns true if the target
+	// of `pInput` was replaced.
+	bool ApplyVisualSpin(CNetObj_PlayerInput *pInput, int PrevFire) const;
+
 private:
 	static void ConKeyInputState(IConsole::IResult *pResult, void *pUserData);
 	static void ConKeyInputCounter(IConsole::IResult *pResult, void *pUserData);

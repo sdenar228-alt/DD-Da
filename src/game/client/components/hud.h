@@ -67,6 +67,11 @@ class CHud : public CComponent
 
 	void RenderCursor();
 
+	// custom crosshair, loaded from `crosshairs/<cl_custom_crosshair_file>.png`
+	IGraphics::CTextureHandle m_CustomCrosshairTexture;
+	char m_aCustomCrosshairName[128];
+	void UpdateCustomCrosshair();
+
 	void RenderTextInfo();
 	void RenderConnectionWarning();
 	void RenderTeambalanceWarning();

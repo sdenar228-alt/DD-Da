@@ -82,6 +82,7 @@ public:
 				"assets/particles",
 				"audio",
 				"communityicons",
+				"crosshairs",
 				"downloadedmaps",
 				"downloadedskins",
 				"mapres",
