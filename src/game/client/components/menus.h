@@ -597,6 +597,7 @@ protected:
 	void RefreshGameAssetList();
 	void RenderSettingsDDDaSounds(CUIRect MainView);
 	void RenderSettingsDDDaModels(CUIRect MainView);
+	void RenderSettingsDDDaUnfreeze(CUIRect MainView);
 	std::vector<std::string> m_vGameAssetNames;
 	bool m_GameAssetListLoaded = false;
 	std::vector<std::string> m_vSoundPackNames;

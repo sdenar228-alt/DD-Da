@@ -30,6 +30,7 @@ enum
 	DDDA_TAB_BACKGROUND,
 	DDDA_TAB_SOUNDS,
 	DDDA_TAB_MODELS,
+	DDDA_TAB_UNFREEZE,
 	DDDA_TAB_MISC,
 	NUMBER_OF_DDDA_TABS,
 };
@@ -87,6 +88,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 		Localize("Background"),
 		Localize("Sounds"),
 		Localize("Models"),
+		Localize("Unfreeze"),
 		Localize("Misc")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_DDDA_TABS; ++Tab)
@@ -124,6 +126,7 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 	case DDDA_TAB_BACKGROUND: RenderSettingsDDDaBackground(MainView); break;
 	case DDDA_TAB_SOUNDS: RenderSettingsDDDaSounds(MainView); break;
 	case DDDA_TAB_MODELS: RenderSettingsDDDaModels(MainView); break;
+	case DDDA_TAB_UNFREEZE: RenderSettingsDDDaUnfreeze(MainView); break;
 	case DDDA_TAB_MISC: RenderSettingsDDDaMisc(MainView); break;
 	default: break;
 	}
@@ -537,6 +540,67 @@ void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
 		}
 		DoDDDaColorLine(&s_aTileColorButtons[i], &s_aTileColorOpacity[i], pView,
 			aColors[i].m_pLabel, aColors[i].m_pValue, aColors[i].m_Default);
+	}
+}
+
+void CMenus::RenderSettingsDDDaUnfreeze(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Unfreeze shot"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	const int Enabled = g_Config.m_ClUnfreeze != 0;
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClUnfreeze, Localize("Look for the shot that unfreezes you"), Enabled, &Button))
+	{
+		g_Config.m_ClUnfreeze = Enabled ? 0 : 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClUnfreeze, &Button, Localize("The shot has to leave before the freeze, since a frozen tee cannot fire, and it can only come back to you after it has bounced off a wall."));
+
+	if(g_Config.m_ClUnfreeze != 0)
+	{
+		// The mode is one setting with three values, so the second box needs an
+		// id of its own rather than the address of the config variable.
+		static int s_AutomaticId;
+		const int Automatic = g_Config.m_ClUnfreeze == 2;
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		if(DoButton_CheckBox(&s_AutomaticId, Localize("Take the shot by itself"), Automatic, &Button))
+		{
+			g_Config.m_ClUnfreeze = Automatic ? 1 : 2;
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_AutomaticId, &Button, Localize("Aiming and firing on their own count as a bot on the official servers. Left off, bind a key to unfreeze_shoot and take the shot yourself."));
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeSwitchWeapon, Localize("Switch to the laser for it"), &g_Config.m_ClUnfreezeSwitchWeapon, &LeftView, LINE_SIZE);
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		Ui()->DoLabel_AutoLineSize(Localize("Search"), 13.0f, TEXTALIGN_ML, &LeftView, LINE_SIZE);
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeSteps, &g_Config.m_ClUnfreezeSteps, &Button, Localize("Aim angles tried"), 60, 3600, &CUi::ms_LinearScrollbarScale);
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClUnfreezeSteps, &Button, Localize("More angles find shots that need a tighter aim, and cost more while you play."));
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeBounces, &g_Config.m_ClUnfreezeBounces, &Button, Localize("Bounces followed"), 1, 12, &CUi::ms_LinearScrollbarScale);
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeHorizon, &g_Config.m_ClUnfreezeHorizon, &Button, Localize("Flight looked ahead"), 20, 400, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ticks"));
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeInterval, &g_Config.m_ClUnfreezeInterval, &Button, Localize("Searched every"), 20, 500, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ms"));
+
+		Ui()->DoLabel_AutoLineSize(Localize("Drawing"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeShowPath, Localize("Draw the path of the shot"), &g_Config.m_ClUnfreezeShowPath, &RightView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeShowFlight, Localize("Draw where the freeze carries you"), &g_Config.m_ClUnfreezeShowFlight, &RightView, LINE_SIZE);
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		static CButtonContainer s_UnfreezeColorReset;
+		static int s_UnfreezeColorOpacity;
+		DoDDDaColorLine(&s_UnfreezeColorReset, &s_UnfreezeColorOpacity, &RightView,
+			Localize("Color"), &g_Config.m_ClUnfreezeColor, DefaultConfig::ClUnfreezeColor);
 	}
 }
 
