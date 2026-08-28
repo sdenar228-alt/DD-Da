@@ -287,7 +287,10 @@ bool CCustomBackground::CMedia::NextFrame(float Time, CImageInfo &Image)
 
 	const AVStream *pStream = m_pFormatContext->streams[m_StreamIndex];
 	const double TimeBase = av_q2d(pStream->time_base);
-	const double Duration = m_pFormatContext->duration > 0 ? m_pFormatContext->duration / (double)AV_TIME_BASE : 0.0;
+	double Duration = m_pFormatContext->duration > 0 ? m_pFormatContext->duration / (double)AV_TIME_BASE : 0.0;
+	// A file longer than the configured length is cut there and starts over.
+	if(g_Config.m_ClCustomBackgroundVideoLength > 0 && Duration > g_Config.m_ClCustomBackgroundVideoLength)
+		Duration = g_Config.m_ClCustomBackgroundVideoLength;
 	const double Wanted = m_IsStill || Duration <= 0.0 ? 0.0 : std::fmod((double)Time, Duration);
 
 	if(m_CurrentPts >= 0.0)
@@ -511,6 +514,8 @@ void CCustomBackground::Update()
 #if defined(CONF_FAMILY_WINDOWS)
 	if(m_UsingWindowsMedia)
 	{
+		// Applied every frame so that changing the setting takes effect at once.
+		m_pWindowsMedia->SetMaxDuration(g_Config.m_ClCustomBackgroundVideoLength);
 		std::vector<uint8_t> vRgba;
 		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), vRgba) || vRgba.empty())
 			return;

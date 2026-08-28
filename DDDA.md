@@ -1,4 +1,4 @@
-# DD-Da
+﻿# DD-Da
 
 A DDNet 20.1 fork with extra client side features. Everything is configured in
 the **DD-Da** tab of the settings, or from the console (F1) with the
@@ -34,12 +34,12 @@ New folders in `%APPDATA%\DDNet`:
 
 ### Tees
 
-* **Outline** — a colored outline around every tee, with adjustable thickness.
+* **Outline** вЂ” a colored outline around every tee, with adjustable thickness.
   The outline sprites in a skin are pure black with only an alpha channel, so
   the client builds a white mask per skin to make the color show up.
-* **Picture instead of the tee** — a `.png` from `avatars`, masked into a circle
+* **Picture instead of the tee** вЂ” a `.png` from `avatars`, masked into a circle
   like a chat profile picture. Works for your own tee, for others, or both.
-* **Tee shader** — see below.
+* **Tee shader** вЂ” see below.
 
 ### Hook
 
@@ -73,7 +73,7 @@ Supported on Windows without any extra download:
 | Pictures | jpg, jpeg, bmp, webp, tif, gif | Windows Imaging Component |
 | Videos | mp4, mov, avi, wmv, m4v and whatever else the system plays | Media Foundation |
 
-Videos are played forward at their own frame rate and loop at the end. Every
+Videos are played forward at their own frame rate and loop at the end. `cl_custom_background_video_length` cuts a longer file after that many seconds (10 by default, 0 plays all of it). Every
 frame is a full texture upload, so a small file is cheaper than a 4K one.
 
 The FFmpeg shipped in `ddnet-libs` was compiled for **encoding only** and has no
@@ -93,7 +93,7 @@ is see-through, for example with the entities overlay.
 A sound pack is a folder inside `sounds` holding files named after the game
 sound sets, for example `hook_attach_ground.wav`, `hammer_hit.wav`,
 `gun_fire.wav`, `player_spawn.wav`. Supported formats are **wav**, **opus** and
-**wv** — plain WAV support was added to the engine for this, so files do not
+**wv** вЂ” plain WAV support was added to the engine for this, so files do not
 have to be converted first.
 
 Two sounds exist that vanilla DDNet does not have: `player_join` and
@@ -174,3 +174,4 @@ Already part of upstream DDNet, nothing was added: `cl_antiping` plus
 `cl_antiping_players`, `cl_antiping_grenade`, `cl_antiping_weapons`,
 `cl_antiping_smooth`, `cl_antiping_gunfire`, `cl_antiping_preinput`,
 `cl_antiping_limit` and `cl_antiping_percent`.
+

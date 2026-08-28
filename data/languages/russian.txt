@@ -2990,3 +2990,9 @@ Apply it to other tees
 
 Pictures (png, jpg, bmp, webp) and videos (mp4, avi, wmv) all work.
 == Работают картинки (png, jpg, bmp, webp) и видео (mp4, avi, wmv).
+
+Video length
+== Длина видео
+
+A longer video is cut here and starts over. 0 plays the whole file.
+== Более длинное видео обрезается здесь и начинается заново. 0 — играть целиком.

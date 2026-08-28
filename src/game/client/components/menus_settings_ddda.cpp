@@ -589,6 +589,11 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 	Ui()->DoScrollbarOption(&g_Config.m_ClCustomBackgroundOpacity, &g_Config.m_ClCustomBackgroundOpacity, &Button, Localize("Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClCustomBackgroundVideoLength, &g_Config.m_ClCustomBackgroundVideoLength, &Button, Localize("Video length"), 0, 60, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "s");
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomBackgroundVideoLength, &Button, Localize("A longer video is cut here and starts over. 0 plays the whole file."));
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	static std::vector<CButtonContainer> s_vFitButtons(3);
 	DoLine_RadioMenu(LeftView, Localize("Fill mode"),
 		s_vFitButtons,

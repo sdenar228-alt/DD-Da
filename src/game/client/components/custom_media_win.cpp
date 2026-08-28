@@ -67,6 +67,8 @@ public:
 	bool m_IsStill = false;
 	int m_Width = 0;
 	int m_Height = 0;
+	// Loop back to the start after this many seconds, 0 for the whole file.
+	double m_MaxDuration = 0.0;
 
 private:
 	// A decoded picture is kept around, it never changes.
@@ -271,6 +273,7 @@ void CWindowsMedia::CImpl::Close()
 	m_Duration = 0.0;
 	m_FrameInterval = 1.0 / 30.0;
 	m_NextFrameTime = -1.0;
+	// m_MaxDuration is a setting, not file state, so it survives Close().
 }
 
 void CWindowsMedia::CImpl::SeekToStart()
@@ -325,7 +328,12 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, std::vector<uint8_t> &vRgba)
 		if(FAILED(m_pReader->ReadSample((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0, nullptr, &StreamFlags, &Timestamp, &pSample)))
 			return false;
 
-		if((StreamFlags & MF_SOURCE_READERF_ENDOFSTREAM) != 0)
+		const bool Eof = (StreamFlags & MF_SOURCE_READERF_ENDOFSTREAM) != 0;
+		// Timestamps are in 100 nanosecond units. A file longer than the limit is
+		// simply cut there and starts over.
+		const bool PastLimit = pSample != nullptr && m_MaxDuration > 0.0 &&
+				       (double)Timestamp / 10000000.0 >= m_MaxDuration;
+		if(Eof || PastLimit)
 		{
 			SafeRelease(pSample);
 			SeekToStart();
@@ -393,6 +401,7 @@ bool CWindowsMedia::IsOpen() const { return m_pImpl->m_IsOpen; }
 bool CWindowsMedia::IsStill() const { return m_pImpl->m_IsStill; }
 int CWindowsMedia::Width() const { return m_pImpl->m_Width; }
 int CWindowsMedia::Height() const { return m_pImpl->m_Height; }
+void CWindowsMedia::SetMaxDuration(double Seconds) { m_pImpl->m_MaxDuration = Seconds > 0.0 ? Seconds : 0.0; }
 bool CWindowsMedia::NextFrame(double Time, std::vector<uint8_t> &vRgba) { return m_pImpl->NextFrame(Time, vRgba); }
 
 #endif
