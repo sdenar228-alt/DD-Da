@@ -33,6 +33,10 @@ public:
 	int Width() const;
 	int Height() const;
 
+	// Loops the video back to the start after this many seconds. 0 plays the
+	// whole file.
+	void SetMaxDuration(double Seconds);
+
 	// Fills `vRgba` with `Width() * Height() * 4` bytes of RGBA. For videos it
 	// returns false while the frame that is already shown is still the right one
 	// for `Time` (in seconds), looping at the end.

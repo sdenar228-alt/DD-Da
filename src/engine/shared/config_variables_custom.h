@@ -73,6 +73,7 @@ MACRO_CONFIG_INT(ClCustomBackground, cl_custom_background, 0, 0, 1, CFGFLAG_CLIE
 MACRO_CONFIG_STR(ClCustomBackgroundFile, cl_custom_background_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "File inside the 'backgrounds' folder, with its extension")
 MACRO_CONFIG_INT(ClCustomBackgroundOpacity, cl_custom_background_opacity, 100, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the custom background in percent")
 MACRO_CONFIG_INT(ClCustomBackgroundFit, cl_custom_background_fit, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How the background fills the screen (0 = stretch, 1 = cover, 2 = fit)")
+MACRO_CONFIG_INT(ClCustomBackgroundVideoLength, cl_custom_background_video_length, 10, 0, 600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only play the first seconds of a background video and loop from there, 0 plays the whole file")
 MACRO_CONFIG_INT(ClCustomBackgroundIngame, cl_custom_background_ingame, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the custom background while playing")
 MACRO_CONFIG_INT(ClCustomBackgroundMenu, cl_custom_background_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the custom background in the menus")
 
