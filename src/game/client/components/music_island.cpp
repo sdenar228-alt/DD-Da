@@ -53,6 +53,16 @@ void CMusicIsland::OnShutdown()
 
 void CMusicIsland::OnRender()
 {
+	if(!Update())
+		return;
+	const CUIRect *pScreen = Ui()->Screen();
+	Render(pScreen->w, pScreen->h);
+}
+
+// Keeps the worker and the artwork in sync and reports whether there is
+// anything to draw.
+bool CMusicIsland::Update()
+{
 	if(!g_Config.m_ClMusicIsland)
 	{
 		if(m_Started)
@@ -61,12 +71,12 @@ void CMusicIsland::OnRender()
 			m_Started = false;
 			m_Visible = 0.0f;
 		}
-		return;
+		return false;
 	}
 
 	const bool InGame = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
 	if(InGame ? !g_Config.m_ClMusicIslandIngame : !g_Config.m_ClMusicIslandMenu)
-		return;
+		return false;
 
 	// The query runs on its own thread, starting it is cheap and idempotent.
 	if(!m_Started)
@@ -106,12 +116,7 @@ void CMusicIsland::OnRender()
 	const float Speed = std::clamp(Client()->RenderFrameTime(), 0.0f, 0.1f) * 6.0f;
 	m_Visible += Wanted ? Speed : -Speed;
 	m_Visible = std::clamp(m_Visible, 0.0f, 1.0f);
-	if(m_Visible <= 0.001f)
-		return;
-
-	const float Height = 300.0f;
-	const float Width = Height * Graphics()->ScreenAspect();
-	Render(Width, Height);
+	return m_Visible > 0.001f;
 }
 
 // Icons are drawn from plain shapes, no texture needed.
@@ -134,16 +139,55 @@ void DrawTriangle(IGraphics *pGraphics, float x, float y, float w, float h, bool
 }
 } // namespace
 
-bool CMusicIsland::DoIslandButton(const void *pId, const CUIRect &Rect, int Icon, float Alpha, bool Clickable)
+// Dragging the pill itself moves the island. The position is written back to
+// the config in permille, the same units the settings sliders use.
+void CMusicIsland::DoDrag(const CUIRect &Pill, const CUIRect &Buttons, float Width, float Height, float PillWidth, float PillHeight, float Margin)
+{
+	const float RoomX = Width - PillWidth;
+	const float RoomY = std::max(0.0f, Height - PillHeight - 2.0f * Margin);
+
+	if(m_Dragging)
+	{
+		if(!Ui()->MouseButton(0))
+		{
+			m_Dragging = false;
+		}
+		else
+		{
+			if(RoomX > 0.001f)
+				g_Config.m_ClMusicIslandX = std::clamp(round_to_int((Ui()->MouseX() - m_DragOffsetX) / RoomX * 1000.0f), 0, 1000);
+			if(RoomY > 0.001f)
+				g_Config.m_ClMusicIslandY = std::clamp(round_to_int((Ui()->MouseY() - m_DragOffsetY - Margin) / RoomY * 1000.0f), 0, 1000);
+		}
+	}
+	// The transport buttons keep their own area, grabbing anywhere else moves it.
+	else if(Ui()->MouseButtonClicked(0) && Ui()->MouseHovered(&Pill) && !Ui()->MouseHovered(&Buttons))
+	{
+		m_Dragging = true;
+		m_DragOffsetX = Ui()->MouseX() - Pill.x;
+		m_DragOffsetY = Ui()->MouseY() - Pill.y;
+	}
+
+	// Claims the hover so a menu button below the island cannot be pressed
+	// through it.
+	if(Ui()->MouseHovered(&Pill))
+		Ui()->SetHotItem(&m_DragId);
+}
+
+bool CMusicIsland::DoIslandButton(const CUIRect &Rect, int Icon, float Alpha, bool Clickable)
 {
 	bool Clicked = false;
 	float Highlight = 0.0f;
 	if(Clickable)
 	{
-		// The island draws after the menus, so its items win the hover contest.
-		if(Ui()->MouseInside(&Rect))
+		// The island draws after the menus have closed their check window, where
+		// an activation is thrown away before the release arrives. So the press is
+		// read straight from the mouse instead of going through the hot item.
+		if(Ui()->MouseHovered(&Rect))
+		{
 			Highlight = 0.35f;
-		Clicked = Ui()->DoButtonLogic(pId, 0, &Rect, BUTTONFLAG_LEFT) != 0;
+			Clicked = Ui()->MouseButtonClicked(0);
+		}
 	}
 
 	const ColorRGBA Color(0.88f + Highlight * 0.12f, 0.90f + Highlight * 0.10f, 0.95f, Alpha);
@@ -188,30 +232,30 @@ void CMusicIsland::Render(float Width, float Height)
 	// Draw in a screen of its own and put the old one back, otherwise everything
 	// after this would inherit the mapping.
 	const CScreenRect SavedScreenRect = Graphics()->GetScreen();
-	Graphics()->MapScreenToSize(Width, Height);
+	Ui()->MapScreen();
 
 	const float Scale = g_Config.m_ClMusicIslandSize / 100.0f;
-	const float PillHeight = 26.0f * Scale;
-	const float Padding = 3.5f * Scale;
+	const float PillHeight = 52.0f * Scale;
+	const float Padding = 7.0f * Scale;
 	const float ArtSize = PillHeight - 2.0f * Padding;
-	const float TitleSize = 7.0f * Scale;
-	const float ArtistSize = 5.8f * Scale;
+	const float TitleSize = 14.0f * Scale;
+	const float ArtistSize = 11.6f * Scale;
 
 	// Transport buttons on the right, like a phone shows them.
-	const float ButtonSize = 6.0f * Scale;
-	const float ButtonGap = 3.0f * Scale;
+	const float ButtonSize = 12.0f * Scale;
+	const float ButtonGap = 6.0f * Scale;
 	const float ButtonsWidth = ButtonSize * 3.0f + ButtonGap * 2.0f;
 
 	const float TitleWidth = TextRender()->TextWidth(TitleSize, m_Track.m_Title.c_str());
 	const float ArtistWidth = TextRender()->TextWidth(ArtistSize, m_Track.m_Artist.c_str());
 	float TextWidth = std::max(TitleWidth, ArtistWidth);
-	TextWidth = std::clamp(TextWidth, 24.0f * Scale, 110.0f * Scale);
+	TextWidth = std::clamp(TextWidth, 48.0f * Scale, 220.0f * Scale);
 
 	const float PillWidth = Padding + ArtSize + Padding * 1.6f + TextWidth + Padding * 1.6f + ButtonsWidth + Padding;
 
 	// Free placement, the config holds the position in permille of the room the
 	// island can move in, so it stays put at any resolution.
-	const float Margin = 4.0f * Scale;
+	const float Margin = 8.0f * Scale;
 	const float BaseX = (Width - PillWidth) * (g_Config.m_ClMusicIslandX / 1000.0f);
 	const float BaseY = Margin + std::max(0.0f, Height - PillHeight - 2.0f * Margin) * (g_Config.m_ClMusicIslandY / 1000.0f);
 
@@ -273,33 +317,36 @@ void CMusicIsland::Render(float Width, float Height)
 	const bool Clickable = GameClient()->m_Menus.IsActive() || Client()->State() == IClient::STATE_OFFLINE;
 
 	Rest.VSplitLeft(Padding * 1.6f, nullptr, &Rest);
+	const CUIRect Buttons = Rest;
 	CUIRect Button;
 	Rest.y = Pill.y + (PillHeight - ButtonSize) / 2.0f;
 	Rest.h = ButtonSize;
 
-	static int s_PrevId, s_PlayId, s_NextId;
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
-	if(DoIslandButton(&s_PrevId, Button, ICON_PREV, Alpha, Clickable))
+	if(DoIslandButton(Button, ICON_PREV, Alpha, Clickable))
 		m_Music.SendCommand(CWindowsMusic::ECommand::PREVIOUS);
 	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
-	if(DoIslandButton(&s_PlayId, Button, m_Track.m_Playing ? ICON_PAUSE : ICON_PLAY, Alpha, Clickable))
+	if(DoIslandButton(Button, m_Track.m_Playing ? ICON_PAUSE : ICON_PLAY, Alpha, Clickable))
 		m_Music.SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
 	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
-	if(DoIslandButton(&s_NextId, Button, ICON_NEXT, Alpha, Clickable))
+	if(DoIslandButton(Button, ICON_NEXT, Alpha, Clickable))
 		m_Music.SendCommand(CWindowsMusic::ECommand::NEXT);
+
+	if(Clickable)
+		DoDrag(Pill, Buttons, Width, Height, PillWidth, PillHeight, Margin);
 
 	// Progress along the bottom edge.
 	if(m_Track.m_Duration > 0.0)
 	{
-		const float BarHeight = 1.5f * Scale;
+		const float BarHeight = 3.0f * Scale;
 		const float Inset = PillHeight * 0.28f;
 		CUIRect Line;
 		Line.x = Pill.x + Inset;
 		Line.w = Pill.w - Inset * 2.0f;
 		Line.h = BarHeight;
-		Line.y = Pill.y + Pill.h - BarHeight - 2.0f * Scale;
+		Line.y = Pill.y + Pill.h - BarHeight - 4.0f * Scale;
 		Line.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.20f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
 
 		CUIRect Filled = Line;

@@ -26,6 +26,7 @@ public:
 private:
 	CWindowsMusic m_Music;
 	bool m_Started = false;
+	bool Update();
 
 	IGraphics::CTextureHandle m_ArtworkTexture;
 
@@ -37,8 +38,15 @@ private:
 	float m_HighlightUntil = 0.0f;
 
 	void Render(float Width, float Height);
+	// Moves the island when it is dragged around.
+	void DoDrag(const CUIRect &Pill, const CUIRect &Buttons, float Width, float Height, float PillWidth, float PillHeight, float Margin);
+	int m_DragId = 0;
+	bool m_Dragging = false;
+	float m_DragOffsetX = 0.0f;
+	float m_DragOffsetY = 0.0f;
+
 	// Draws one of the transport buttons and reports a click on it.
-	bool DoIslandButton(const void *pId, const CUIRect &Rect, int Icon, float Alpha, bool Clickable);
+	bool DoIslandButton(const CUIRect &Rect, int Icon, float Alpha, bool Clickable);
 
 	static void ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData);
 	static void ConMusicNext(IConsole::IResult *pResult, void *pUserData);
