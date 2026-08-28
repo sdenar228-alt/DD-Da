@@ -522,6 +522,43 @@ void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
+	// ***** Music island ***** //
+	Ui()->DoLabel_AutoLineSize(Localize("Music island"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIsland, Localize("Show the playing track at the top"), &g_Config.m_ClMusicIsland, &RightView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &RightView, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
+	if(g_Config.m_ClMusicIsland)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandIngame, Localize("Show it while playing"), &g_Config.m_ClMusicIslandIngame, &RightView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandMenu, Localize("Show it in the menus"), &g_Config.m_ClMusicIslandMenu, &RightView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandWhenPaused, Localize("Keep it visible when paused"), &g_Config.m_ClMusicIslandWhenPaused, &RightView, LINE_SIZE);
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandSize, &g_Config.m_ClMusicIslandSize, &Button, Localize("Size"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandOpacity, &g_Config.m_ClMusicIslandOpacity, &Button, Localize("Opacity"), 10, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		Ui()->DoLabel_AutoLineSize(Localize("Position"), 13.0f, TEXTALIGN_ML, &RightView, LINE_SIZE);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandX, &g_Config.m_ClMusicIslandX, &Button, Localize("Left to right"), 0, 1000);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandY, &g_Config.m_ClMusicIslandY, &Button, Localize("Top to bottom"), 0, 1000);
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIslandY, &Button, Localize("The island is drawn in the menus too, so you can see it move while dragging these."));
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Button.VSplitLeft(Button.w / 2.0f, &Button, nullptr);
+		static CButtonContainer s_ResetIslandPos;
+		if(DoButton_Menu(&s_ResetIslandPos, Localize("Reset position"), 0, &Button))
+		{
+			g_Config.m_ClMusicIslandX = DefaultConfig::ClMusicIslandX;
+			g_Config.m_ClMusicIslandY = DefaultConfig::ClMusicIslandY;
+		}
+	}
+
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 

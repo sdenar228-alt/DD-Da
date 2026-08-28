@@ -788,6 +788,7 @@ if(TARGET_OS STREQUAL "windows")
   set(PLATFORM_CLIENT_LIBS opengl32.lib winmm.lib imm32.lib)
   # Media Foundation, used to decode video backgrounds without a full FFmpeg
   list(APPEND PLATFORM_CLIENT_LIBS mfplat.lib mfreadwrite.lib mfuuid.lib windowscodecs.lib)
+  list(APPEND PLATFORM_CLIENT_LIBS WindowsApp.lib) # C++/WinRT, for the now playing island
   if(MSVC)
     # Delay loaded so the client still starts on Windows editions that ship
     # without Media Foundation; decoding just fails there.
@@ -2640,6 +2641,8 @@ if(CLIENT)
     components/custom_background.h
     components/custom_media_win.cpp
     components/custom_media_win.h
+    components/custom_music_win.cpp
+    components/custom_music_win.h
     components/custom_sounds.cpp
     components/custom_sounds.h
     components/damageind.cpp
@@ -2696,6 +2699,8 @@ if(CLIENT)
     components/menus_settings_general.cpp
     components/menus_settings_graphics.cpp
     components/menus_settings_language.cpp
+    components/music_island.cpp
+    components/music_island.h
     components/menus_settings_player.cpp
     components/menus_settings_sound.cpp
     components/menus_settings_tee.cpp

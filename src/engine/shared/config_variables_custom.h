@@ -54,6 +54,16 @@ MACRO_CONFIG_STR(ClCustomAssetLaser, cl_custom_asset_laser, 64, "", CFGFLAG_CLIE
 MACRO_CONFIG_STR(ClCustomAssetNinja, cl_custom_asset_ninja, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the ninja is taken from")
 MACRO_CONFIG_STR(ClCustomAssetPickups, cl_custom_asset_pickups, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Asset pack the pickups and the health/armor bars are taken from")
 
+// --- music island ----------------------------------------------------------
+MACRO_CONFIG_INT(ClMusicIsland, cl_music_island, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show what is playing in a pill at the top of the screen")
+MACRO_CONFIG_INT(ClMusicIslandIngame, cl_music_island_ingame, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the music island while playing")
+MACRO_CONFIG_INT(ClMusicIslandMenu, cl_music_island_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the music island in the menus")
+MACRO_CONFIG_INT(ClMusicIslandSize, cl_music_island_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the music island in percent")
+MACRO_CONFIG_INT(ClMusicIslandX, cl_music_island_x, 500, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Horizontal position of the music island, 0 is left and 1000 is right")
+MACRO_CONFIG_INT(ClMusicIslandY, cl_music_island_y, 0, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Vertical position of the music island, 0 is top and 1000 is bottom")
+MACRO_CONFIG_INT(ClMusicIslandOpacity, cl_music_island_opacity, 100, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the music island in percent")
+MACRO_CONFIG_INT(ClMusicIslandWhenPaused, cl_music_island_when_paused, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keep the island visible while the music is paused")
+
 // --- sounds ----------------------------------------------------------------
 MACRO_CONFIG_STR(ClCustomSoundPack, cl_custom_sound_pack, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound pack folder inside 'sounds'")
 MACRO_CONFIG_INT(ClCustomSoundJoin, cl_custom_sound_join, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play a sound when a player joins the server")

@@ -154,6 +154,7 @@ void CGameClient::OnConsoleInit()
 					      &m_FreezeBars,
 					      &m_DamageInd,
 					      &m_Hud,
+					      &m_MusicIsland,
 					      &m_Spectator,
 					      &m_Emoticon,
 					      &m_InfoMessages,
