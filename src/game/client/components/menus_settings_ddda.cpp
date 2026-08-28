@@ -602,7 +602,7 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 	TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
 	SLabelProperties HintProps;
 	HintProps.m_MaxWidth = Hint.w;
-	Ui()->DoLabel(&Hint, Localize("PNG images work out of the box. Videos need a full FFmpeg build, see the readme."), 11.0f, TEXTALIGN_TL, HintProps);
+	Ui()->DoLabel(&Hint, Localize("Pictures (png, jpg, bmp, webp) and videos (mp4, avi, wmv) all work."), 11.0f, TEXTALIGN_TL, HintProps);
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 	// File list

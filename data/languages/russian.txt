@@ -2987,3 +2987,6 @@ Apply it to your own tee
 
 Apply it to other tees
 == Применять к чужим тишкам
+
+Pictures (png, jpg, bmp, webp) and videos (mp4, avi, wmv) all work.
+== Работают картинки (png, jpg, bmp, webp) и видео (mp4, avi, wmv).
