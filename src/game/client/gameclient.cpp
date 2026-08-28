@@ -154,7 +154,6 @@ void CGameClient::OnConsoleInit()
 					      &m_FreezeBars,
 					      &m_DamageInd,
 					      &m_Hud,
-					      &m_MusicIsland,
 					      &m_Spectator,
 					      &m_Emoticon,
 					      &m_InfoMessages,
@@ -167,6 +166,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Statboard,
 					      &m_Motd,
 					      &m_Menus,
+					      &m_MusicIsland, // after the menus so they never cover it
 					      &m_Tooltips,
 					      &m_KeyBinder,
 					      &m_GameConsole,

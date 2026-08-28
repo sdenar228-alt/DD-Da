@@ -31,6 +31,9 @@ public:
 		std::string m_Title;
 		std::string m_Artist;
 		bool m_Playing = false;
+		// Position and length in seconds, both 0 when the player reports none.
+		double m_Position = 0.0;
+		double m_Duration = 0.0;
 		// Counts up whenever the track changes, so the caller can tell a new song
 		// from an update of the same one.
 		uint64_t m_Revision = 0;
@@ -43,6 +46,16 @@ public:
 
 	// Latest snapshot, empty title when nothing is playing.
 	CTrack Track() const;
+
+	// Sent to whichever player owns the session. They are queued and run on the
+	// worker, so the caller never blocks.
+	enum class ECommand
+	{
+		PLAY_PAUSE,
+		NEXT,
+		PREVIOUS,
+	};
+	void SendCommand(ECommand Command);
 
 	// Album art of the current track as RGBA. Returns false when there is no new
 	// artwork since the last call.

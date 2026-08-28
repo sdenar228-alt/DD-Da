@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_MUSIC_ISLAND_H
 #define GAME_CLIENT_COMPONENTS_MUSIC_ISLAND_H
 
+#include <engine/console.h>
 #include <engine/graphics.h>
 
 #include <game/client/component.h>
@@ -17,6 +18,7 @@ class CMusicIsland : public CComponent
 public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
+	void OnConsoleInit() override;
 	void OnShutdown() override;
 	void OnRender() override;
 
@@ -34,6 +36,10 @@ private:
 	float m_HighlightUntil = 0.0f;
 
 	void Render(float Width, float Height);
+
+	static void ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData);
+	static void ConMusicNext(IConsole::IResult *pResult, void *pUserData);
+	static void ConMusicPrev(IConsole::IResult *pResult, void *pUserData);
 };
 
 #endif
