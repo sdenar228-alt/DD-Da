@@ -1,7 +1,10 @@
 #include "custom_background.h"
 
+#include "custom_media_win.h"
+
 #include <base/io.h>
 #include <base/log.h>
+#include <base/mem.h>
 #include <base/str.h>
 
 #include <engine/graphics.h>
@@ -12,6 +15,7 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <vector>
 
 #if defined(CONF_VIDEORECORDER)
 extern "C" {
@@ -364,6 +368,9 @@ bool CCustomBackground::CMedia::NextFrame(float Time, CImageInfo &Image)
 CCustomBackground::CCustomBackground() :
 	m_pMedia(std::make_unique<CMedia>())
 {
+#if defined(CONF_FAMILY_WINDOWS)
+	m_pWindowsMedia = std::make_unique<CWindowsMedia>();
+#endif
 	m_Texture.Invalidate();
 }
 
@@ -374,6 +381,10 @@ void CCustomBackground::Unload()
 	if(m_Texture.IsValid())
 		Graphics()->UnloadTexture(&m_Texture);
 	m_pMedia->Close();
+#if defined(CONF_FAMILY_WINDOWS)
+	m_pWindowsMedia->Close();
+	m_UsingWindowsMedia = false;
+#endif
 	m_LoadedFile.clear();
 	m_LoadFailed = false;
 	m_IsStill = false;
@@ -405,6 +416,51 @@ void CCustomBackground::Update()
 		char aPath[IO_MAX_PATH_LENGTH];
 		str_format(aPath, sizeof(aPath), "backgrounds/%s", pFile);
 
+		// The system decoder needs a real path, so find the storage path the
+		// file lives in and build the absolute one.
+		char aAbsolutePath[IO_MAX_PATH_LENGTH];
+		aAbsolutePath[0] = 0;
+		for(int Type = IStorage::TYPE_SAVE; Type < Storage()->NumPaths(); ++Type)
+		{
+			if(Storage()->FileExists(aPath, Type))
+			{
+				Storage()->GetCompletePath(Type, aPath, aAbsolutePath, sizeof(aAbsolutePath));
+				break;
+			}
+		}
+
+#if defined(CONF_FAMILY_WINDOWS)
+		// Anything that is not a PNG goes to the Windows codecs first: WIC reads
+		// jpg, bmp, gif and friends, Media Foundation plays mp4 and whatever
+		// else the system can decode.
+		if(aAbsolutePath[0] != 0 && str_endswith_nocase(pFile, ".png") == nullptr)
+		{
+			const bool LooksLikeImage =
+				str_endswith_nocase(pFile, ".jpg") != nullptr ||
+				str_endswith_nocase(pFile, ".jpeg") != nullptr ||
+				str_endswith_nocase(pFile, ".bmp") != nullptr ||
+				str_endswith_nocase(pFile, ".webp") != nullptr ||
+				str_endswith_nocase(pFile, ".tif") != nullptr ||
+				str_endswith_nocase(pFile, ".tiff") != nullptr;
+			// A gif can be animated, so it goes to the video decoder first.
+			const bool Opened = LooksLikeImage ?
+						    m_pWindowsMedia->OpenImage(aAbsolutePath) :
+						    (m_pWindowsMedia->OpenVideo(aAbsolutePath) || m_pWindowsMedia->OpenImage(aAbsolutePath));
+			if(Opened)
+			{
+				m_UsingWindowsMedia = true;
+				m_IsStill = m_pWindowsMedia->IsStill();
+				m_Width = m_pWindowsMedia->Width();
+				m_Height = m_pWindowsMedia->Height();
+			}
+			else
+			{
+				m_LoadFailed = true;
+				return;
+			}
+		}
+		else
+#endif
 		// PNG goes through the engine image loader, which is always available.
 		// Everything else needs a decoder from FFmpeg.
 		if(str_endswith_nocase(pFile, ".png") != nullptr)
@@ -428,28 +484,45 @@ void CCustomBackground::Update()
 			return;
 		}
 
-		IOHANDLE MediaFile = Storage()->OpenFile(aPath, IOFLAG_READ, IStorage::TYPE_ALL);
-		if(MediaFile == nullptr)
+		else
 		{
-			m_LoadFailed = true;
-			log_error("custombackground", "Could not find '%s'", aPath);
-			return;
+			IOHANDLE MediaFile = Storage()->OpenFile(aPath, IOFLAG_READ, IStorage::TYPE_ALL);
+			if(MediaFile == nullptr)
+			{
+				m_LoadFailed = true;
+				log_error("custombackground", "Could not find '%s'", aPath);
+				return;
+			}
+			if(!m_pMedia->Open(aPath, MediaFile))
+			{
+				m_LoadFailed = true;
+				return;
+			}
+			m_IsStill = m_pMedia->IsStill();
+			m_Width = m_pMedia->Width();
+			m_Height = m_pMedia->Height();
 		}
-		if(!m_pMedia->Open(aPath, MediaFile))
-		{
-			m_LoadFailed = true;
-			return;
-		}
-		m_IsStill = m_pMedia->IsStill();
-		m_Width = m_pMedia->Width();
-		m_Height = m_pMedia->Height();
 	}
 
 	if(m_LoadFailed || (m_IsStill && m_HasFrame))
 		return;
 
 	CImageInfo Frame;
-	if(!m_pMedia->NextFrame(Client()->GlobalTime(), Frame))
+#if defined(CONF_FAMILY_WINDOWS)
+	if(m_UsingWindowsMedia)
+	{
+		std::vector<uint8_t> vRgba;
+		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), vRgba) || vRgba.empty())
+			return;
+		Frame.m_Width = m_pWindowsMedia->Width();
+		Frame.m_Height = m_pWindowsMedia->Height();
+		Frame.m_Format = CImageInfo::FORMAT_RGBA;
+		Frame.Allocate();
+		mem_copy(Frame.m_pData, vRgba.data(), std::min(vRgba.size(), Frame.DataSize()));
+	}
+	else
+#endif
+		if(!m_pMedia->NextFrame(Client()->GlobalTime(), Frame))
 		return;
 
 	if(m_Texture.IsValid())

@@ -1,6 +1,8 @@
 #ifndef GAME_CLIENT_COMPONENTS_CUSTOM_BACKGROUND_H
 #define GAME_CLIENT_COMPONENTS_CUSTOM_BACKGROUND_H
 
+#include <base/detect.h>
+
 #include <engine/graphics.h>
 
 #include <game/client/component.h>
@@ -31,6 +33,11 @@ private:
 	// gameclient.h, which every component includes.
 	class CMedia;
 	std::unique_ptr<CMedia> m_pMedia;
+#if defined(CONF_FAMILY_WINDOWS)
+	// The codecs that ship with Windows, tried before FFmpeg.
+	std::unique_ptr<class CWindowsMedia> m_pWindowsMedia;
+	bool m_UsingWindowsMedia = false;
+#endif
 
 	IGraphics::CTextureHandle m_Texture;
 	std::string m_LoadedFile;

@@ -65,12 +65,25 @@ transparent hides that tile type.
 
 An image or video behind everything, in game and in the menus.
 
-PNG works out of the box. **Videos and other image formats need a full FFmpeg
-build**: the FFmpeg shipped in `ddnet-libs` was compiled for encoding only and
-contains no decoders at all. To enable them, replace `avcodec-61.dll`,
-`avformat-61.dll`, `avutil-59.dll`, `swresample-5.dll` and `swscale-8.dll` next
-to `DDNet.exe` with a full build of the same major versions (for example from
-gyan.dev or BtbN). The client says so in the log when it hits this.
+Supported on Windows without any extra download:
+
+| Kind | Formats | Decoder |
+| --- | --- | --- |
+| Pictures | png | engine, all platforms |
+| Pictures | jpg, jpeg, bmp, webp, tif, gif | Windows Imaging Component |
+| Videos | mp4, mov, avi, wmv, m4v and whatever else the system plays | Media Foundation |
+
+Videos are played forward at their own frame rate and loop at the end. Every
+frame is a full texture upload, so a small file is cheaper than a 4K one.
+
+The FFmpeg shipped in `ddnet-libs` was compiled for **encoding only** and has no
+decoders at all, so it is not used for this. It stays as a fallback for other
+platforms; to make it work there, put a full FFmpeg build of the same major
+versions (`avcodec-61`, `avformat-61`, `avutil-59`, `swresample-5`,
+`swscale-8`) next to the executable.
+
+The Media Foundation DLLs are delay loaded, so a Windows edition that ships
+without them (the N editions) still starts and only fails to decode.
 
 In game the map is drawn on top, so the background is only visible where the map
 is see-through, for example with the entities overlay.
