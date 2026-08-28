@@ -578,21 +578,23 @@ void CMenus::RenderSettingsDDDaUnfreeze(CUIRect MainView)
 		Ui()->DoLabel_AutoLineSize(Localize("Search"), 13.0f, TEXTALIGN_ML, &LeftView, LINE_SIZE);
 
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeSteps, &g_Config.m_ClUnfreezeSteps, &Button, Localize("Aim angles tried"), 60, 3600, &CUi::ms_LinearScrollbarScale);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeSteps, &g_Config.m_ClUnfreezeSteps, &Button, Localize("Aim angles tried"), 120, 1440, &CUi::ms_LinearScrollbarScale);
 		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClUnfreezeSteps, &Button, Localize("More angles find shots that need a tighter aim, and cost more while you play."));
 
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeBounces, &g_Config.m_ClUnfreezeBounces, &Button, Localize("Bounces followed"), 1, 12, &CUi::ms_LinearScrollbarScale);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeBounces, &g_Config.m_ClUnfreezeBounces, &Button, Localize("Bounces followed"), 4, 40, &CUi::ms_LinearScrollbarScale);
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClUnfreezeBounces, &Button, Localize("Every bounce buys the shot eight more ticks of life. Set it low and the shot is gone long before the freeze has carried you off the tiles."));
 
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeHorizon, &g_Config.m_ClUnfreezeHorizon, &Button, Localize("Flight looked ahead"), 20, 400, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ticks"));
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeHorizon, &g_Config.m_ClUnfreezeHorizon, &Button, Localize("Flight looked ahead"), 60, 300, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ticks"));
 
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeInterval, &g_Config.m_ClUnfreezeInterval, &Button, Localize("Searched every"), 20, 500, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ms"));
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeInterval, &g_Config.m_ClUnfreezeInterval, &Button, Localize("Searched every"), 40, 500, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ms"));
 
 		Ui()->DoLabel_AutoLineSize(Localize("Drawing"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeShowStatus, Localize("Say on screen what it is doing"), &g_Config.m_ClUnfreezeShowStatus, &RightView, LINE_SIZE);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeShowPath, Localize("Draw the path of the shot"), &g_Config.m_ClUnfreezeShowPath, &RightView, LINE_SIZE);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClUnfreezeShowFlight, Localize("Draw where the freeze carries you"), &g_Config.m_ClUnfreezeShowFlight, &RightView, LINE_SIZE);
 

@@ -4,11 +4,14 @@
 #include <base/vmath.h>
 
 #include <engine/graphics.h>
+#include <engine/textrender.h>
 #include <engine/shared/config.h>
 
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
+#include <game/client/ui.h>
 #include <game/collision.h>
+#include <game/localization.h>
 #include <game/mapitems.h>
 
 #include <algorithm>
@@ -142,6 +145,7 @@ bool CUnfreeze::Predict(int LocalId, int StartTick)
 	m_FirstFlightTick = StartTick + 1;
 
 	bool AnyUseful = false;
+	m_LastUsefulTick = -1;
 	for(int Tick = StartTick + 1; Tick <= StartTick + Horizon; Tick++)
 	{
 		m_ScratchWorld.m_GameTick = Tick;
@@ -157,7 +161,11 @@ bool CUnfreeze::Predict(int LocalId, int StartTick)
 		Step.m_Frozen = pChar->m_FreezeTime > 0;
 		Step.m_Deep = pChar->Core()->m_DeepFrozen;
 		Step.m_OnFreeze = TouchesFreeze(Step.m_PrevPos, Step.m_Pos);
-		AnyUseful = AnyUseful || (Step.m_Frozen && !Step.m_Deep && !Step.m_OnFreeze);
+		if(Step.m_Frozen && !Step.m_Deep && !Step.m_OnFreeze)
+		{
+			AnyUseful = true;
+			m_LastUsefulTick = Tick;
+		}
 		m_vFlight.push_back(Step);
 	}
 
@@ -203,6 +211,18 @@ void CUnfreeze::TraceLaser(vec2 Pos, vec2 Dir, float Energy, int FireTick, int M
 	}
 }
 
+// A shot is only followed as far as it could still do something: every bounce
+// costs eight ticks, so following it past the last tick worth hitting is work
+// thrown away.
+int CUnfreeze::BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const
+{
+	const int Wanted = std::clamp(g_Config.m_ClUnfreezeBounces, 1, std::max(1, TunedBounces));
+	if(m_LastUsefulTick < 0)
+		return Wanted;
+	const int Reachable = (m_LastUsefulTick + 1 - FireTick) / std::max(1, BounceTicks) + 1;
+	return std::clamp(Reachable, 1, Wanted);
+}
+
 bool CUnfreeze::IsUsefulTick(int Tick) const
 {
 	const CFlightStep *pStep = FlightAt(Tick);
@@ -220,8 +240,8 @@ bool CUnfreeze::Revalidate(int FireTick, vec2 FirePos)
 
 	const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
 	const int TunedBounces = pTuning->m_LaserBounceNum;
-	const int MaxBounces = std::clamp(g_Config.m_ClUnfreezeBounces, 1, std::max(1, TunedBounces));
 	const int BounceTicks = std::max(1, (int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1);
+	const int MaxBounces = BounceBudget(FireTick, BounceTicks, TunedBounces);
 	TraceLaser(FirePos, m_SolutionDir, pTuning->m_LaserReach, FireTick, MaxBounces, pTuning->m_LaserBounceCost, BounceTicks);
 
 	for(const CSegment &Segment : m_vSegments)
@@ -262,10 +282,10 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos)
 	const float Energy = pTuning->m_LaserReach;
 	const float BounceCost = pTuning->m_LaserBounceCost;
 	const int TunedBounces = pTuning->m_LaserBounceNum;
-	const int MaxBounces = std::clamp(g_Config.m_ClUnfreezeBounces, 1, std::max(1, TunedBounces));
 	// A bounce happens once the delay has been exceeded, not once it is reached,
 	// which turns the default 150 ms into 8 ticks rather than 7.
 	const int BounceTicks = std::max(1, (int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1);
+	const int MaxBounces = BounceBudget(FireTick, BounceTicks, TunedBounces);
 	const int Steps = std::clamp(g_Config.m_ClUnfreezeSteps, 60, 3600);
 
 	bool Found = false;
@@ -355,6 +375,7 @@ void CUnfreeze::OnRender()
 		Reset();
 		return;
 	}
+	m_Status = EStatus::QUIET;
 
 	CGameClient *pGameClient = GameClient();
 	const int LocalId = pGameClient->m_Snap.m_LocalClientId;
@@ -375,6 +396,9 @@ void CUnfreeze::OnRender()
 	{
 		m_HasSolution = false;
 		m_vSolution.clear();
+		// Frozen already: the shot had to leave before this.
+		m_Status = pPredicted != nullptr ? EStatus::TOO_LATE : EStatus::QUIET;
+		RenderStatus();
 		return;
 	}
 
@@ -388,7 +412,8 @@ void CUnfreeze::OnRender()
 		m_vSolution.clear();
 		// The shot leaves with the input that is being built now, so it is cast
 		// from the tick after the one the prediction ends on.
-		if(Predict(LocalId, PredTick))
+		m_FreezeAhead = Predict(LocalId, PredTick);
+		if(m_FreezeAhead)
 			Search(PredTick + 1, pPredicted->Core()->m_Pos);
 	}
 
@@ -409,7 +434,58 @@ void CUnfreeze::OnRender()
 			m_WantShot = true;
 	}
 
+	if(m_HasSolution)
+	{
+		const bool HoldsLaser = pLocal->m_Weapon == WEAPON_LASER;
+		m_Status = HoldsLaser || g_Config.m_ClUnfreezeSwitchWeapon ? EStatus::READY : EStatus::NO_LASER;
+	}
+	else if(m_FreezeAhead)
+	{
+		m_Status = EStatus::SEARCHING;
+	}
+
 	RenderPlan();
+	RenderStatus();
+}
+
+void CUnfreeze::RenderStatus() const
+{
+	if(!g_Config.m_ClUnfreezeShowStatus || m_Status == EStatus::QUIET)
+		return;
+
+	const char *pText = nullptr;
+	ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
+	switch(m_Status)
+	{
+	case EStatus::READY:
+		pText = g_Config.m_ClUnfreeze == 2 ? Localize("Unfreeze shot ready") : Localize("Unfreeze shot ready, press your unfreeze key");
+		Color = ColorRGBA(0.35f, 0.9f, 0.45f, 1.0f);
+		break;
+	case EStatus::SEARCHING:
+		pText = Localize("Freeze ahead, no shot found");
+		Color = ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f);
+		break;
+	case EStatus::NO_LASER:
+		pText = Localize("Unfreeze shot found, but you are not holding the laser");
+		Color = ColorRGBA(1.0f, 0.6f, 0.3f, 1.0f);
+		break;
+	case EStatus::TOO_LATE:
+		pText = Localize("Frozen already, the shot had to leave earlier");
+		Color = ColorRGBA(0.7f, 0.75f, 0.85f, 1.0f);
+		break;
+	default:
+		return;
+	}
+
+	const CScreenRect SavedScreenRect = Graphics()->GetScreen();
+	Ui()->MapScreen();
+	const float FontSize = 9.0f;
+	const CUIRect *pScreen = Ui()->Screen();
+	CUIRect Line = {0.0f, pScreen->h * 0.62f, pScreen->w, FontSize};
+	TextRender()->TextColor(Color);
+	Ui()->DoLabel(&Line, pText, FontSize, TEXTALIGN_MC);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+	Graphics()->MapScreen(SavedScreenRect);
 }
 
 bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
