@@ -143,8 +143,16 @@ bind pause music_play_pause
 
 `cl_music_island_x` and `cl_music_island_y` place it anywhere on the screen, in
 permille of the space it can move in, so the spot stays right at any resolution.
-The settings page has sliders for both and a reset button; the island is drawn in
-the menus as well, so its position can be seen while dragging them.
+The settings page has sliders for both and a reset button. In the menus the pill
+can also be grabbed anywhere outside the three buttons and dragged, which writes
+the same two settings, so a dragged island stays where it was put.
+
+The island is drawn after everything else and reads the mouse itself instead of
+going through the interface's hot item handshake. That handshake spans two
+frames and is validated inside the menus, which have already closed their check
+window by the time the island draws, so an activation made there would be thrown
+away before the button was released. While the mouse is over the pill it claims
+the hover, so a menu button underneath cannot be pressed through it.
 
 This is Windows only. On other platforms the island simply never appears.
 
