@@ -8,6 +8,7 @@
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
 
+#include <game/client/components/menus.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
 
@@ -113,6 +114,75 @@ void CMusicIsland::OnRender()
 	Render(Width, Height);
 }
 
+// Icons are drawn from plain shapes, no texture needed.
+enum
+{
+	ICON_PREV = 0,
+	ICON_PLAY,
+	ICON_PAUSE,
+	ICON_NEXT,
+};
+
+namespace {
+void DrawTriangle(IGraphics *pGraphics, float x, float y, float w, float h, bool PointRight)
+{
+	// A quad with two corners collapsed makes a triangle.
+	IGraphics::CFreeformItem Item = PointRight ?
+						IGraphics::CFreeformItem(x, y, x, y + h, x + w, y + h / 2.0f, x + w, y + h / 2.0f) :
+						IGraphics::CFreeformItem(x + w, y, x + w, y + h, x, y + h / 2.0f, x, y + h / 2.0f);
+	pGraphics->QuadsDrawFreeform(&Item, 1);
+}
+} // namespace
+
+bool CMusicIsland::DoIslandButton(const void *pId, const CUIRect &Rect, int Icon, float Alpha, bool Clickable)
+{
+	bool Clicked = false;
+	float Highlight = 0.0f;
+	if(Clickable)
+	{
+		// The island draws after the menus, so its items win the hover contest.
+		if(Ui()->MouseInside(&Rect))
+			Highlight = 0.35f;
+		Clicked = Ui()->DoButtonLogic(pId, 0, &Rect, BUTTONFLAG_LEFT) != 0;
+	}
+
+	const ColorRGBA Color(0.88f + Highlight * 0.12f, 0.90f + Highlight * 0.10f, 0.95f, Alpha);
+	const float w = Rect.w;
+	const float h = Rect.h;
+	const float BarWidth = w * 0.18f;
+
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+	Graphics()->SetColor(Color);
+	if(Icon == ICON_PLAY)
+	{
+		DrawTriangle(Graphics(), Rect.x + w * 0.22f, Rect.y, w * 0.62f, h, true);
+	}
+	else if(Icon == ICON_PAUSE)
+	{
+		const IGraphics::CQuadItem aBars[2] = {
+			IGraphics::CQuadItem(Rect.x + w * 0.26f, Rect.y, BarWidth, h),
+			IGraphics::CQuadItem(Rect.x + w * 0.56f, Rect.y, BarWidth, h),
+		};
+		Graphics()->QuadsDrawTL(aBars, 2);
+	}
+	else if(Icon == ICON_PREV)
+	{
+		const IGraphics::CQuadItem Bar(Rect.x + w * 0.16f, Rect.y, BarWidth, h);
+		Graphics()->QuadsDrawTL(&Bar, 1);
+		DrawTriangle(Graphics(), Rect.x + w * 0.34f, Rect.y, w * 0.5f, h, false);
+	}
+	else
+	{
+		DrawTriangle(Graphics(), Rect.x + w * 0.16f, Rect.y, w * 0.5f, h, true);
+		const IGraphics::CQuadItem Bar(Rect.x + w * 0.66f, Rect.y, BarWidth, h);
+		Graphics()->QuadsDrawTL(&Bar, 1);
+	}
+	Graphics()->QuadsEnd();
+
+	return Clicked;
+}
+
 void CMusicIsland::Render(float Width, float Height)
 {
 	// Draw in a screen of its own and put the old one back, otherwise everything
@@ -121,26 +191,23 @@ void CMusicIsland::Render(float Width, float Height)
 	Graphics()->MapScreenToSize(Width, Height);
 
 	const float Scale = g_Config.m_ClMusicIslandSize / 100.0f;
-	const float PillHeight = 22.0f * Scale;
-	const float Padding = 4.0f * Scale;
+	const float PillHeight = 26.0f * Scale;
+	const float Padding = 3.5f * Scale;
 	const float ArtSize = PillHeight - 2.0f * Padding;
+	const float TitleSize = 7.0f * Scale;
+	const float ArtistSize = 5.8f * Scale;
 
-	const bool Highlighted = Client()->LocalTime() < m_HighlightUntil;
-	const float TitleSize = 8.0f * Scale;
-	const float ArtistSize = 6.5f * Scale;
+	// Transport buttons on the right, like a phone shows them.
+	const float ButtonSize = 6.0f * Scale;
+	const float ButtonGap = 3.0f * Scale;
+	const float ButtonsWidth = ButtonSize * 3.0f + ButtonGap * 2.0f;
 
-	// The three bars on the right get their own column.
-	const float BarWidth = 1.2f * Scale;
-	const float BarGap = 1.0f * Scale;
-	const float EqualiserWidth = BarWidth * 3.0f + BarGap * 2.0f;
-
-	// Width follows the text, so a short title gives a short pill.
 	const float TitleWidth = TextRender()->TextWidth(TitleSize, m_Track.m_Title.c_str());
 	const float ArtistWidth = TextRender()->TextWidth(ArtistSize, m_Track.m_Artist.c_str());
-	float TextWidth = std::max(TitleWidth, Highlighted ? ArtistWidth : 0.0f);
-	TextWidth = std::clamp(TextWidth, 20.0f * Scale, 150.0f * Scale);
+	float TextWidth = std::max(TitleWidth, ArtistWidth);
+	TextWidth = std::clamp(TextWidth, 24.0f * Scale, 110.0f * Scale);
 
-	const float PillWidth = Padding + ArtSize + Padding + TextWidth + Padding + EqualiserWidth + Padding;
+	const float PillWidth = Padding + ArtSize + Padding * 1.6f + TextWidth + Padding * 1.6f + ButtonsWidth + Padding;
 
 	// Free placement, the config holds the position in permille of the room the
 	// island can move in, so it stays put at any resolution.
@@ -148,7 +215,6 @@ void CMusicIsland::Render(float Width, float Height)
 	const float BaseX = (Width - PillWidth) * (g_Config.m_ClMusicIslandX / 1000.0f);
 	const float BaseY = Margin + std::max(0.0f, Height - PillHeight - 2.0f * Margin) * (g_Config.m_ClMusicIslandY / 1000.0f);
 
-	// Eases in with a small drop, so it works the same wherever it sits.
 	const float Ease = 1.0f - std::pow(1.0f - m_Visible, 3.0f);
 
 	CUIRect Pill;
@@ -158,9 +224,9 @@ void CMusicIsland::Render(float Width, float Height)
 	Pill.h = PillHeight;
 
 	const float Alpha = m_Visible * g_Config.m_ClMusicIslandOpacity / 100.0f;
-	Pill.Draw(ColorRGBA(0.03f, 0.03f, 0.04f, 0.92f * Alpha), IGraphics::CORNER_ALL, PillHeight / 2.0f);
+	Pill.Draw(ColorRGBA(0.04f, 0.05f, 0.07f, 0.94f * Alpha), IGraphics::CORNER_ALL, PillHeight / 2.0f);
 
-	// Artwork, or a neutral square when the player gives none.
+	// Artwork on the left, a neutral square when the player gives none.
 	CUIRect Art, Rest;
 	Pill.VSplitLeft(Padding, nullptr, &Rest);
 	Rest.VSplitLeft(ArtSize, &Art, &Rest);
@@ -177,73 +243,70 @@ void CMusicIsland::Render(float Width, float Height)
 	}
 	else
 	{
-		Art.Draw(ColorRGBA(0.25f, 0.25f, 0.3f, Alpha), IGraphics::CORNER_ALL, ArtSize / 4.0f);
+		Art.Draw(ColorRGBA(0.22f, 0.23f, 0.28f, Alpha), IGraphics::CORNER_ALL, ArtSize / 5.0f);
 	}
 
-	Rest.VSplitLeft(Padding, nullptr, &Rest);
-	Rest.VSplitRight(EqualiserWidth + Padding * 2.0f, &Rest, nullptr);
+	// Title above, artist below, both always visible.
+	Rest.VSplitLeft(Padding * 1.6f, nullptr, &Rest);
+	CUIRect TextArea;
+	Rest.VSplitLeft(TextWidth, &TextArea, &Rest);
+	TextArea.y += Padding * 0.8f;
+	TextArea.h = PillHeight - Padding * 2.6f;
 
-	// Title on top, artist below it while the track is fresh.
-	CUIRect TitleRect = Rest;
 	SLabelProperties Props;
-	Props.m_MaxWidth = Rest.w;
+	Props.m_MaxWidth = TextArea.w;
 	Props.m_EllipsisAtEnd = true;
 
+	CUIRect TitleRect, ArtistRect;
+	TextArea.HSplitTop(TextArea.h * 0.55f, &TitleRect, &ArtistRect);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
-	if(Highlighted && !m_Track.m_Artist.empty())
+	Ui()->DoLabel(&TitleRect, m_Track.m_Title.c_str(), TitleSize, TEXTALIGN_ML, Props);
+	if(!m_Track.m_Artist.empty())
 	{
-		CUIRect ArtistRect;
-		TitleRect.HSplitTop(Rest.h * 0.55f, &TitleRect, &ArtistRect);
-		Ui()->DoLabel(&TitleRect, m_Track.m_Title.c_str(), TitleSize, TEXTALIGN_ML, Props);
-		TextRender()->TextColor(0.72f, 0.72f, 0.78f, Alpha);
+		TextRender()->TextColor(0.66f, 0.68f, 0.75f, Alpha);
 		Ui()->DoLabel(&ArtistRect, m_Track.m_Artist.c_str(), ArtistSize, TEXTALIGN_ML, Props);
-	}
-	else
-	{
-		Ui()->DoLabel(&TitleRect, m_Track.m_Title.c_str(), TitleSize, TEXTALIGN_ML, Props);
 	}
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 
-	// Progress bar along the bottom of the pill, only when the player reports a
-	// length. It doubles as the "how much is left" indicator.
+	// Clicking only makes sense where the mouse is a cursor; in game it aims, so
+	// the console commands are the way there.
+	const bool Clickable = GameClient()->m_Menus.IsActive() || Client()->State() == IClient::STATE_OFFLINE;
+
+	Rest.VSplitLeft(Padding * 1.6f, nullptr, &Rest);
+	CUIRect Button;
+	Rest.y = Pill.y + (PillHeight - ButtonSize) / 2.0f;
+	Rest.h = ButtonSize;
+
+	static int s_PrevId, s_PlayId, s_NextId;
+	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
+	if(DoIslandButton(&s_PrevId, Button, ICON_PREV, Alpha, Clickable))
+		m_Music.SendCommand(CWindowsMusic::ECommand::PREVIOUS);
+	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
+	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
+	if(DoIslandButton(&s_PlayId, Button, m_Track.m_Playing ? ICON_PAUSE : ICON_PLAY, Alpha, Clickable))
+		m_Music.SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
+	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
+	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
+	if(DoIslandButton(&s_NextId, Button, ICON_NEXT, Alpha, Clickable))
+		m_Music.SendCommand(CWindowsMusic::ECommand::NEXT);
+
+	// Progress along the bottom edge.
 	if(m_Track.m_Duration > 0.0)
 	{
-		const float BarHeight = 1.4f * Scale;
-		const float Inset = PillHeight / 2.0f * 0.6f;
+		const float BarHeight = 1.5f * Scale;
+		const float Inset = PillHeight * 0.28f;
 		CUIRect Line;
 		Line.x = Pill.x + Inset;
 		Line.w = Pill.w - Inset * 2.0f;
 		Line.h = BarHeight;
-		Line.y = Pill.y + Pill.h - BarHeight - 1.5f * Scale;
-		Line.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
+		Line.y = Pill.y + Pill.h - BarHeight - 2.0f * Scale;
+		Line.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.20f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
 
 		CUIRect Filled = Line;
 		Filled.w = Line.w * (float)std::clamp(m_Track.m_Position / m_Track.m_Duration, 0.0, 1.0);
 		if(Filled.w > BarHeight)
-			Filled.Draw(ColorRGBA(0.55f, 0.78f, 1.0f, 0.85f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
+			Filled.Draw(ColorRGBA(0.42f, 0.68f, 1.0f, 0.95f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
 	}
-
-	// Three little bars that bounce while the track plays.
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
-	const float BarMaxHeight = ArtSize * 0.7f;
-	const float BarBottom = Pill.y + Pill.h - Padding;
-	const float BarX = Pill.x + Pill.w - Padding - EqualiserWidth;
-	for(int i = 0; i < 3; ++i)
-	{
-		float Factor = 0.35f;
-		if(m_Track.m_Playing)
-		{
-			// Different speeds per bar so it does not look mechanical.
-			const float Phase = Client()->LocalTime() * (5.0f + i * 1.7f) + i * 2.0f;
-			Factor = 0.35f + 0.65f * (0.5f + 0.5f * std::sin(Phase));
-		}
-		const float BarHeight = BarMaxHeight * Factor;
-		Graphics()->SetColor(0.55f, 0.78f, 1.0f, Alpha);
-		const IGraphics::CQuadItem QuadItem(BarX + i * (BarWidth + BarGap), BarBottom - BarHeight, BarWidth, BarHeight);
-		Graphics()->QuadsDrawTL(&QuadItem, 1);
-	}
-	Graphics()->QuadsEnd();
 
 	Graphics()->MapScreen(SavedScreenRect);
 }
