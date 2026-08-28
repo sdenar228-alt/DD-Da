@@ -2733,6 +2733,8 @@ if(CLIENT)
     components/statboard.h
     components/tile_colors.cpp
     components/tile_colors.h
+    components/unfreeze.cpp
+    components/unfreeze.h
     components/tooltips.cpp
     components/tooltips.h
     components/touch_controls.cpp

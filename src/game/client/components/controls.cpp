@@ -335,6 +335,11 @@ int CControls::SnapInput(int *pData)
 			m_aInputData[g_Config.m_ClDummy].m_TargetY = (int)(std::cos(t * 3) * 100.0f);
 		}
 
+		// The unfreeze shot goes on the stored input, after the dummy has taken
+		// its copy so that it does not shoot too, and before the checks below so
+		// that the changed counter is what makes the message go out.
+		GameClient()->m_Unfreeze.ApplyInput(&m_aInputData[g_Config.m_ClDummy]);
+
 		// check if we need to send input
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_Direction != m_aLastData[g_Config.m_ClDummy].m_Direction;
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_Jump != m_aLastData[g_Config.m_ClDummy].m_Jump;
@@ -362,6 +367,13 @@ int CControls::SnapInput(int *pData)
 	{
 		// Without this the rotation would only be transmitted by the 25 Hz
 		// fallback below, because the target is not part of the send conditions.
+		Send = true;
+	}
+
+	// After the spin on purpose: the aim of the unfreeze shot has to be the one
+	// that reaches the server, whatever the spin settings are.
+	if((SendData.m_PlayerFlags & PLAYERFLAG_PLAYING) != 0 && GameClient()->m_Unfreeze.ApplyAim(&SendData))
+	{
 		Send = true;
 	}
 

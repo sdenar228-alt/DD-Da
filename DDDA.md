@@ -161,6 +161,61 @@ the hover, so a menu button underneath cannot be pressed through it.
 
 This is Windows only. On other platforms the island simply never appears.
 
+### Unfreeze shot
+
+Works out how to unfreeze yourself with your own laser, and either draws the
+shot or takes it.
+
+Three rules of the game decide everything about this feature. A frozen tee
+cannot fire, so the shot has to leave *before* the freeze. A laser cannot touch
+the tee that fired it until it has hit a wall, and it only moves once every
+`laser_bounce_delay`, so the earliest it can come back is eight ticks later at
+the default tuning. And a tee unfrozen while it is still touching freeze tiles
+is frozen again in the same tick, for the full `sv_freeze_delay`, so the hit is
+only worth anything at a moment where the tee is frozen *and* off the tiles.
+
+So the module predicts the tee's own flight first. It copies the client's
+predicted world, cuts the copy loose from the original, and ticks it forward
+`cl_unfreeze_horizon` ticks, which gives the position, the freeze timer and the
+tiles touched on every tick ahead. A frozen tee ignores its input, so that
+flight is exact as long as nobody hooks you.
+
+Then it sweeps `cl_unfreeze_steps` aim angles. Each one is traced the way the
+laser itself bounces: the same wall test, the same axis mirror off the surface,
+the same energy spent per bounce. A candidate wins when one of its bounce
+stretches passes within a tee's radius of the predicted flight at a tick that is
+worth hitting. Neighbouring ticks are checked as well, and the shot that
+survives being a tick early or late is preferred, because one lost input message
+moves everything by a tick.
+
+`cl_unfreeze 1` only draws the plan: the path of the shot, a marker where it
+would hit, and the flight itself while frozen. `unfreeze_shoot` takes that shot,
+so it can go on a key:
+
+```
+bind mouse3 unfreeze_shoot
+```
+
+`cl_unfreeze 2` also fires it. Aiming and firing by itself is what the official
+servers call a bot, so it is off by default and the setting says so.
+
+The aim is written onto the copy of the input that is sent, never onto the
+stored one, for the same reason the spinning tee does that. The shot itself is a
+step of two on the fire counter, which is one press and one release without
+touching the parity, so your own fire key stays in step and the laser's full
+automatic mode is not armed by accident. The plan is re-checked against the tick
+it would actually leave on before every shot, since a plan made two ticks ago
+aims at where you were going to be two ticks ago.
+
+Deep freeze is never attempted: a laser does not lift it, the tile puts it back
+every tick. Live freeze is left alone for the same reason.
+
+The search only runs while a freeze is actually coming: predicting the flight
+costs about a third of a millisecond, and the angle sweep, which is the
+expensive half at a few milliseconds, is skipped entirely when there is nothing
+worth hitting ahead. `cl_unfreeze_interval` decides how often it may run at all,
+and `cl_unfreeze_steps` trades the cost against how tight an aim it can find.
+
 ### Spinning tee
 
 Rotates the aim direction that is sent to the server, so other players see the

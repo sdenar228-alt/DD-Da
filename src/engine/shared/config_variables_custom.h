@@ -104,3 +104,14 @@ MACRO_CONFIG_COL(ClCustomTileColorLiveFreeze, cl_custom_tile_color_live_freeze, 
 MACRO_CONFIG_COL(ClCustomTileColorLiveUnfreeze, cl_custom_tile_color_live_unfreeze, 0x9946B48C, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of live unfreeze tiles")
 MACRO_CONFIG_COL(ClCustomTileColorNoLaser, cl_custom_tile_color_nolaser, 0x99DCB478, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of laser blocker tiles")
 MACRO_CONFIG_COL(ClCustomTileColorThrough, cl_custom_tile_color_through, 0x99C8B482, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of hookthrough tiles")
+
+// Unfreeze module
+MACRO_CONFIG_INT(ClUnfreeze, cl_unfreeze, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Laser self unfreeze: 0 off, 1 only show the shot, 2 take it as well")
+MACRO_CONFIG_INT(ClUnfreezeHorizon, cl_unfreeze_horizon, 120, 20, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many ticks of your own flight the module looks ahead")
+MACRO_CONFIG_INT(ClUnfreezeSteps, cl_unfreeze_steps, 360, 60, 3600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many aim angles are tried, more finds rarer shots and costs more")
+MACRO_CONFIG_INT(ClUnfreezeBounces, cl_unfreeze_bounces, 4, 1, 12, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many bounces of the shot are followed")
+MACRO_CONFIG_INT(ClUnfreezeInterval, cl_unfreeze_interval, 100, 20, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How often the shot is searched for, in milliseconds")
+MACRO_CONFIG_INT(ClUnfreezeSwitchWeapon, cl_unfreeze_switch_weapon, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Switch to the laser by yourself when a shot was found")
+MACRO_CONFIG_INT(ClUnfreezeShowPath, cl_unfreeze_show_path, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the path the shot would take")
+MACRO_CONFIG_INT(ClUnfreezeShowFlight, cl_unfreeze_show_flight, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw where the freeze is going to carry you")
+MACRO_CONFIG_COL(ClUnfreezeColor, cl_unfreeze_color, 0xFF55DDFF, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color the unfreeze shot is drawn in")

@@ -147,6 +147,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Players,
 					      &m_MapLayersForeground,
 					      &m_TileColors, // after the foreground layers, they would paint over it
+					      &m_Unfreeze, // draws its plan into the world, so before the interface
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,
 					      &m_Particles.m_RenderExtra,

@@ -71,6 +71,7 @@
 #include "components/spectator.h"
 #include "components/statboard.h"
 #include "components/tile_colors.h"
+#include "components/unfreeze.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
@@ -191,6 +192,7 @@ public:
 	CFreezeBars m_FreezeBars;
 	CItems m_Items;
 	CTileColors m_TileColors;
+	CUnfreeze m_Unfreeze;
 	CMapImages m_MapImages;
 
 	CMapLayers m_MapLayersBackground = CMapLayers{ERenderType::RENDERTYPE_BACKGROUND};

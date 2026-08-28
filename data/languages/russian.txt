@@ -3008,3 +3008,54 @@ The island is drawn in the menus too, so you can see it move while dragging thes
 
 Reset position
 == Сбросить положение
+
+Unfreeze shot
+== Выстрел на разморозку
+
+Look for the shot that unfreezes you
+== Искать выстрел, который тебя разморозит
+
+The shot has to leave before the freeze, since a frozen tee cannot fire, and it can only come back to you after it has bounced off a wall.
+== Выстрел должен уйти до заморозки: замороженная тишка стрелять не может, а вернуться в тебя луч способен только после отскока от стены.
+
+Take the shot by itself
+== Стрелять самому
+
+Aiming and firing on their own count as a bot on the official servers. Left off, bind a key to unfreeze_shoot and take the shot yourself.
+== Автоматический прицел и выстрел на официальных серверах считаются ботом. Оставь выключенным, повесь unfreeze_shoot на клавишу и стреляй сам.
+
+Switch to the laser for it
+== Переключаться на лазер ради него
+
+Aim angles tried
+== Сколько углов перебирать
+
+More angles find shots that need a tighter aim, and cost more while you play.
+== Больше углов — находятся выстрелы, требующие точного прицела, но и считается дольше.
+
+Bounces followed
+== Сколько отскоков считать
+
+Flight looked ahead
+== Насколько вперёд смотреть
+
+Searched every
+== Искать раз в
+
+ ticks
+==  тиков
+
+ ms
+==  мс
+
+Drawing
+== Отрисовка
+
+Draw the path of the shot
+== Рисовать путь выстрела
+
+Draw where the freeze carries you
+== Рисовать, куда тебя несёт во фризе
+
+Color
+== Цвет
