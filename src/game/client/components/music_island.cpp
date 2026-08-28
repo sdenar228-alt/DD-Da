@@ -355,5 +355,10 @@ void CMusicIsland::Render(float Width, float Height)
 			Filled.Draw(ColorRGBA(0.42f, 0.68f, 1.0f, 0.95f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
 	}
 
+	// The menus draw the cursor before this, so the island would swallow it.
+	// Drawn again, and only over the island, so nothing is doubled elsewhere.
+	if(GameClient()->m_Menus.IsActive() && (m_Dragging || Ui()->MouseHovered(&Pill)))
+		RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
+
 	Graphics()->MapScreen(SavedScreenRect);
 }
