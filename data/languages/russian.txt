@@ -3059,3 +3059,24 @@ Draw where the freeze carries you
 
 Color
 == Цвет
+
+Say on screen what it is doing
+== Писать на экране, что он делает
+
+Every bounce buys the shot eight more ticks of life. Set it low and the shot is gone long before the freeze has carried you off the tiles.
+== Каждый отскок продлевает жизнь выстрела на восемь тиков. Поставишь мало — луч погаснет задолго до того, как фриз вынесет тебя с тайлов.
+
+Unfreeze shot ready
+== Выстрел на разморозку готов
+
+Unfreeze shot ready, press your unfreeze key
+== Выстрел готов — жми клавишу разморозки
+
+Freeze ahead, no shot found
+== Впереди фриз, выстрела не нашлось
+
+Unfreeze shot found, but you are not holding the laser
+== Выстрел есть, но в руках не лазер
+
+Frozen already, the shot had to leave earlier
+== Уже заморожен — стрелять надо было раньше

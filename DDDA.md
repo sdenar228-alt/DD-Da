@@ -216,6 +216,17 @@ expensive half at a few milliseconds, is skipped entirely when there is nothing
 worth hitting ahead. `cl_unfreeze_interval` decides how often it may run at all,
 and `cl_unfreeze_steps` trades the cost against how tight an aim it can find.
 
+`cl_unfreeze_bounces` is the setting that decides whether the module can do
+anything at all. Every bounce buys the shot eight more ticks of life, and the
+freeze usually needs twenty to forty ticks to carry the tee off the tiles, so a
+shot followed for only a few bounces is always dead by the time it would matter.
+That is why the lowest it can be set to is four, and why the default is sixteen.
+
+The whole chain was measured against the game's own laser rather than trusted:
+the module's plan was fed to a real `CLaser` inside the simulation on a DDNet
+map, and every plan it produced did lift the freeze, most of them on exactly the
+tick it had named and the rest a few ticks later on a further bounce.
+
 ### Spinning tee
 
 Rotates the aim direction that is sent to the server, so other players see the

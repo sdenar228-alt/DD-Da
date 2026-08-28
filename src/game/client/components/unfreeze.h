@@ -71,6 +71,11 @@ private:
 	std::vector<CFlightStep> m_vFlight;
 	// The tick m_vFlight[0] belongs to.
 	int m_FirstFlightTick = -1;
+	// The last tick worth hitting. Following the shot past it is wasted work, and
+	// the shot has to travel a long way to reach even that.
+	int m_LastUsefulTick = -1;
+	// True while the flight runs into a freeze that a shot could still help with.
+	bool m_FreezeAhead = false;
 
 	std::vector<CSegment> m_vSegments;
 	std::vector<CSegment> m_vSolution;
@@ -106,11 +111,28 @@ private:
 	bool IsUsefulTick(int Tick) const;
 	// Walks the bounce path of a shot, the way CLaser::DoBounce does.
 	void TraceLaser(vec2 Pos, vec2 Dir, float Energy, int FireTick, int MaxBounces, float BounceCost, int BounceTicks);
+	// The bounce budget the shot is followed with, capped by what the server
+	// allows and by the last tick that is still worth hitting.
+	int BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const;
 	// True when a tile in the swept range would freeze the tee again.
 	bool TouchesFreeze(vec2 PrevPos, vec2 Pos) const;
 	bool IsFreezeIndex(int Index) const;
 	const CFlightStep *FlightAt(int Tick) const;
 	void RenderPlan() const;
+	// A line of text under the crosshair, because without it the module is
+	// invisible until it happens to fire.
+	void RenderStatus() const;
+
+	// What the module would say about right now.
+	enum class EStatus
+	{
+		QUIET,
+		READY,
+		SEARCHING,
+		NO_LASER,
+		TOO_LATE,
+	};
+	EStatus m_Status = EStatus::QUIET;
 
 	static void ConUnfreezeShoot(IConsole::IResult *pResult, void *pUserData);
 };
