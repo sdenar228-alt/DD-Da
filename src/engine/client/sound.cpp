@@ -722,7 +722,7 @@ bool CSound::DecodeWav(CSample &Sample, const void *pData, unsigned DataSize, co
 	Sample.m_NumFrames = (int)NumFrames;
 	Sample.m_Rate = (int)Rate;
 	Sample.m_Channels = Channels;
-	Sample.m_LoopStart = -1;
+	Sample.m_LoopStart = 0;
 	Sample.m_PausedAt = 0;
 	return true;
 }

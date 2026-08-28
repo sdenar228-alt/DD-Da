@@ -63,6 +63,10 @@ public:
 	void OnStateChange(int NewState, int OldState) override;
 	void OnRender() override;
 
+	// The default samples are loaded by a background job, nothing may touch
+	// g_pData->m_aSounds while that is running.
+	bool IsLoading() const { return m_WaitForSoundJob; }
+
 	void ClearQueue();
 	void Enqueue(int Channel, int SetId);
 	void Play(int Channel, int SetId, float Volume);

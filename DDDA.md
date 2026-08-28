@@ -41,6 +41,11 @@ New folders in `%APPDATA%\DDNet`:
   like a chat profile picture. Works for your own tee, for others, or both.
 * **Tee shader** вЂ” see below.
 
+All three apply to 0.6 tees. A 0.7 skin is drawn by a separate renderer that has
+no outline masks and no avatar or shader path, so on a 0.7 server the tees fall
+back to the plain skin. The preview in the settings always draws a 0.6 tee, so it
+keeps showing the outline there.
+
 ### Hook
 
 Recolors the hook chain and head for nobody, everyone, only yourself or only

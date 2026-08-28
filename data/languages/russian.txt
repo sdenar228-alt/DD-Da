@@ -2874,12 +2874,6 @@ PNG images work out of the box. Videos need a full FFmpeg build, see the readme.
 Put images or videos into the 'backgrounds' folder of your config directory.
 == Положи картинки или видео в папку 'backgrounds' в каталоге конфигов.
 
-Background
-== Фон
-
-File
-== Файл
-
 Picture instead of the tee
 == Фото вместо тишки
 
@@ -2928,6 +2922,9 @@ Put player_join.wav into the pack folder
 Put player_leave.wav into the pack folder
 == Положи player_leave.wav в папку пака
 
+Volume
+== Громкость
+
 Pack
 == Пак
 
@@ -2952,20 +2949,8 @@ from the Assets page
 Pick a model on the left and the texture pack it should come from on the right. Everything else keeps using the pack from the Assets page.
 == Слева выбери модельку, справа — текстурпак, откуда её взять. Всё остальное останется из пака во вкладке Текстуры.
 
-Hammer
-== Молоток
-
 Gun
 == Пистолет
-
-Shotgun
-== Дробовик
-
-Grenade
-== Базука
-
-Laser
-== Лазер
 
 Ninja
 == Ниндзя

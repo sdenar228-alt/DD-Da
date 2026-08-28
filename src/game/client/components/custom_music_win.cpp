@@ -78,6 +78,8 @@ private:
 	void Run();
 	// Decodes the thumbnail into a small RGBA square.
 	bool ReadArtwork(const IRandomAccessStreamReference &Reference);
+	// Publishes an empty square, so the island drops the cover it still has.
+	void ClearArtwork();
 };
 
 void CWindowsMusic::CImpl::Start()
@@ -93,6 +95,15 @@ void CWindowsMusic::CImpl::Stop()
 		return;
 	if(m_Thread.joinable())
 		m_Thread.join();
+}
+
+void CWindowsMusic::CImpl::ClearArtwork()
+{
+	const std::lock_guard<std::mutex> Guard(m_Lock);
+	m_vArtwork.clear();
+	m_ArtworkWidth = 0;
+	m_ArtworkHeight = 0;
+	m_ArtworkFresh = true;
 }
 
 bool CWindowsMusic::CImpl::ReadArtwork(const IRandomAccessStreamReference &Reference)
@@ -283,8 +294,10 @@ void CWindowsMusic::CImpl::Run()
 					{
 						LastKey = Key;
 						++Revision;
-						if(Properties != nullptr)
-							ReadArtwork(Properties.Thumbnail());
+						// A track the player publishes no art for has to say so,
+						// otherwise the cover of the previous one stays up.
+						if(Properties == nullptr || !ReadArtwork(Properties.Thumbnail()))
+							ClearArtwork();
 					}
 				}
 				else
@@ -342,7 +355,7 @@ CWindowsMusic::CTrack CWindowsMusic::Track() const
 bool CWindowsMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height)
 {
 	const std::lock_guard<std::mutex> Guard(m_pImpl->m_Lock);
-	if(!m_pImpl->m_ArtworkFresh || m_pImpl->m_vArtwork.empty())
+	if(!m_pImpl->m_ArtworkFresh)
 		return false;
 	m_pImpl->m_ArtworkFresh = false;
 	vRgba = m_pImpl->m_vArtwork;

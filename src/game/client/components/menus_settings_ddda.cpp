@@ -55,8 +55,9 @@ void CMenus::DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId,
 	DoLine_ColorPicker(pResetId, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, pView,
 		pLabel, pColor, DefaultColor(Default), false, nullptr, true);
 
-	// The alpha byte of the packed HSLA value doubles as the opacity.
-	const int OldOpacity = (int)(((*pColor) >> 24) & 0xFFu) * 100 / 255;
+	// The alpha byte of the packed HSLA value doubles as the opacity. Both
+	// conversions round, otherwise the round trip loses a percent per write.
+	const int OldOpacity = (int)((((*pColor) >> 24) & 0xFFu) * 100 + 127) / 255;
 	int Opacity = OldOpacity;
 	CUIRect Button;
 	pView->HSplitTop(LINE_SIZE, &Button, pView);
@@ -64,7 +65,7 @@ void CMenus::DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId,
 	Ui()->DoScrollbarOption(pOpacityId, &Opacity, &Button, Localize("Opacity"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 	if(Opacity != OldOpacity)
 	{
-		const unsigned Alpha = (unsigned)std::clamp(Opacity * 255 / 100, 0, 255);
+		const unsigned Alpha = (unsigned)std::clamp((Opacity * 255 + 50) / 100, 0, 255);
 		*pColor = ((*pColor) & 0x00FFFFFFu) | (Alpha << 24);
 	}
 	pView->HSplitTop(COLOR_PICKER_LINE_SPACING, nullptr, pView);
@@ -159,8 +160,12 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Tee shader"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShader, Localize("Draw tees with your own shader"), &g_Config.m_ClCustomTeeShader, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTeeShader, &LeftView, Localize("Edit shader/tee.frag. Needs the OpenGL 3.3 backend: set gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 and restart."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomTeeShader, Localize("Draw tees with your own shader"), g_Config.m_ClCustomTeeShader, &Button))
+	{
+		g_Config.m_ClCustomTeeShader ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTeeShader, &Button, Localize("Edit shader/tee.frag. Needs the OpenGL 3.3 backend: set gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 and restart."));
 	if(g_Config.m_ClCustomTeeShader)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShaderOwn, Localize("Apply it to your own tee"), &g_Config.m_ClCustomTeeShaderOwn, &LeftView, LINE_SIZE);
@@ -382,8 +387,12 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Custom crosshair"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomCrosshair, Localize("Use a custom crosshair image"), &g_Config.m_ClCustomCrosshair, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomCrosshair, &LeftView, Localize("Takes precedence over the crosshair of the selected asset pack"));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomCrosshair, Localize("Use a custom crosshair image"), g_Config.m_ClCustomCrosshair, &Button))
+	{
+		g_Config.m_ClCustomCrosshair ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomCrosshair, &Button, Localize("Takes precedence over the crosshair of the selected asset pack"));
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
@@ -477,14 +486,18 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 
 void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
 {
-	CUIRect LeftView, RightView;
+	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
 	Ui()->DoLabel_AutoLineSize(Localize("Tile colors"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTileColors, Localize("Color the game layer tiles"), &g_Config.m_ClCustomTileColors, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTileColors, &LeftView, Localize("Works independently from the entities overlay. Set a color to fully transparent to hide that tile type."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomTileColors, Localize("Color the game layer tiles"), g_Config.m_ClCustomTileColors, &Button))
+	{
+		g_Config.m_ClCustomTileColors ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTileColors, &Button, Localize("Works independently from the entities overlay. Set a color to fully transparent to hide that tile type."));
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTileColorsFront, Localize("Also color the front layer"), &g_Config.m_ClCustomTileColorsFront, &LeftView, LINE_SIZE);
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
@@ -536,8 +549,12 @@ void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Music island"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIsland, Localize("Show the playing track at the top"), &g_Config.m_ClMusicIsland, &RightView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &RightView, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClMusicIsland, Localize("Show the playing track at the top"), g_Config.m_ClMusicIsland, &Button))
+	{
+		g_Config.m_ClMusicIsland ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
 	if(g_Config.m_ClMusicIsland)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandIngame, Localize("Show it while playing"), &g_Config.m_ClMusicIslandIngame, &RightView, LINE_SIZE);
@@ -572,8 +589,12 @@ void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpin, Localize("Spin for other players"), &g_Config.m_ClCustomSpin, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpin, &LeftView, Localize("Only the aim direction sent to the server rotates. Your own crosshair and view stay where you aim."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomSpin, Localize("Spin for other players"), g_Config.m_ClCustomSpin, &Button))
+	{
+		g_Config.m_ClCustomSpin ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpin, &Button, Localize("Only the aim direction sent to the server rotates. Your own crosshair and view stay where you aim."));
 
 	if(g_Config.m_ClCustomSpin)
 	{
@@ -582,8 +603,12 @@ void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
 		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "°/s");
 
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpinPauseOnAction, Localize("Stop spinning while hooking or shooting"), &g_Config.m_ClCustomSpinPauseOnAction, &LeftView, LINE_SIZE);
-		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpinPauseOnAction, &LeftView, Localize("Keep this on, otherwise your hook and your shots fly into a random direction."));
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		if(DoButton_CheckBox(&g_Config.m_ClCustomSpinPauseOnAction, Localize("Stop spinning while hooking or shooting"), g_Config.m_ClCustomSpinPauseOnAction, &Button))
+		{
+			g_Config.m_ClCustomSpinPauseOnAction ^= 1;
+		}
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpinPauseOnAction, &Button, Localize("Keep this on, otherwise your hook and your shots fly into a random direction."));
 
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpinDummy, Localize("Spin the dummy as well"), &g_Config.m_ClCustomSpinDummy, &LeftView, LINE_SIZE);
 	}
@@ -627,8 +652,12 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackground, Localize("Use a custom background"), &g_Config.m_ClCustomBackground, &LeftView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackgroundIngame, Localize("Show it while playing"), &g_Config.m_ClCustomBackgroundIngame, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomBackgroundIngame, &LeftView, Localize("The map is drawn on top, so this is only visible where the map is see-through, for example with the entities overlay."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomBackgroundIngame, Localize("Show it while playing"), g_Config.m_ClCustomBackgroundIngame, &Button))
+	{
+		g_Config.m_ClCustomBackgroundIngame ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomBackgroundIngame, &Button, Localize("The map is drawn on top, so this is only visible where the map is see-through, for example with the entities overlay."));
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomBackgroundMenu, Localize("Show it in the menus"), &g_Config.m_ClCustomBackgroundMenu, &LeftView, LINE_SIZE);
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
@@ -751,10 +780,18 @@ void CMenus::RenderSettingsDDDaSounds(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Player join and leave"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSoundJoin, Localize("Play a sound when a player joins"), &g_Config.m_ClCustomSoundJoin, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundJoin, &LeftView, Localize("Put player_join.wav into the pack folder"));
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSoundLeave, Localize("Play a sound when a player leaves"), &g_Config.m_ClCustomSoundLeave, &LeftView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundLeave, &LeftView, Localize("Put player_leave.wav into the pack folder"));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomSoundJoin, Localize("Play a sound when a player joins"), g_Config.m_ClCustomSoundJoin, &Button))
+	{
+		g_Config.m_ClCustomSoundJoin ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundJoin, &Button, Localize("Put player_join.wav into the pack folder"));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomSoundLeave, Localize("Play a sound when a player leaves"), g_Config.m_ClCustomSoundLeave, &Button))
+	{
+		g_Config.m_ClCustomSoundLeave ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSoundLeave, &Button, Localize("Put player_leave.wav into the pack folder"));
 
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);

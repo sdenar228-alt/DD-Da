@@ -111,7 +111,7 @@ void CCustomSounds::UpdatePack()
 
 	// The default samples are loaded by a background job at startup; overriding
 	// them before that would be undone again.
-	if(g_pData->m_NumSounds <= 0 || g_pData->m_aSounds[0].m_NumSounds <= 0 || g_pData->m_aSounds[0].m_aSounds[0].m_Id < 0)
+	if(GameClient()->m_Sounds.IsLoading())
 		return;
 
 	RestoreOriginals();
