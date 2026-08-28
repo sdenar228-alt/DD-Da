@@ -107,6 +107,25 @@ The sprites are copied into one image at load time, so packs of different
 resolutions are scaled to fit. Everything not overridden keeps using the pack
 from the regular Assets page.
 
+### Music island
+
+A rounded pill showing what is playing right now, the way a phone shows it:
+album art, title, artist and three bars that bounce while the track runs. It
+slides in when the music starts and slides out when it stops.
+
+The track comes from the **Windows media session**, the same source as the
+volume flyout, so every player that reports to the system works: Spotify, a
+browser tab, the system player. Nothing has to be configured in the player
+itself. The query runs on its own thread and polls twice a second, so it costs
+nothing on the render thread.
+
+`cl_music_island_x` and `cl_music_island_y` place it anywhere on the screen, in
+permille of the space it can move in, so the spot stays right at any resolution.
+The settings page has sliders for both and a reset button; the island is drawn in
+the menus as well, so its position can be seen while dragging them.
+
+This is Windows only. On other platforms the island simply never appears.
+
 ### Spinning tee
 
 Rotates the aim direction that is sent to the server, so other players see the

@@ -40,6 +40,7 @@
 #include "components/countryflags.h"
 #include "components/custom_background.h"
 #include "components/custom_sounds.h"
+#include "components/music_island.h"
 #include "components/damageind.h"
 #include "components/debughud.h"
 #include "components/effects.h"
@@ -198,6 +199,7 @@ public:
 	CMenuBackground m_MenuBackground;
 	CCustomBackground m_CustomBackground;
 	CCustomSounds m_CustomSounds;
+	CMusicIsland m_MusicIsland;
 
 	CMapSounds m_MapSounds;
 

@@ -2996,3 +2996,30 @@ Video length
 
 A longer video is cut here and starts over. 0 plays the whole file.
 == Более длинное видео обрезается здесь и начинается заново. 0 — играть целиком.
+
+Music island
+== Островок с музыкой
+
+Show the playing track at the top
+== Показывать играющий трек сверху
+
+Reads the Windows media session, so it works with any player: Spotify, a browser, the system player.
+== Читает медиа-сеанс Windows, поэтому работает с любым плеером: Spotify, браузер, системный плеер.
+
+Keep it visible when paused
+== Не прятать на паузе
+
+Position
+== Положение
+
+Left to right
+== Слева направо
+
+Top to bottom
+== Сверху вниз
+
+The island is drawn in the menus too, so you can see it move while dragging these.
+== Островок рисуется и в меню, поэтому его перемещение видно прямо во время настройки.
+
+Reset position
+== Сбросить положение
