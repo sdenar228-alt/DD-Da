@@ -100,6 +100,20 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 
 	MainView.HSplitTop(10.0f, nullptr, &MainView);
 
+	// Files can appear while the game runs, so every page rescans its folder when
+	// it is opened. The lists used to be built once, which made a freshly added
+	// file impossible to pick.
+	static int s_LastTab = -1;
+	if(s_CurTab != s_LastTab)
+	{
+		s_LastTab = s_CurTab;
+		m_BackgroundListLoaded = false;
+		m_CrosshairListLoaded = false;
+		m_AvatarListLoaded = false;
+		m_SoundPackListLoaded = false;
+		m_GameAssetListLoaded = false;
+	}
+
 	switch(s_CurTab)
 	{
 	case DDDA_TAB_TEES: RenderSettingsDDDaTees(MainView); break;
@@ -209,8 +223,6 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 					break;
 				}
 			}
-			if(Selected == 0 && g_Config.m_ClCustomAvatarFile[0] != 0)
-				g_Config.m_ClCustomAvatarFile[0] = 0;
 
 			static CListBox s_ListBox;
 			s_ListBox.DoStart(20.0f, (int)m_vAvatarNames.size() + 1, 1, 3, Selected, &RightView);
@@ -418,8 +430,6 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 		}
 		// The configured file no longer exists, otherwise the list would show it
 		// as selected while the config still points at it.
-		if(Selected == 0 && g_Config.m_ClCustomCrosshairFile[0] != '\0')
-			g_Config.m_ClCustomCrosshairFile[0] = '\0';
 
 		static CListBox s_ListBox;
 		s_ListBox.DoStart(20.0f, m_vCrosshairNames.size() + 1, 1, 3, Selected, &RightView);
@@ -679,8 +689,6 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 				break;
 			}
 		}
-		if(Selected == 0 && g_Config.m_ClCustomBackgroundFile[0] != '\0')
-			g_Config.m_ClCustomBackgroundFile[0] = '\0';
 
 		static CListBox s_ListBox;
 		s_ListBox.DoStart(20.0f, (int)m_vBackgroundNames.size() + 1, 1, 3, Selected, &RightView);
@@ -784,8 +792,6 @@ void CMenus::RenderSettingsDDDaSounds(CUIRect MainView)
 				break;
 			}
 		}
-		if(Selected == 0 && g_Config.m_ClCustomSoundPack[0] != 0)
-			g_Config.m_ClCustomSoundPack[0] = 0;
 
 		static CListBox s_ListBox;
 		s_ListBox.DoStart(20.0f, (int)m_vSoundPackNames.size() + 1, 1, 3, Selected, &RightView);

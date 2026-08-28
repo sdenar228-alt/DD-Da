@@ -119,6 +119,20 @@ browser tab, the system player. Nothing has to be configured in the player
 itself. The query runs on its own thread and polls twice a second, so it costs
 nothing on the render thread.
 
+A progress bar along the bottom shows how far the track has run. Players publish
+their position only now and then rather than continuously, so the reported value
+is carried forward by the time since it was published, otherwise the bar would
+sit still.
+
+Three console commands drive the player that owns the session, so they work in
+game where the mouse is busy aiming:
+
+```
+bind pgup music_prev
+bind pgdown music_next
+bind pause music_play_pause
+```
+
 `cl_music_island_x` and `cl_music_island_y` place it anywhere on the screen, in
 permille of the space it can move in, so the spot stays right at any resolution.
 The settings page has sliders for both and a reset button; the island is drawn in

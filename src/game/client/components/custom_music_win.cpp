@@ -28,6 +28,7 @@
 #include <winrt/Windows.Storage.Streams.h>
 // clang-format on
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -63,6 +64,8 @@ public:
 
 	mutable std::mutex m_Lock;
 	CTrack m_Track;
+	// Commands from the render thread, drained by the worker.
+	std::vector<CWindowsMusic::ECommand> m_vPending;
 	std::vector<uint8_t> m_vArtwork;
 	int m_ArtworkWidth = 0;
 	int m_ArtworkHeight = 0;
@@ -210,6 +213,30 @@ void CWindowsMusic::CImpl::Run()
 				GlobalSystemMediaTransportControlsSession Session = Manager.GetCurrentSession();
 				if(Session != nullptr)
 				{
+					// Run whatever the island asked for before reading the state
+					// back, so the display reflects it right away.
+					std::vector<CWindowsMusic::ECommand> vCommands;
+					{
+						const std::lock_guard<std::mutex> Guard(m_Lock);
+						vCommands.swap(m_vPending);
+					}
+					for(const CWindowsMusic::ECommand Command : vCommands)
+					{
+						try
+						{
+							switch(Command)
+							{
+							case CWindowsMusic::ECommand::PLAY_PAUSE: Session.TryTogglePlayPauseAsync().get(); break;
+							case CWindowsMusic::ECommand::NEXT: Session.TrySkipNextAsync().get(); break;
+							case CWindowsMusic::ECommand::PREVIOUS: Session.TrySkipPreviousAsync().get(); break;
+							}
+						}
+						catch(...)
+						{
+							// The player may refuse, nothing to do about it.
+						}
+					}
+
 					const auto Properties = Session.TryGetMediaPropertiesAsync().get();
 					if(Properties != nullptr)
 					{
@@ -221,6 +248,34 @@ void CWindowsMusic::CImpl::Run()
 					{
 						Track.m_Playing = Info.PlaybackStatus() ==
 								  GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
+					}
+
+					// The timeline is optional, a lot of players leave it empty.
+					const auto Timeline = Session.GetTimelineProperties();
+					if(Timeline != nullptr)
+					{
+						const double Start = std::chrono::duration_cast<std::chrono::milliseconds>(Timeline.StartTime()).count() / 1000.0;
+						const double End = std::chrono::duration_cast<std::chrono::milliseconds>(Timeline.EndTime()).count() / 1000.0;
+						const double Position = std::chrono::duration_cast<std::chrono::milliseconds>(Timeline.Position()).count() / 1000.0;
+						if(End > Start)
+						{
+							Track.m_Duration = End - Start;
+
+							// Players publish the position only now and then, not
+							// continuously, so the reported value has to be moved
+							// forward by however long ago it was published.
+							double Elapsed = 0.0;
+							const auto LastUpdated = Timeline.LastUpdatedTime();
+							if(Track.m_Playing && LastUpdated.time_since_epoch().count() != 0)
+							{
+								const auto Delta = winrt::clock::now() - LastUpdated;
+								Elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(Delta).count() / 1000.0;
+								// A stale timestamp would otherwise run the bar off
+								// the end of the track.
+								Elapsed = std::clamp(Elapsed, 0.0, 60.0);
+							}
+							Track.m_Position = std::clamp(Position - Start + Elapsed, 0.0, Track.m_Duration);
+						}
 					}
 
 					const std::string Key = Track.m_Title + "\x1f" + Track.m_Artist;
@@ -267,6 +322,14 @@ CWindowsMusic::CWindowsMusic() :
 
 CWindowsMusic::~CWindowsMusic() = default;
 
+void CWindowsMusic::SendCommand(ECommand Command)
+{
+	const std::lock_guard<std::mutex> Guard(m_pImpl->m_Lock);
+	// One of each is enough, a burst of clicks should not queue up.
+	if(std::find(m_pImpl->m_vPending.begin(), m_pImpl->m_vPending.end(), Command) == m_pImpl->m_vPending.end())
+		m_pImpl->m_vPending.push_back(Command);
+}
+
 void CWindowsMusic::Start() { m_pImpl->Start(); }
 void CWindowsMusic::Stop() { m_pImpl->Stop(); }
 
@@ -299,6 +362,7 @@ CWindowsMusic::CWindowsMusic() = default;
 CWindowsMusic::~CWindowsMusic() = default;
 void CWindowsMusic::Start() {}
 void CWindowsMusic::Stop() {}
+void CWindowsMusic::SendCommand(ECommand Command) { (void)Command; }
 CWindowsMusic::CTrack CWindowsMusic::Track() const { return CTrack(); }
 bool CWindowsMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height)
 {

@@ -20,6 +20,28 @@ void CMusicIsland::OnInit()
 	m_ArtworkTexture.Invalidate();
 }
 
+void CMusicIsland::ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData)
+{
+	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
+}
+
+void CMusicIsland::ConMusicNext(IConsole::IResult *pResult, void *pUserData)
+{
+	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::NEXT);
+}
+
+void CMusicIsland::ConMusicPrev(IConsole::IResult *pResult, void *pUserData)
+{
+	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::PREVIOUS);
+}
+
+void CMusicIsland::OnConsoleInit()
+{
+	Console()->Register("music_play_pause", "", CFGFLAG_CLIENT, ConMusicPlayPause, this, "Pause or resume the track shown in the music island");
+	Console()->Register("music_next", "", CFGFLAG_CLIENT, ConMusicNext, this, "Skip to the next track");
+	Console()->Register("music_prev", "", CFGFLAG_CLIENT, ConMusicPrev, this, "Go back to the previous track");
+}
+
 void CMusicIsland::OnShutdown()
 {
 	m_Music.Stop();
@@ -181,6 +203,25 @@ void CMusicIsland::Render(float Width, float Height)
 		Ui()->DoLabel(&TitleRect, m_Track.m_Title.c_str(), TitleSize, TEXTALIGN_ML, Props);
 	}
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	// Progress bar along the bottom of the pill, only when the player reports a
+	// length. It doubles as the "how much is left" indicator.
+	if(m_Track.m_Duration > 0.0)
+	{
+		const float BarHeight = 1.4f * Scale;
+		const float Inset = PillHeight / 2.0f * 0.6f;
+		CUIRect Line;
+		Line.x = Pill.x + Inset;
+		Line.w = Pill.w - Inset * 2.0f;
+		Line.h = BarHeight;
+		Line.y = Pill.y + Pill.h - BarHeight - 1.5f * Scale;
+		Line.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
+
+		CUIRect Filled = Line;
+		Filled.w = Line.w * (float)std::clamp(m_Track.m_Position / m_Track.m_Duration, 0.0, 1.0);
+		if(Filled.w > BarHeight)
+			Filled.Draw(ColorRGBA(0.55f, 0.78f, 1.0f, 0.85f * Alpha), IGraphics::CORNER_ALL, BarHeight / 2.0f);
+	}
 
 	// Three little bars that bounce while the track plays.
 	Graphics()->TextureClear();
