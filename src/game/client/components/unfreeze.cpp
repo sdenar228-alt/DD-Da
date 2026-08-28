@@ -108,14 +108,19 @@ bool CUnfreeze::Predict(int LocalId, int StartTick)
 	if(pSourceChild != nullptr)
 		pSourceChild->m_IsValidCopy = SourceChildValid;
 
-	// Cutting the copy loose from the original: an entity that dies during the
-	// simulation would otherwise reach back and mark the real one destroyed.
+	// Cutting the copy loose from the original. Both links have to go: the copy
+	// constructor carries the source's child pointer over, which aims at an
+	// entity of another world that may already be gone, and removing an entity
+	// writes through both of them.
 	m_ScratchWorld.m_pParent = nullptr;
 	m_ScratchWorld.m_IsValidCopy = false;
 	for(int Type = 0; Type < CGameWorld::NUM_ENTTYPES; Type++)
 	{
 		for(CEntity *pEntity = m_ScratchWorld.FindFirst(Type); pEntity != nullptr; pEntity = pEntity->TypeNext())
+		{
 			pEntity->m_pParent = nullptr;
+			pEntity->m_pChild = nullptr;
+		}
 	}
 	m_ScratchWorld.m_LocalClientId = LocalId;
 	// The whole question the module asks is about freeze and tiles, so they are
@@ -214,6 +219,27 @@ void CUnfreeze::TraceLaser(vec2 Pos, vec2 Dir, float Energy, int FireTick, int M
 // A shot is only followed as far as it could still do something: every bounce
 // costs eight ticks, so following it past the last tick worth hitting is work
 // thrown away.
+// A shot takes its bounce behaviour from the tune zone it is fired in, sampled
+// once at the muzzle the way the laser does it, so a map that slows lasers down
+// in one room is followed correctly.
+const CTuningParams *CUnfreeze::LaserTuning(vec2 FirePos) const
+{
+	CGameWorld *pWorld = &GameClient()->m_PredictedWorld;
+	if(!pWorld->m_WorldConfig.m_UseTuneZones)
+		return &GameClient()->m_aTuning[g_Config.m_ClDummy];
+	return pWorld->GetTuning(Collision()->IsTune(Collision()->GetMapIndex(FirePos)));
+}
+
+// How far the shot reaches comes from the tee's zone instead, not the shot's.
+const CTuningParams *CUnfreeze::ReachTuning(vec2 FirePos) const
+{
+	CGameWorld *pWorld = &GameClient()->m_PredictedWorld;
+	const CCharacter *pChar = pWorld->GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
+	if(!pWorld->m_WorldConfig.m_UseTuneZones || pChar == nullptr)
+		return LaserTuning(FirePos);
+	return pWorld->GetTuning(pChar->GetOverriddenTuneZone());
+}
+
 int CUnfreeze::BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const
 {
 	const int Wanted = std::clamp(g_Config.m_ClUnfreezeBounces, 1, std::max(1, TunedBounces));
@@ -238,11 +264,11 @@ bool CUnfreeze::Revalidate(int FireTick, vec2 FirePos)
 	if(!m_HasSolution)
 		return false;
 
-	const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
+	const CTuningParams *pTuning = LaserTuning(FirePos);
 	const int TunedBounces = pTuning->m_LaserBounceNum;
 	const int BounceTicks = std::max(1, (int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1);
 	const int MaxBounces = BounceBudget(FireTick, BounceTicks, TunedBounces);
-	TraceLaser(FirePos, m_SolutionDir, pTuning->m_LaserReach, FireTick, MaxBounces, pTuning->m_LaserBounceCost, BounceTicks);
+	TraceLaser(FirePos, m_SolutionDir, ReachTuning(FirePos)->m_LaserReach, FireTick, MaxBounces, pTuning->m_LaserBounceCost, BounceTicks);
 
 	for(const CSegment &Segment : m_vSegments)
 	{
@@ -278,8 +304,8 @@ bool CUnfreeze::Revalidate(int FireTick, vec2 FirePos)
 
 bool CUnfreeze::Search(int FireTick, vec2 FirePos)
 {
-	const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
-	const float Energy = pTuning->m_LaserReach;
+	const CTuningParams *pTuning = LaserTuning(FirePos);
+	const float Energy = ReachTuning(FirePos)->m_LaserReach;
 	const float BounceCost = pTuning->m_LaserBounceCost;
 	const int TunedBounces = pTuning->m_LaserBounceNum;
 	// A bounce happens once the delay has been exceeded, not once it is reached,
