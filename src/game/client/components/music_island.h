@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 
 #include <game/client/component.h>
+#include <game/client/ui_rect.h>
 
 #include "custom_music_win.h"
 
@@ -36,6 +37,8 @@ private:
 	float m_HighlightUntil = 0.0f;
 
 	void Render(float Width, float Height);
+	// Draws one of the transport buttons and reports a click on it.
+	bool DoIslandButton(const void *pId, const CUIRect &Rect, int Icon, float Alpha, bool Clickable);
 
 	static void ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData);
 	static void ConMusicNext(IConsole::IResult *pResult, void *pUserData);

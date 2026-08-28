@@ -119,6 +119,14 @@ browser tab, the system player. Nothing has to be configured in the player
 itself. The query runs on its own thread and polls twice a second, so it costs
 nothing on the render thread.
 
+The pill holds the album art, the title, the artist, previous / play-pause /
+next buttons and a progress bar along the bottom. The buttons can be clicked
+wherever the mouse is a cursor, so in the menus; in game the mouse aims, and the
+console commands below cover that.
+
+There is no like button: the Windows media session exposes play, pause and
+track skipping, but nothing for favouriting, that lives inside each player.
+
 A progress bar along the bottom shows how far the track has run. Players publish
 their position only now and then rather than continuously, so the reported value
 is carried forward by the time since it was published, otherwise the bar would
