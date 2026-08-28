@@ -28,6 +28,9 @@ void CTileColors::RebuildBuckets()
 		{TILE_LUNFREEZE, g_Config.m_ClCustomTileColorLiveUnfreeze},
 		{TILE_NOLASER, g_Config.m_ClCustomTileColorNoLaser},
 		{TILE_THROUGH, g_Config.m_ClCustomTileColorThrough},
+		{TILE_THROUGH_CUT, g_Config.m_ClCustomTileColorThrough},
+		{TILE_THROUGH_ALL, g_Config.m_ClCustomTileColorThrough},
+		{TILE_THROUGH_DIR, g_Config.m_ClCustomTileColorThrough},
 	};
 	static_assert(std::size(aConfigured) == std::tuple_size_v<decltype(m_aLastColors)>);
 
@@ -113,22 +116,25 @@ void CTileColors::OnRender()
 
 	Graphics()->TextureClear();
 	Graphics()->BlendNormal();
-	Graphics()->QuadsBegin();
+	// The vertex buffer behind QuadsDrawTL is a fixed size array, so the quads have
+	// to be handed over in chunks. It is only flushed once another chunk of the
+	// size that was just drawn would no longer fit, so the short trailing chunk of
+	// a bucket can leave it nearly full; every bucket therefore ends its own batch
+	// and the next one starts from an empty buffer.
+	constexpr size_t MaxQuadsPerCall = 1024;
 	for(const SBucket &Bucket : m_vBuckets)
 	{
 		if(Bucket.m_vQuads.empty())
 			continue;
+		Graphics()->QuadsBegin();
 		Graphics()->SetColor(Bucket.m_Color);
-		// The vertex buffer behind QuadsDrawTL is a fixed size array that is only
-		// flushed between calls, so the quads have to be handed over in chunks.
-		constexpr size_t MaxQuadsPerCall = 1024;
 		for(size_t Offset = 0; Offset < Bucket.m_vQuads.size(); Offset += MaxQuadsPerCall)
 		{
 			const size_t Count = std::min(MaxQuadsPerCall, Bucket.m_vQuads.size() - Offset);
 			Graphics()->QuadsDrawTL(Bucket.m_vQuads.data() + Offset, (int)Count);
 		}
+		Graphics()->QuadsEnd();
 	}
-	Graphics()->QuadsEnd();
 
 	Graphics()->MapScreen(SavedScreenRect);
 }

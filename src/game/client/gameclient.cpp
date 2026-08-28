@@ -550,7 +550,10 @@ int CGameClient::OnSnapInput(int *pData, bool Dummy, bool Force)
 		// An idle dummy normally sends nothing, but a spin needs input to keep
 		// flowing. The throttle exists so that a frozen dummy can still be
 		// hammered (see CClient::SendInput), so only force a send at 25 Hz.
-		const bool ForceSpinSend = SpinDummy && Client()->LocalTime() - m_LastSpinDummySend >= 0.04f;
+		// LocalTime() restarts on every connect and map change, so a negative
+		// difference counts as elapsed instead of blocking until it catches up.
+		const float SinceSpinSend = Client()->LocalTime() - m_LastSpinDummySend;
+		const bool ForceSpinSend = SpinDummy && (SinceSpinSend >= 0.04f || SinceSpinSend < 0.0f);
 		if(!Force && !ForceSpinSend && (!m_DummyInput.m_Direction && !m_DummyInput.m_Jump && !m_DummyInput.m_Hook))
 		{
 			return 0;

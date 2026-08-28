@@ -1776,6 +1776,8 @@ set(EXPECTED_DATA
   shader/quad.vert
   shader/spritemulti.frag
   shader/spritemulti.vert
+  shader/tee.frag
+  shader/tee.vert
   shader/text.frag
   shader/text.vert
   shader/tile.frag

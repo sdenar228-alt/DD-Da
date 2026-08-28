@@ -805,6 +805,19 @@ void CMenus::OnInterfacesInit(CGameClient *pClient)
 	m_CommunityIcons.OnInterfacesInit(pClient);
 }
 
+// The per-model overrides are baked into the game skin image while it loads, so
+// a write from the console has to trigger that reload itself. The value is
+// applied before the reload because ApplyGameAssetOverrides reads the config.
+void CMenus::ConchainCustomAssetOverride(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	if(pResult->NumArguments())
+	{
+		CMenus *pSelf = (CMenus *)pUserData;
+		pSelf->GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
+	}
+}
+
 void CMenus::OnInit()
 {
 	if(g_Config.m_ClShowWelcome)
@@ -853,6 +866,15 @@ void CMenus::OnInit()
 	Console()->Chain("cl_asset_particles", ConchainAssetParticles, this);
 	Console()->Chain("cl_asset_hud", ConchainAssetHud, this);
 	Console()->Chain("cl_asset_extras", ConchainAssetExtras, this);
+
+	Console()->Chain("cl_custom_asset_hook", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_hammer", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_gun", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_shotgun", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_grenade", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_laser", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_ninja", ConchainCustomAssetOverride, this);
+	Console()->Chain("cl_custom_asset_pickups", ConchainCustomAssetOverride, this);
 
 	Console()->Chain("demo_play", ConchainDemoPlay, this);
 	Console()->Chain("demo_speed", ConchainDemoSpeed, this);

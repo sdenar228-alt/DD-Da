@@ -32,7 +32,7 @@ private:
 	// Index into `m_vBuckets` per tile index, -1 for tiles that are not colored.
 	std::array<int, 256> m_aBucketForTile;
 	// The config values the current buckets were built from.
-	std::array<unsigned, 11> m_aLastColors = {};
+	std::array<unsigned, 14> m_aLastColors = {};
 	bool m_BucketsValid = false;
 
 	void RebuildBuckets();

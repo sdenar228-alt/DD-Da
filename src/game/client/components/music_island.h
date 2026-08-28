@@ -25,8 +25,9 @@ public:
 
 private:
 	CWindowsMusic m_Music;
-	bool m_Started = false;
 	bool Update();
+	// Starts the worker if it is not running yet and queues the command for it.
+	void SendCommand(CWindowsMusic::ECommand Command);
 
 	IGraphics::CTextureHandle m_ArtworkTexture;
 

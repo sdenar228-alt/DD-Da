@@ -21,19 +21,27 @@ void CMusicIsland::OnInit()
 	m_ArtworkTexture.Invalidate();
 }
 
+// The binds control the player with the island turned off as well, and only the
+// worker executes the queue, so it has to be running before anything is queued.
+void CMusicIsland::SendCommand(CWindowsMusic::ECommand Command)
+{
+	m_Music.Start();
+	m_Music.SendCommand(Command);
+}
+
 void CMusicIsland::ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
 }
 
 void CMusicIsland::ConMusicNext(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::NEXT);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::NEXT);
 }
 
 void CMusicIsland::ConMusicPrev(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->m_Music.SendCommand(CWindowsMusic::ECommand::PREVIOUS);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::PREVIOUS);
 }
 
 void CMusicIsland::OnConsoleInit()
@@ -46,7 +54,6 @@ void CMusicIsland::OnConsoleInit()
 void CMusicIsland::OnShutdown()
 {
 	m_Music.Stop();
-	m_Started = false;
 	if(m_ArtworkTexture.IsValid())
 		Graphics()->UnloadTexture(&m_ArtworkTexture);
 }
@@ -54,7 +61,12 @@ void CMusicIsland::OnShutdown()
 void CMusicIsland::OnRender()
 {
 	if(!Update())
+	{
+		// A drag cannot outlive the island, it would jump to wherever the cursor
+		// happens to be when it comes back.
+		m_Dragging = false;
 		return;
+	}
 	const CUIRect *pScreen = Ui()->Screen();
 	Render(pScreen->w, pScreen->h);
 }
@@ -65,12 +77,7 @@ bool CMusicIsland::Update()
 {
 	if(!g_Config.m_ClMusicIsland)
 	{
-		if(m_Started)
-		{
-			m_Music.Stop();
-			m_Started = false;
-			m_Visible = 0.0f;
-		}
+		m_Visible = 0.0f;
 		return false;
 	}
 
@@ -79,29 +86,30 @@ bool CMusicIsland::Update()
 		return false;
 
 	// The query runs on its own thread, starting it is cheap and idempotent.
-	if(!m_Started)
-	{
-		m_Music.Start();
-		m_Started = true;
-	}
+	m_Music.Start();
 
 	m_Track = m_Music.Track();
 
 	std::vector<uint8_t> vArtwork;
 	int ArtWidth = 0, ArtHeight = 0;
-	if(m_Music.TakeArtwork(vArtwork, ArtWidth, ArtHeight) && ArtWidth > 0 && ArtHeight > 0)
+	if(m_Music.TakeArtwork(vArtwork, ArtWidth, ArtHeight))
 	{
+		// The old cover goes even when the new track has none, the placeholder
+		// square is drawn for it instead.
 		if(m_ArtworkTexture.IsValid())
 			Graphics()->UnloadTexture(&m_ArtworkTexture);
-		CImageInfo Image;
-		Image.m_Width = ArtWidth;
-		Image.m_Height = ArtHeight;
-		Image.m_Format = CImageInfo::FORMAT_RGBA;
-		Image.Allocate();
-		mem_copy(Image.m_pData, vArtwork.data(), std::min(vArtwork.size(), Image.DataSize()));
-		m_ArtworkTexture = Graphics()->LoadTextureRawMove(Image, 0, "music artwork");
-		if(m_ArtworkTexture.IsNullTexture())
-			m_ArtworkTexture.Invalidate();
+		if(ArtWidth > 0 && ArtHeight > 0)
+		{
+			CImageInfo Image;
+			Image.m_Width = ArtWidth;
+			Image.m_Height = ArtHeight;
+			Image.m_Format = CImageInfo::FORMAT_RGBA;
+			Image.Allocate();
+			mem_copy(Image.m_pData, vArtwork.data(), std::min(vArtwork.size(), Image.DataSize()));
+			m_ArtworkTexture = Graphics()->LoadTextureRawMove(Image, 0, "music artwork");
+			if(m_ArtworkTexture.IsNullTexture())
+				m_ArtworkTexture.Invalidate();
+		}
 	}
 
 	if(m_Track.m_Revision != m_ShownRevision)
@@ -336,6 +344,8 @@ void CMusicIsland::Render(float Width, float Height)
 
 	if(Clickable)
 		DoDrag(Pill, Buttons, Width, Height, PillWidth, PillHeight, Margin);
+	else
+		m_Dragging = false;
 
 	// Progress along the bottom edge.
 	if(m_Track.m_Duration > 0.0)

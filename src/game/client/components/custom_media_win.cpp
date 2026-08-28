@@ -32,6 +32,11 @@
 #include <wincodec.h>
 // clang-format on
 
+#if defined(_MSC_VER)
+// For VcppException, the exception the delay load helper raises.
+#include <delayimp.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -51,6 +56,16 @@ void SafeRelease(T *&pInterface)
 		pInterface = nullptr;
 	}
 }
+
+#if defined(_MSC_VER)
+// A Windows edition without Media Foundation does not make the delay loaded
+// calls fail, it makes the loader raise one of these on the first one.
+bool IsDelayLoadFailure(DWORD ExceptionCode)
+{
+	return ExceptionCode == VcppException(ERROR_SEVERITY_ERROR, ERROR_MOD_NOT_FOUND) ||
+	       ExceptionCode == VcppException(ERROR_SEVERITY_ERROR, ERROR_PROC_NOT_FOUND);
+}
+#endif
 } // namespace
 
 class CWindowsMedia::CImpl
@@ -87,6 +102,7 @@ private:
 	// the decoder jump around and decode far more frames than needed.
 	double m_NextFrameTime = -1.0;
 
+	bool OpenVideoImpl(const char *pAbsolutePath);
 	void SeekToStart();
 };
 
@@ -152,7 +168,7 @@ bool CWindowsMedia::CImpl::OpenImage(const char *pAbsolutePath)
 	return Success;
 }
 
-bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
+bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 {
 	Close();
 
@@ -253,6 +269,30 @@ bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
 	}
 	return true;
 }
+
+#if defined(_MSC_VER)
+// The work is in OpenVideoImpl because a frame with an __except must not own
+// anything that needs unwinding, and the delay load exception is raised before
+// any Media Foundation call gets the chance to return a failed result.
+bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
+{
+	__try
+	{
+		return OpenVideoImpl(pAbsolutePath);
+	}
+	__except(IsDelayLoadFailure(GetExceptionCode()) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+	{
+		log_error("custombackground", "Media Foundation is missing on this Windows edition, cannot play '%s'", pAbsolutePath);
+		Close();
+		return false;
+	}
+}
+#else
+bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
+{
+	return OpenVideoImpl(pAbsolutePath);
+}
+#endif
 
 void CWindowsMedia::CImpl::Close()
 {

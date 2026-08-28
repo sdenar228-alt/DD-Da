@@ -546,6 +546,10 @@ bool CCustomBackground::RenderFullscreen()
 	Update();
 	if(!m_HasFrame || !m_Texture.IsValid())
 		return false;
+	// A fully transparent background draws nothing, so the caller has to fall back
+	// to its own background instead of being told that the screen is covered.
+	if(g_Config.m_ClCustomBackgroundOpacity == 0)
+		return false;
 
 	// Everything drawn after this keeps using the caller's coordinate system, so
 	// the mapping has to be put back. Without that the menu is laid out in this
@@ -593,7 +597,15 @@ bool CCustomBackground::RenderFullscreen()
 
 void CCustomBackground::OnRender()
 {
-	if(g_Config.m_ClCustomBackground == 0 || !g_Config.m_ClCustomBackgroundIngame)
+	// Update() only runs while the background is being drawn, so turning it off has
+	// to release the decoder and the texture from here, which runs in every state.
+	if(g_Config.m_ClCustomBackground == 0 || g_Config.m_ClCustomBackgroundFile[0] == '\0')
+	{
+		if(!m_LoadedFile.empty() || m_Texture.IsValid())
+			Unload();
+		return;
+	}
+	if(!g_Config.m_ClCustomBackgroundIngame)
 		return;
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;

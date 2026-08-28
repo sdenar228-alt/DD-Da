@@ -58,7 +58,7 @@ public:
 	void SendCommand(ECommand Command);
 
 	// Album art of the current track as RGBA. Returns false when there is no new
-	// artwork since the last call.
+	// artwork since the last call, a size of 0 when the new track has none.
 	bool TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height);
 
 private:
