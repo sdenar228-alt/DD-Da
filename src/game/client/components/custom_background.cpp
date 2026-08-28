@@ -542,6 +542,11 @@ bool CCustomBackground::RenderFullscreen()
 	if(!m_HasFrame || !m_Texture.IsValid())
 		return false;
 
+	// Everything drawn after this keeps using the caller's coordinate system, so
+	// the mapping has to be put back. Without that the menu is laid out in this
+	// 300 unit high space and comes out oversized and clipped.
+	const CScreenRect SavedScreenRect = Graphics()->GetScreen();
+
 	const float ScreenHeight = 300.0f;
 	const float ScreenWidth = ScreenHeight * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(ScreenWidth, ScreenHeight);
@@ -576,6 +581,8 @@ bool CCustomBackground::RenderFullscreen()
 	const IGraphics::CQuadItem QuadItem(x, y, w, h);
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
+
+	Graphics()->MapScreen(SavedScreenRect);
 	return true;
 }
 
