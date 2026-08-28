@@ -222,6 +222,21 @@ freeze usually needs twenty to forty ticks to carry the tee off the tiles, so a
 shot followed for only a few bounces is always dead by the time it would matter.
 That is why the lowest it can be set to is four, and why the default is sixteen.
 
+The map's own tuning is followed rather than the stock physics. The flight runs
+in a copy of the predicted world, so tune zones, speedups and everything else
+the tiles do to a tee apply to it, and it starts from the tee's real velocity.
+The shot reads two tunings, the way the game does: how far it reaches comes from
+the zone the tee is standing in, while the bounce delay, the bounce count and
+the bounce cost come from the zone the shot is fired in, sampled once at the
+muzzle.
+
+Copies of the predicted world are cut loose from the original before they are
+ticked. Both entity links have to be cleared, not just the parent: the copy
+constructor carries the source's child pointer along, that pointer aims into a
+world the client may have thrown away already, and removing an entity writes
+through it. Leaving it in place corrupts the heap, which surfaces later as an
+assertion somewhere else entirely, usually in the snapshot code.
+
 The whole chain was measured against the game's own laser rather than trusted:
 the module's plan was fed to a real `CLaser` inside the simulation on a DDNet
 map, and every plan it produced did lift the freeze, most of them on exactly the

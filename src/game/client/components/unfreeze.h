@@ -114,6 +114,10 @@ private:
 	// The bounce budget the shot is followed with, capped by what the server
 	// allows and by the last tick that is still worth hitting.
 	int BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const;
+	// The tuning the shot bounces by, and the one that decides how far it gets.
+	// The game reads them from two different tune zones.
+	const CTuningParams *LaserTuning(vec2 FirePos) const;
+	const CTuningParams *ReachTuning(vec2 FirePos) const;
 	// True when a tile in the swept range would freeze the tee again.
 	bool TouchesFreeze(vec2 PrevPos, vec2 Pos) const;
 	bool IsFreezeIndex(int Index) const;
