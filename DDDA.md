@@ -18,6 +18,28 @@ The Ninja generator is used on purpose: CMake copies the runtime DLLs and the
 "Visual Studio" would put the executable into `build\Release\` where it finds
 neither and fails to start with missing DLL errors.
 
+### For an iPhone
+
+DDNet carries a full iOS port, so the fork builds for a phone as it is. Xcode is
+macOS only, so the build runs on a GitHub Actions macOS runner instead: the
+**iOS app** workflow can be started by hand from the Actions tab and leaves a
+`DDDa.ipa` as its artifact. It fetches `ddnet-libs` itself, because this
+repository does not carry it, and it boots the simulator build once and checks
+that the client actually starts before it packages the device build.
+
+That `.ipa` is unsigned, and an unsigned app cannot be installed on an iPhone by
+any means. Signing it needs an Apple ID: [Sideloadly](https://sideloadly.io)
+does it from Windows over a cable, for free, and the app then stops launching
+after seven days and has to be signed again. A paid Apple developer account
+lasts a year and can hand the build over through TestFlight instead, with no
+cable and nothing installed on the phone but Apple's own app.
+
+Two features are missing there. The music island reads the Windows media
+session, which has no equivalent an app is allowed to read on iOS, and the
+background falls back to PNG only: the iOS build has no FFmpeg and no Media
+Foundation, so videos and jpg do not load. Everything else, the unfreeze module
+and the tee shader included, works the same.
+
 ## Config folder
 
 New folders in `%APPDATA%\DDNet`:
