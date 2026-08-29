@@ -587,12 +587,20 @@ bool CCustomBackground::RenderFullscreen()
 
 	const float Opacity = g_Config.m_ClCustomBackgroundOpacity / 100.0f;
 	Graphics()->TextureSet(m_Texture);
-	Graphics()->BlendNormal();
+	// A fully opaque background has nothing to blend with, and this is a quad the
+	// size of the screen: on a weaker card the blending alone is worth frames.
+	const bool Blend = Opacity < 1.0f;
+	if(Blend)
+		Graphics()->BlendNormal();
+	else
+		Graphics()->BlendNone();
 	Graphics()->QuadsBegin();
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Opacity);
 	const IGraphics::CQuadItem QuadItem(x, y, w, h);
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
+	if(!Blend)
+		Graphics()->BlendNormal();
 
 	Graphics()->MapScreen(SavedScreenRect);
 	return true;
