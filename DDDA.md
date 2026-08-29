@@ -256,19 +256,41 @@ stretch it likes:
 * Two bounces in a row that cover no ground kill a laser, which is how the game
   stops a beam trapped in a corner. The trace does the same, so it cannot plan on
   bounces that never happen.
+* Another tee only eats the shot when it stands **closer along the beam** than
+  the point where the shot would have hit its owner. A tee behind that point is
+  behind a beam that has already ended.
+
+The angle is not the only thing swept. Bounces land every `laser_bounce_delay`
+worth of ticks and nowhere in between, so waiting a tick before firing moves the
+whole ladder of bounces by a tick, and only a handful of delays can ever put a
+bounce inside the window that is worth hitting. Those are worked out from the
+window itself and only they are traced. It costs a few times more than a single
+sweep, and it is the difference between finding a plan for a flight and having
+none, because a window is often three or four ticks wide while the bounces are
+eight apart. A plan made for one fire tick is only fired on that tick: firing it
+a tick later aims at where the tee was going to be a tick earlier.
 
 What a plan is worth is measured in **ticks of freeze it takes off**: the hit is
 scored against what would have happened anyway, so a shot that frees the tee a
-moment before it would have thawed by itself, or one that lands a tick before the
-tee is carried back onto the tiles, is worth nothing and is not taken. Among
-plans of similar worth the one with room for error wins: it has to land on the
-tick it aims at and at least one neighbour, and the aim is moved to the middle of
-the band of angles that work rather than the edge the sweep happened to find.
+moment before it would have thawed by itself is worth nothing and is not taken.
+Eight ticks is the least that counts there. A window that ends because a tile
+freezes the tee again is judged by a different rule and needs only two, because
+those ticks are not comfort, they are control handed back: two ticks is a hook or
+a jump, and taking them is what gets the tee out of the pit instead of riding it
+to the bottom. Among plans of similar worth the one with room for error wins, and
+the aim is moved to the middle of the band of angles that work rather than the
+edge the sweep happened to find.
 
-The whole chain was measured against the game's own laser rather than trusted:
-the module's plan was fed to a real `CLaser` inside the simulation on a DDNet
-map. Every plan it produced lifted the freeze, and every one of them did it on
-exactly the tick it had named.
+The whole chain was measured against the game's own laser rather than trusted.
+The module's plan was fed to a real `CLaser` inside the same simulation, across
+five maps of very different geometry and 580 predicted flights: open rooms,
+corridors, tight tunnels and vertical shafts, each spot flown ten ways, from a
+standing drop to a sixteen unit fling. Thirty five of those flights had a window
+worth shooting into at all. The module planned a shot for sixteen of them, all
+sixteen lifted the freeze, and all sixteen did it on exactly the tick the plan
+had named. Of the nineteen it refused, eighteen were refusals a brute force sweep
+agreed with, there being no angle and no fire delay that would have worked, which
+leaves one flight it should have found and did not.
 
 ### Spinning tee
 
