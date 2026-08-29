@@ -88,6 +88,12 @@ private:
 		int m_Margin = 0;
 		// How far the beam passes from the tee on the aimed tick.
 		float m_Miss = 0.0f;
+		// True when the freed stretch ends because a tile freezes the tee again
+		// rather than because the freeze would have run out anyway. Those windows
+		// are short but they are the whole prize: they hand back control.
+		bool m_TileEnd = false;
+		// The tick the shot has to leave on for this plan to hold.
+		int m_FireTick = 0;
 		int m_TargetX = 0;
 		int m_TargetY = 0;
 		vec2 m_HitPos = vec2(0.0f, 0.0f);
@@ -103,12 +109,20 @@ private:
 	int m_FirstUsefulTick = -1;
 	int m_LastUsefulTick = -1;
 	bool m_FreezeAhead = false;
+	// A box around every tick worth hitting. A beam that cannot reach it with the
+	// energy it has left is abandoned instead of traced to the end.
+	bool m_HasUsefulBox = false;
+	vec2 m_UsefulMin = vec2(0.0f, 0.0f);
+	vec2 m_UsefulMax = vec2(0.0f, 0.0f);
 
 	std::vector<CSegment> m_vSegments;
 	std::vector<CSegment> m_vSolution;
 
 	bool m_HasSolution = false;
 	CCandidate m_Solution;
+	// The plan is made for one tick. Firing on any other one aims at where the
+	// tee was going to be at a different moment.
+	int m_PlanFireTick = -1;
 	vec2 m_SolutionDir = vec2(1.0f, 0.0f);
 
 	// Set by the console command or by the automatic mode, consumed by the next
@@ -137,7 +151,12 @@ private:
 
 	void Reset();
 	bool Predict(int LocalId, int StartTick, int Horizon);
-	bool Search(int FireTick, vec2 FirePos);
+	// Sweeps the angles for one fire tick and keeps the best plan found so far.
+	bool Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath);
+	// Which fire delays could put a bounce on a tick worth hitting. Bounces land
+	// every BounceTicks, so firing a tick later moves all of them by a tick, and
+	// only a couple of delays are ever worth tracing.
+	int UsefulDelays(int PredTick, int BounceTicks, bool *pDelays, int MaxDelays) const;
 	// What a plan is worth, in ticks of freeze taken off plus how likely it is to
 	// survive the flight being slightly off what was predicted.
 	static float ScoreOf(const CCandidate &Candidate, int FireTick, float Radius);
@@ -146,7 +165,7 @@ private:
 	// Walks the bounce path of a shot, the way CLaser::DoBounce does.
 	void TraceLaser(vec2 Pos, vec2 Dir, float Energy, int FireTick, int MaxBounces, float BounceCost, int BounceTicks);
 	// Ticks of freeze a hit on that tick would take off the tee.
-	int FreezeSaved(int Tick) const;
+	int FreezeSaved(int Tick, bool *pTileEnd) const;
 	// True when the tee is frozen there, the freeze is one a laser can lift, and
 	// no tile puts it straight back.
 	bool IsUsefulTick(int Tick) const;

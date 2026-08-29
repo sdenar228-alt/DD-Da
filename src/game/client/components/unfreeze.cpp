@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace {
 // The aim is sent as whole units, so the angle that leaves the client is never
@@ -23,9 +24,12 @@ namespace {
 // integer target, at a length long enough that the rounding is worth well under
 // a tenth of a degree.
 constexpr float AIM_RADIUS = 2000.0f;
-// A hit that takes less than this off the freeze is not worth a shot and a
-// reload; the tee would have thawed on its own about as soon.
-constexpr int MIN_SAVED_TICKS = 8;
+// A hit that only shortens a freeze the tee was going to sit out anyway has to
+// be worth something; two ticks of that is not. A stretch that ends because a
+// tile freezes the tee again is different: those ticks are control handed back,
+// and two of them are enough to hook or jump out.
+constexpr int MIN_SAVED_NATURAL = 8;
+constexpr int MIN_SAVED_TILE = 2;
 // Entities further away than this are dropped from the simulation. They cannot
 // reach the tee inside the horizon, and ticking them is what the search costs.
 constexpr float SIMULATE_RADIUS = 1600.0f;
@@ -56,6 +60,7 @@ void CUnfreeze::Reset()
 	m_AimUntilTick = -1;
 	m_LastShotTick = -1;
 	m_ShotLandsTick = -1;
+	m_PlanFireTick = -1;
 	m_FiredTargetX = 0;
 	m_FiredTargetY = 0;
 	m_RestoreWeapon = -1;
@@ -132,8 +137,9 @@ bool CUnfreeze::IsUsefulTick(int Tick) const
 	return pNext != nullptr && !pNext->m_OnFreeze;
 }
 
-int CUnfreeze::FreezeSaved(int Tick) const
+int CUnfreeze::FreezeSaved(int Tick, bool *pTileEnd) const
 {
+	*pTileEnd = false;
 	const CFlightStep *pStep = FlightAt(Tick);
 	if(pStep == nullptr || pStep->m_FreezeTime <= 0)
 		return 0;
@@ -146,8 +152,13 @@ int CUnfreeze::FreezeSaved(int Tick) const
 	for(int i = Tick + 1; i < End; ++i)
 	{
 		const CFlightStep *pAt = FlightAt(i);
-		if(pAt == nullptr || pAt->m_FreezeTime <= 0 || pAt->m_OnFreeze)
+		if(pAt == nullptr)
 			return i - Tick;
+		if(pAt->m_FreezeTime <= 0 || pAt->m_OnFreeze)
+		{
+			*pTileEnd = pAt->m_FreezeTime > 0 && pAt->m_OnFreeze;
+			return i - Tick;
+		}
 	}
 	return End - Tick;
 }
@@ -312,6 +323,7 @@ bool CUnfreeze::Predict(int LocalId, int StartTick, int Horizon)
 		m_vFlight.push_back(Step);
 	}
 
+	m_HasUsefulBox = false;
 	for(int i = 0; i < (int)m_vFlight.size(); i++)
 	{
 		const int Tick = m_FirstFlightTick + i;
@@ -320,6 +332,27 @@ bool CUnfreeze::Predict(int LocalId, int StartTick, int Horizon)
 		if(m_FirstUsefulTick < 0)
 			m_FirstUsefulTick = Tick;
 		m_LastUsefulTick = Tick;
+
+		const vec2 &Pos = m_vFlight[i].m_Pos;
+		if(!m_HasUsefulBox)
+		{
+			m_HasUsefulBox = true;
+			m_UsefulMin = Pos;
+			m_UsefulMax = Pos;
+		}
+		else
+		{
+			m_UsefulMin.x = std::min(m_UsefulMin.x, Pos.x);
+			m_UsefulMin.y = std::min(m_UsefulMin.y, Pos.y);
+			m_UsefulMax.x = std::max(m_UsefulMax.x, Pos.x);
+			m_UsefulMax.y = std::max(m_UsefulMax.y, Pos.y);
+		}
+	}
+	if(m_HasUsefulBox)
+	{
+		const float Radius = CCharacterCore::PhysicalSize();
+		m_UsefulMin -= vec2(Radius, Radius);
+		m_UsefulMax += vec2(Radius, Radius);
 	}
 
 	return m_FirstUsefulTick >= 0;
@@ -370,6 +403,16 @@ void CUnfreeze::TraceLaser(vec2 Pos, vec2 Dir, float Energy, int FireTick, int M
 		Pos = TempPos;
 		Dir = normalize(TempDir);
 		Bounces++;
+
+		// Whatever is left of the beam has to cover at least the straight line to
+		// the ticks worth hitting, so anything shorter than that is finished.
+		if(m_HasUsefulBox)
+		{
+			const float dx = std::max({m_UsefulMin.x - Pos.x, 0.0f, Pos.x - m_UsefulMax.x});
+			const float dy = std::max({m_UsefulMin.y - Pos.y, 0.0f, Pos.y - m_UsefulMax.y});
+			if(std::sqrt(dx * dx + dy * dy) > Energy)
+				break;
+		}
 	}
 }
 
@@ -405,26 +448,39 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 			continue;
 		}
 
-		// Whoever the beam reaches first ends it, so the other tees are asked
-		// before the owner can count as a hit.
-		for(int i = 0; i < pStep->m_NumOthers; i++)
+		// Whoever the beam reaches first ends it. The owner only counts from the
+		// first bounce on, so work out how far along the beam it would be hit and
+		// let another tee take the shot only if it stands closer than that.
+		float OwnerAlong = std::numeric_limits<float>::max();
+		float Miss = 0.0f;
+		vec2 Closest;
+		const bool OwnerReachable = Segment.m_Bounces >= 1 &&
+					    closest_point_on_line(Segment.m_From, Segment.m_To, pStep->m_Pos, Closest);
+		if(OwnerReachable)
 		{
-			vec2 Closest;
-			if(!closest_point_on_line(Segment.m_From, Segment.m_To, pStep->m_aOthers[i], Closest))
-				continue;
-			if(distance(pStep->m_aOthers[i], Closest) < Radius)
-				return Candidate;
+			Miss = distance(pStep->m_Pos, Closest);
+			if(Miss < Radius)
+				OwnerAlong = distance(Segment.m_From, Closest);
 		}
 
-		// A shot cannot touch the tee that fired it before its first wall.
-		if(Segment.m_Bounces < 1)
-			continue;
+		bool Blocked = false;
+		for(int i = 0; i < pStep->m_NumOthers; i++)
+		{
+			vec2 OtherClosest;
+			if(!closest_point_on_line(Segment.m_From, Segment.m_To, pStep->m_aOthers[i], OtherClosest))
+				continue;
+			if(distance(pStep->m_aOthers[i], OtherClosest) >= Radius)
+				continue;
+			if(distance(Segment.m_From, OtherClosest) < OwnerAlong)
+			{
+				Blocked = true;
+				break;
+			}
+		}
+		if(Blocked)
+			return Candidate;
 
-		vec2 Closest;
-		if(!closest_point_on_line(Segment.m_From, Segment.m_To, pStep->m_Pos, Closest))
-			continue;
-		const float Miss = distance(pStep->m_Pos, Closest);
-		if(Miss >= Radius)
+		if(OwnerAlong == std::numeric_limits<float>::max())
 			continue;
 
 		// This is where the shot ends, whatever it is worth. If the tick is no
@@ -447,7 +503,8 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 
 		Candidate.m_Hits = true;
 		Candidate.m_EvalTick = Segment.m_EvalTick;
-		Candidate.m_Saved = FreezeSaved(Segment.m_EvalTick - 1);
+		Candidate.m_FireTick = FireTick;
+		Candidate.m_Saved = FreezeSaved(Segment.m_EvalTick - 1, &Candidate.m_TileEnd);
 		Candidate.m_Margin = Margin;
 		Candidate.m_Miss = Miss;
 		Candidate.m_HitPos = pStep->m_Pos;
@@ -465,13 +522,51 @@ float CUnfreeze::ScoreOf(const CCandidate &Candidate, int FireTick, float Radius
 	if(!Candidate.m_Hits)
 		return 0.0f;
 	const float Centred = (Radius - Candidate.m_Miss) / Radius;
-	return (float)Candidate.m_Saved +
+	// A window that ends on a tile is short by nature, so its length says little
+	// about its worth; what it buys is the tee's control back.
+	const float Worth = Candidate.m_TileEnd ? (float)Candidate.m_Saved + 6.0f : (float)Candidate.m_Saved;
+	return Worth +
 	       8.0f * (float)(Candidate.m_Margin - 1) +
 	       10.0f * Centred -
 	       0.1f * (float)(Candidate.m_EvalTick - FireTick);
 }
 
-bool CUnfreeze::Search(int FireTick, vec2 FirePos)
+// Which fire delays are worth tracing. A bounce lands every BounceTicks, so the
+// ticks a shot fired now can reach are one residue class in eight; firing a tick
+// later moves the whole schedule. Every tick worth hitting names exactly one
+// delay that reaches it, so the list is short and costs nothing to work out.
+int CUnfreeze::UsefulDelays(int PredTick, int BounceTicks, bool *pDelays, int MaxDelays) const
+{
+	for(int i = 0; i < MaxDelays; i++)
+		pDelays[i] = false;
+
+	int Count = 0;
+	const int Limit = std::min(BounceTicks, MaxDelays);
+	for(int Tick = m_FirstUsefulTick; Tick >= 0 && Tick <= m_LastUsefulTick; Tick++)
+	{
+		if(!IsUsefulTick(Tick))
+			continue;
+		const int Delay = ((Tick - PredTick + 1) % BounceTicks + BounceTicks) % BounceTicks;
+		if(Delay >= Limit || pDelays[Delay])
+			continue;
+		// The bounce has to be a real one: the stretch before the first wall can
+		// never touch the tee that fired it.
+		if(Tick < PredTick + Delay - 1 + BounceTicks)
+			continue;
+		// And the tee has to still be able to shoot on that tick.
+		if(Delay > 0)
+		{
+			const CFlightStep *pAt = FlightAt(PredTick + Delay);
+			if(pAt == nullptr || pAt->m_FreezeTime > 0)
+				continue;
+		}
+		pDelays[Delay] = true;
+		Count++;
+	}
+	return Count;
+}
+
+bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath)
 {
 	if(!SelfHitPossible())
 		return false;
@@ -493,9 +588,9 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos)
 	const int Steps = std::clamp(g_Config.m_ClUnfreezeSteps, 120, 1440);
 	const float Radius = CCharacterCore::PhysicalSize();
 
-	float BestScore = 0.0f;
+	bool Improved = false;
 	float BestAngle = 0.0f;
-	CCandidate Best;
+	bool HaveAngle = false;
 
 	// A coarse sweep first. Every angle is judged on what it is worth rather than
 	// on how soon it lands, and none is skipped: stopping at the first passable
@@ -504,19 +599,21 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos)
 	{
 		const float Angle = (float)Step * 2.0f * pi / (float)Steps;
 		const CCandidate Candidate = Evaluate(Angle, FireTick, FirePos, MaxBounces, BounceTicks, Energy, BounceCost);
-		if(!Candidate.m_Hits || Candidate.m_Margin < 2 || Candidate.m_Saved < MIN_SAVED_TICKS)
+		if(!Candidate.m_Hits || Candidate.m_Saved < (Candidate.m_TileEnd ? MIN_SAVED_TILE : MIN_SAVED_NATURAL))
 			continue;
 		const float Score = ScoreOf(Candidate, FireTick, Radius);
-		if(Score > BestScore)
-		{
-			BestScore = Score;
-			BestAngle = Angle;
-			Best = Candidate;
-		}
+		if(Score <= BestScore)
+			continue;
+		BestScore = Score;
+		BestAngle = Angle;
+		HaveAngle = true;
+		Best = Candidate;
+		vBestPath = m_vSegments;
+		Improved = true;
 	}
 
-	if(!Best.m_Hits)
-		return false;
+	if(!HaveAngle)
+		return Improved;
 
 	// Then walk around the winner to find the middle of the band that works
 	// rather than the edge the coarse step happened to land on. An aim that only
@@ -529,25 +626,19 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos)
 		for(const float Angle : aAngles)
 		{
 			const CCandidate Candidate = Evaluate(Angle, FireTick, FirePos, MaxBounces, BounceTicks, Energy, BounceCost);
-			if(!Candidate.m_Hits || Candidate.m_Margin < 2 || Candidate.m_Saved < MIN_SAVED_TICKS)
+			if(!Candidate.m_Hits || Candidate.m_Saved < (Candidate.m_TileEnd ? MIN_SAVED_TILE : MIN_SAVED_NATURAL))
 				continue;
 			const float Score = ScoreOf(Candidate, FireTick, Radius);
-			if(Score > BestScore)
-			{
-				BestScore = Score;
-				Best = Candidate;
-			}
+			if(Score <= BestScore)
+				continue;
+			BestScore = Score;
+			Best = Candidate;
+			vBestPath = m_vSegments;
+			Improved = true;
 		}
 	}
 
-	// Leave the winning path behind for the drawing.
-	Evaluate(std::atan2((float)Best.m_TargetY, (float)Best.m_TargetX), FireTick, FirePos, MaxBounces, BounceTicks, Energy, BounceCost);
-	m_vSolution = m_vSegments;
-
-	m_HasSolution = true;
-	m_Solution = Best;
-	m_SolutionDir = normalize(vec2((float)Best.m_TargetX, (float)Best.m_TargetY));
-	return true;
+	return Improved;
 }
 
 void CUnfreeze::OnRender()
@@ -605,13 +696,39 @@ void CUnfreeze::OnRender()
 
 		// Simulating further than the shot can ever reach is wasted work.
 		const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
-		const int BounceTicks = std::max(1, (int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1);
+		const int BounceTicks = std::clamp((int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1, 1, 16);
 		const int Reach = std::clamp(g_Config.m_ClUnfreezeBounces, 4, 40) * BounceTicks + 4;
 		const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
 
 		m_FreezeAhead = Predict(LocalId, PredTick, Horizon);
 		if(m_FreezeAhead)
-			Search(PredTick + 1, pPredicted->Core()->m_Pos);
+		{
+			// Firing a tick later moves every bounce with it, so the shot is not
+			// limited to the ticks a shot fired right now happens to land on.
+			// Only the delays that could reach a tick worth hitting are traced.
+			bool aDelays[16] = {};
+			const int NumDelays = UsefulDelays(PredTick, BounceTicks, aDelays, (int)std::size(aDelays));
+			CCandidate Best;
+			float BestScore = 0.0f;
+			std::vector<CSegment> vBestPath;
+			for(int Delay = 0; Delay < (int)std::size(aDelays) && NumDelays > 0; Delay++)
+			{
+				if(!aDelays[Delay])
+					continue;
+				const CFlightStep *pAt = Delay > 0 ? FlightAt(PredTick + Delay) : nullptr;
+				const vec2 FirePos = Delay > 0 ? pAt->m_Pos : pPredicted->Core()->m_Pos;
+				Search(PredTick + 1 + Delay, FirePos, Best, BestScore, vBestPath);
+			}
+
+			if(Best.m_Hits)
+			{
+				m_HasSolution = true;
+				m_Solution = Best;
+				m_PlanFireTick = Best.m_FireTick;
+				m_SolutionDir = normalize(vec2((float)Best.m_TargetX, (float)Best.m_TargetY));
+				m_vSolution = vBestPath;
+			}
+		}
 	}
 
 	// Automatic mode fires as soon as it has a plan, then holds off until the shot
@@ -695,6 +812,21 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 		m_SwitchSends--;
 		pInput->m_WantedWeapon = WEAPON_LASER + 1;
 		return true;
+	}
+
+	// A plan belongs to one tick. Earlier than that it waits; later than that the
+	// tee has moved on and the plan is dropped rather than fired at where it used
+	// to be going.
+	if(m_PlanFireTick >= 0)
+	{
+		if(PredTick + 1 < m_PlanFireTick)
+			return false;
+		if(PredTick + 1 > m_PlanFireTick)
+		{
+			m_WantShot = false;
+			m_HasSolution = false;
+			return false;
+		}
 	}
 
 	m_WantShot = false;
