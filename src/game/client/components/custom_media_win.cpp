@@ -212,7 +212,42 @@ bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 	}
 	pWanted->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
 	pWanted->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
-	const HRESULT TypeResult = m_pReader->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pWanted);
+
+	// Ask for a smaller frame when the file is larger than a background needs.
+	// Every frame is copied across the process and uploaded to the graphics card,
+	// so a 4K file costs nine times what a 720p one does for a picture that ends
+	// up on the same screen. The reader has its video processor enabled, so it
+	// does the scaling itself while decoding.
+	UINT32 NativeWidth = 0, NativeHeight = 0;
+	IMFMediaType *pNative = nullptr;
+	if(SUCCEEDED(m_pReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pNative)) && pNative != nullptr)
+	{
+		MFGetAttributeSize(pNative, MF_MT_FRAME_SIZE, &NativeWidth, &NativeHeight);
+		SafeRelease(pNative);
+	}
+	if(NativeWidth > 0 && NativeHeight > 0 &&
+		((int)NativeWidth > MAX_VIDEO_WIDTH || (int)NativeHeight > MAX_VIDEO_HEIGHT))
+	{
+		const double Scale = std::min((double)MAX_VIDEO_WIDTH / NativeWidth, (double)MAX_VIDEO_HEIGHT / NativeHeight);
+		// Even numbers, because that is what the video processor wants.
+		const UINT32 WantedWidth = std::max<UINT32>(2, ((UINT32)(NativeWidth * Scale) / 2) * 2);
+		const UINT32 WantedHeight = std::max<UINT32>(2, ((UINT32)(NativeHeight * Scale) / 2) * 2);
+		MFSetAttributeSize(pWanted, MF_MT_FRAME_SIZE, WantedWidth, WantedHeight);
+	}
+
+	HRESULT TypeResult = m_pReader->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pWanted);
+	if(FAILED(TypeResult))
+	{
+		// Not every source can be scaled on the way out; take it at its own size.
+		IMFMediaType *pPlain = nullptr;
+		if(SUCCEEDED(MFCreateMediaType(&pPlain)) && pPlain != nullptr)
+		{
+			pPlain->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+			pPlain->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB32);
+			TypeResult = m_pReader->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, nullptr, pPlain);
+			SafeRelease(pPlain);
+		}
+	}
 	SafeRelease(pWanted);
 	if(FAILED(TypeResult))
 	{
@@ -265,7 +300,7 @@ bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 
 	if(m_Width > MAX_VIDEO_WIDTH || m_Height > MAX_VIDEO_HEIGHT)
 	{
-		log_info("custombackground", "Video is %dx%d, every frame is uploaded at that size; a smaller file is cheaper", m_Width, m_Height);
+		log_info("custombackground", "Video stayed at %dx%d, this source cannot be scaled while decoding; a smaller file is cheaper", m_Width, m_Height);
 	}
 	return true;
 }

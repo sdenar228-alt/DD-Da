@@ -81,6 +81,15 @@ Supported on Windows without any extra download:
 Videos are played forward at their own frame rate and loop at the end. `cl_custom_background_video_length` cuts a longer file after that many seconds (10 by default, 0 plays all of it). Every
 frame is a full texture upload, so a small file is cheaper than a 4K one.
 
+Anything larger than 1280x720 is therefore asked for at 720p while it is being
+decoded rather than at its own size. The decoder scales it as part of the work it
+is already doing, and everything after that point, the copy out of the reader,
+the swizzle to RGBA and the upload, is done on a ninth of the pixels a 4K file
+would otherwise cost. Sources that refuse to be scaled on the way out are taken
+at their own size and say so in the log. A background that is fully opaque is
+also drawn with blending switched off, since a screen sized quad with nothing
+underneath it to mix with is worth frames on a weaker card.
+
 The FFmpeg shipped in `ddnet-libs` was compiled for **encoding only** and has no
 decoders at all, so it is not used for this. It stays as a fallback for other
 platforms; to make it work there, put a full FFmpeg build of the same major
