@@ -289,6 +289,42 @@ static void CheckMetrics(CSkin::CSkinMetricVariable &Metrics, const uint8_t *pIm
 	Metrics.m_MaxHeight = CheckHeight;
 }
 
+// Copies one sprite out of a skin sheet, keeping the alpha and forcing the color
+// to white. The result is the outline shape as a mask that any color can be
+// multiplied onto.
+static bool ExtractWhiteSprite(const CImageInfo &From, const CDataSprite *pSprite, CImageInfo &To)
+{
+	if(From.m_pData == nullptr || From.PixelSize() != 4)
+		return false;
+
+	const int GridWidth = From.m_Width / pSprite->m_pSet->m_Gridx;
+	const int GridHeight = From.m_Height / pSprite->m_pSet->m_Gridy;
+	const int SrcX = pSprite->m_X * GridWidth;
+	const int SrcY = pSprite->m_Y * GridHeight;
+	const int Width = pSprite->m_W * GridWidth;
+	const int Height = pSprite->m_H * GridHeight;
+	if(Width <= 0 || Height <= 0 || SrcX + Width > (int)From.m_Width || SrcY + Height > (int)From.m_Height)
+		return false;
+
+	To.m_Width = Width;
+	To.m_Height = Height;
+	To.m_Format = From.m_Format;
+	To.Allocate();
+	for(int y = 0; y < Height; ++y)
+	{
+		const uint8_t *pSrc = From.m_pData + ((size_t)(SrcY + y) * From.m_Width + SrcX) * 4;
+		uint8_t *pDst = To.m_pData + (size_t)y * Width * 4;
+		for(int x = 0; x < Width; ++x)
+		{
+			pDst[x * 4 + 0] = 255;
+			pDst[x * 4 + 1] = 255;
+			pDst[x * 4 + 2] = 255;
+			pDst[x * 4 + 3] = pSrc[x * 4 + 3];
+		}
+	}
+	return true;
+}
+
 bool CSkins::LoadSkinData(const char *pName, CSkinLoadData &Data) const
 {
 	if(!Graphics()->CheckImageDivisibility(pName, Data.m_Info, g_pData->m_aSprites[SPRITE_TEE_BODY].m_pSet->m_Gridx, g_pData->m_aSprites[SPRITE_TEE_BODY].m_pSet->m_Gridy, true))
@@ -441,24 +477,16 @@ void CSkins::LoadSkinFinish(CSkinContainer *pSkinContainer, const CSkinLoadData 
 		Skin.m_ColorableSkin.m_aEyes[i] = Graphics()->LoadSpriteTexture(Data.m_InfoGrayscale, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_EYE_NORMAL + i]);
 	}
 
-	// Outline mask: same shape as the outline sprites, but with white RGB so
-	// that a custom outline color survives the multiplicative vertex color.
+	// Outline mask: the shape of the outline sprites with white RGB, so that a
+	// custom outline color survives the multiplicative vertex color. Only the two
+	// sprites are copied out; whitening the whole sheet first cost a copy and a
+	// pass over every pixel of it, per skin, on the main thread.
 	{
-		CImageInfo InfoOutlineMask = Data.m_Info.DeepCopy();
-		const size_t PixelStep = InfoOutlineMask.PixelSize();
-		if(PixelStep == 4)
-		{
-			const size_t DataSize = InfoOutlineMask.DataSize();
-			for(size_t Offset = 0; Offset < DataSize; Offset += PixelStep)
-			{
-				InfoOutlineMask.m_pData[Offset] = 255;
-				InfoOutlineMask.m_pData[Offset + 1] = 255;
-				InfoOutlineMask.m_pData[Offset + 2] = 255;
-			}
-			Skin.m_OriginalSkin.m_BodyOutlineMask = Graphics()->LoadSpriteTexture(InfoOutlineMask, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE]);
-			Skin.m_OriginalSkin.m_FeetOutlineMask = Graphics()->LoadSpriteTexture(InfoOutlineMask, std::nullopt, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE]);
-		}
-		InfoOutlineMask.Free();
+		CImageInfo Mask;
+		if(ExtractWhiteSprite(Data.m_Info, &g_pData->m_aSprites[SPRITE_TEE_BODY_OUTLINE], Mask))
+			Skin.m_OriginalSkin.m_BodyOutlineMask = Graphics()->LoadTextureRawMove(Mask, 0, "body outline mask");
+		if(ExtractWhiteSprite(Data.m_Info, &g_pData->m_aSprites[SPRITE_TEE_FOOT_OUTLINE], Mask))
+			Skin.m_OriginalSkin.m_FeetOutlineMask = Graphics()->LoadTextureRawMove(Mask, 0, "feet outline mask");
 	}
 
 	Skin.m_Metrics = Data.m_Metrics;

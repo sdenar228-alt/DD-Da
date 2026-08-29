@@ -237,10 +237,38 @@ world the client may have thrown away already, and removing an entity writes
 through it. Leaving it in place corrupts the heap, which surfaces later as an
 assertion somewhere else entirely, usually in the snapshot code.
 
+A shot is only a plan if it survives the way the game actually resolves it, so
+the search follows the beam the way the game does rather than looking only at the
+stretch it likes:
+
+* A laser ends at the **first tee it touches**, whoever that is. So every stretch
+  is checked in order against the flight and against the other tees near it, and
+  the first crossing is where the shot stops. If that crossing is not a tick
+  worth hitting, the angle is dead rather than a plan; following it further would
+  be describing a beam that no longer exists. This is what used to make the
+  module fire shots that came back through the player before the freeze.
+* The **clock starts one tick before the input is stamped**, because the server
+  runs a fresh input the moment the packet lands rather than on the tick the
+  client wrote on it. Every bounce is counted from there, and each one is matched
+  against the position a tee published at the end of the previous tick.
+* The aim is sent as **whole units**, so the angle that is traced is the one that
+  the integer target actually produces, not the one that was wanted.
+* Two bounces in a row that cover no ground kill a laser, which is how the game
+  stops a beam trapped in a corner. The trace does the same, so it cannot plan on
+  bounces that never happen.
+
+What a plan is worth is measured in **ticks of freeze it takes off**: the hit is
+scored against what would have happened anyway, so a shot that frees the tee a
+moment before it would have thawed by itself, or one that lands a tick before the
+tee is carried back onto the tiles, is worth nothing and is not taken. Among
+plans of similar worth the one with room for error wins: it has to land on the
+tick it aims at and at least one neighbour, and the aim is moved to the middle of
+the band of angles that work rather than the edge the sweep happened to find.
+
 The whole chain was measured against the game's own laser rather than trusted:
 the module's plan was fed to a real `CLaser` inside the simulation on a DDNet
-map, and every plan it produced did lift the freeze, most of them on exactly the
-tick it had named and the rest a few ticks later on a further bounce.
+map. Every plan it produced lifted the freeze, and every one of them did it on
+exactly the tick it had named.
 
 ### Spinning tee
 

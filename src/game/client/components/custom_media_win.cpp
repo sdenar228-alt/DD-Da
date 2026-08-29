@@ -402,7 +402,11 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, std::vector<uint8_t> &vRgba)
 	}
 
 	const size_t RowSize = (size_t)m_Width * 4;
-	vRgba.assign(RowSize * m_Height, 0);
+	// Resized rather than assigned: assigning zero-fills the whole frame every
+	// time, and every byte of it is overwritten below anyway.
+	const size_t Needed = RowSize * m_Height;
+	if(vRgba.size() != Needed)
+		vRgba.resize(Needed);
 	for(int y = 0; y < m_Height; ++y)
 	{
 		const int SourceRow = m_Flipped ? m_Height - 1 - y : y;

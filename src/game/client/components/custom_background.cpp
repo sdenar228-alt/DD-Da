@@ -516,14 +516,15 @@ void CCustomBackground::Update()
 	{
 		// Applied every frame so that changing the setting takes effect at once.
 		m_pWindowsMedia->SetMaxDuration(g_Config.m_ClCustomBackgroundVideoLength);
-		std::vector<uint8_t> vRgba;
-		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), vRgba) || vRgba.empty())
+		// Kept between frames so that a video does not reallocate its whole frame
+		// on every one of them.
+		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), m_vFrameBuffer) || m_vFrameBuffer.empty())
 			return;
 		Frame.m_Width = m_pWindowsMedia->Width();
 		Frame.m_Height = m_pWindowsMedia->Height();
 		Frame.m_Format = CImageInfo::FORMAT_RGBA;
 		Frame.Allocate();
-		mem_copy(Frame.m_pData, vRgba.data(), std::min(vRgba.size(), Frame.DataSize()));
+		mem_copy(Frame.m_pData, m_vFrameBuffer.data(), std::min(m_vFrameBuffer.size(), Frame.DataSize()));
 	}
 	else
 #endif
@@ -532,7 +533,9 @@ void CCustomBackground::Update()
 
 	if(m_Texture.IsValid())
 		Graphics()->UnloadTexture(&m_Texture);
-	m_Texture = Graphics()->LoadTextureRawMove(Frame, 0, "custom background");
+	// A background is drawn once, filling the screen, so the mipmap chain that
+	// would be built for every video frame is never sampled.
+	m_Texture = Graphics()->LoadTextureRawMove(Frame, IGraphics::TEXLOAD_NO_MIPMAPS, "custom background");
 	m_HasFrame = m_Texture.IsValid() && !m_Texture.IsNullTexture();
 	if(!m_HasFrame)
 		m_Texture.Invalidate();
