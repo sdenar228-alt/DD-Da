@@ -57,6 +57,57 @@ void CTileColors::RebuildBuckets()
 		m_vBuckets.push_back({Color, {}});
 	}
 	m_BucketsValid = true;
+	m_QuadsValid = false;
+}
+
+// Walking the visible tiles is the expensive half, and what it produces only
+// changes when the camera crosses a tile boundary, so it is kept until it does.
+// Neighbouring tiles of one color also become a single quad, which is what most
+// of a freeze area is.
+void CTileColors::RebuildQuads(int StartX, int StartY, int EndX, int EndY, bool UseFront)
+{
+	const CCollision *pCollision = Collision();
+	const int MapWidth = pCollision->GetWidth();
+
+	for(SBucket &Bucket : m_vBuckets)
+		Bucket.m_vQuads.clear();
+
+	for(int y = StartY; y <= EndY; ++y)
+	{
+		int RunBucket = -1;
+		int RunStart = 0;
+		for(int x = StartX; x <= EndX + 1; ++x)
+		{
+			int Bucket = -1;
+			if(x <= EndX)
+			{
+				const int MapIndex = y * MapWidth + x;
+				Bucket = m_aBucketForTile[pCollision->GetTileIndex(MapIndex) & 0xFF];
+				if(Bucket < 0 && UseFront)
+					Bucket = m_aBucketForTile[pCollision->GetFrontTileIndex(MapIndex) & 0xFF];
+				if(Bucket >= 0 && (size_t)Bucket >= m_vBuckets.size())
+					Bucket = -1;
+			}
+
+			if(Bucket == RunBucket)
+				continue;
+
+			if(RunBucket >= 0)
+			{
+				m_vBuckets[RunBucket].m_vQuads.emplace_back(
+					RunStart * 32.0f, y * 32.0f, (x - RunStart) * 32.0f, 32.0f);
+			}
+			RunBucket = Bucket;
+			RunStart = x;
+		}
+	}
+
+	m_CachedStartX = StartX;
+	m_CachedStartY = StartY;
+	m_CachedEndX = EndX;
+	m_CachedEndY = EndY;
+	m_CachedUseFront = UseFront;
+	m_QuadsValid = true;
 }
 
 void CTileColors::OnRender()
@@ -94,24 +145,11 @@ void CTileColors::OnRender()
 		return;
 	}
 
-	for(SBucket &Bucket : m_vBuckets)
-		Bucket.m_vQuads.clear();
-
 	const bool UseFront = g_Config.m_ClCustomTileColorsFront != 0;
-	for(int y = StartY; y <= EndY; ++y)
+	if(!m_QuadsValid || StartX != m_CachedStartX || StartY != m_CachedStartY ||
+		EndX != m_CachedEndX || EndY != m_CachedEndY || UseFront != m_CachedUseFront)
 	{
-		for(int x = StartX; x <= EndX; ++x)
-		{
-			const int MapIndex = y * MapWidth + x;
-
-			int Bucket = m_aBucketForTile[pCollision->GetTileIndex(MapIndex) & 0xFF];
-			if(Bucket < 0 && UseFront)
-				Bucket = m_aBucketForTile[pCollision->GetFrontTileIndex(MapIndex) & 0xFF];
-			if(Bucket < 0 || (size_t)Bucket >= m_vBuckets.size())
-				continue;
-
-			m_vBuckets[Bucket].m_vQuads.emplace_back(x * 32.0f, y * 32.0f, 32.0f, 32.0f);
-		}
+		RebuildQuads(StartX, StartY, EndX, EndY, UseFront);
 	}
 
 	Graphics()->TextureClear();

@@ -254,9 +254,16 @@ void CMusicIsland::Render(float Width, float Height)
 	const float ButtonGap = 6.0f * Scale;
 	const float ButtonsWidth = ButtonSize * 3.0f + ButtonGap * 2.0f;
 
-	const float TitleWidth = TextRender()->TextWidth(TitleSize, m_Track.m_Title.c_str());
-	const float ArtistWidth = TextRender()->TextWidth(ArtistSize, m_Track.m_Artist.c_str());
-	float TextWidth = std::max(TitleWidth, ArtistWidth);
+	// Measuring shapes the text, which is the same work for hundreds of frames in
+	// a row: the answer only moves when the track or the size does.
+	if(m_MeasuredRevision != m_Track.m_Revision || m_MeasuredScale != Scale)
+	{
+		m_MeasuredRevision = m_Track.m_Revision;
+		m_MeasuredScale = Scale;
+		m_MeasuredTitleWidth = TextRender()->TextWidth(TitleSize, m_Track.m_Title.c_str());
+		m_MeasuredArtistWidth = TextRender()->TextWidth(ArtistSize, m_Track.m_Artist.c_str());
+	}
+	float TextWidth = std::max(m_MeasuredTitleWidth, m_MeasuredArtistWidth);
 	TextWidth = std::clamp(TextWidth, 48.0f * Scale, 220.0f * Scale);
 
 	const float PillWidth = Padding + ArtSize + Padding * 1.6f + TextWidth + Padding * 1.6f + ButtonsWidth + Padding;

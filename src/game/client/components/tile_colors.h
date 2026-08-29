@@ -19,6 +19,8 @@ public:
 	CTileColors() { m_aBucketForTile.fill(-1); }
 	int Sizeof() const override { return sizeof(*this); }
 	void OnRender() override;
+	// A new map invalidates the cached geometry, the old tiles are gone.
+	void OnMapLoad() override { m_QuadsValid = false; }
 
 private:
 	// One bucket per colored tile type, filled with the quads to draw.
@@ -35,7 +37,17 @@ private:
 	std::array<unsigned, 14> m_aLastColors = {};
 	bool m_BucketsValid = false;
 
+	// The quads only change when the visible tiles do, which is when the camera
+	// crosses a tile boundary, not every frame.
+	int m_CachedStartX = 0;
+	int m_CachedStartY = 0;
+	int m_CachedEndX = -1;
+	int m_CachedEndY = -1;
+	bool m_CachedUseFront = false;
+	bool m_QuadsValid = false;
+
 	void RebuildBuckets();
+	void RebuildQuads(int StartX, int StartY, int EndX, int EndY, bool UseFront);
 };
 
 #endif

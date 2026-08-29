@@ -29,6 +29,12 @@ private:
 	// Starts the worker if it is not running yet and queues the command for it.
 	void SendCommand(CWindowsMusic::ECommand Command);
 
+	// The measured width of the two lines, kept until the track or the size moves.
+	uint64_t m_MeasuredRevision = (uint64_t)-1;
+	float m_MeasuredScale = -1.0f;
+	float m_MeasuredTitleWidth = 0.0f;
+	float m_MeasuredArtistWidth = 0.0f;
+
 	IGraphics::CTextureHandle m_ArtworkTexture;
 
 	CWindowsMusic::CTrack m_Track;

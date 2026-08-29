@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 // Draws a user supplied image or video behind everything else, both in game and
 // in the menus. Videos and non-PNG images are decoded with FFmpeg, which is
@@ -39,6 +40,9 @@ private:
 	bool m_UsingWindowsMedia = false;
 #endif
 
+	// Reused between video frames, a fresh one per frame was megabytes of
+	// allocation and zero fill at the video's frame rate.
+	std::vector<uint8_t> m_vFrameBuffer;
 	IGraphics::CTextureHandle m_Texture;
 	std::string m_LoadedFile;
 	bool m_LoadFailed = false;

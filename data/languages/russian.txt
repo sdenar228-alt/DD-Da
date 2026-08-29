@@ -3080,3 +3080,9 @@ Unfreeze shot found, but you are not holding the laser
 
 Frozen already, the shot had to leave earlier
 == Уже заморожен — стрелять надо было раньше
+
+Unfreeze shot ready, saves %d ticks of freeze
+== Выстрел готов, снимет %d тиков фриза
+
+On this server a laser cannot hit the tee that fired it
+== На этом сервере лазер не может попасть в того, кто выстрелил
