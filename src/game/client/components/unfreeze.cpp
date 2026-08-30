@@ -1,10 +1,14 @@
 #include "unfreeze.h"
 
+#include <base/log.h>
 #include <base/math.h>
 #include <base/time.h>
 #include <base/vmath.h>
 
+#include <base/io.h>
+
 #include <engine/graphics.h>
+#include <engine/storage.h>
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
 
@@ -16,6 +20,7 @@
 #include <game/mapitems.h>
 
 #include <algorithm>
+#include <cstdarg>
 #include <cmath>
 #include <limits>
 
@@ -729,6 +734,8 @@ void CUnfreeze::OnRender()
 	const CNetObj_Character *pLocal = pGameClient->m_Snap.m_pLocalCharacter;
 	if(LocalId < 0 || pLocal == nullptr || pGameClient->m_Snap.m_SpecInfo.m_Active)
 	{
+		Debug("idle: no local character (id %d, snap %d, spectating %d)",
+			LocalId, pLocal != nullptr, (int)pGameClient->m_Snap.m_SpecInfo.m_Active);
 		Reset();
 		return;
 	}
@@ -739,6 +746,10 @@ void CUnfreeze::OnRender()
 	// any more, it had to leave before the freeze started.
 	if(pPredicted == nullptr || pPredicted->m_FreezeTime > 0)
 	{
+		if(pPredicted == nullptr)
+			Debug("idle: the predicted world has no character, is cl_predict on?");
+		else
+			Debug("too late: already frozen for %d more ticks", pPredicted->m_FreezeTime);
 		m_HasSolution = false;
 		m_vSolution.clear();
 		m_Status = pPredicted != nullptr ? EStatus::TOO_LATE : EStatus::QUIET;
@@ -748,6 +759,9 @@ void CUnfreeze::OnRender()
 
 	if(!SelfHitPossible())
 	{
+		Debug("impossible: old laser %d, ddrace prediction %d",
+			(int)GameClient()->m_PredictedWorld.m_WorldConfig.m_OldLaser,
+			(int)GameClient()->m_PredictedWorld.m_WorldConfig.m_IsDDRace);
 		m_HasSolution = false;
 		m_vSolution.clear();
 		m_Status = EStatus::IMPOSSIBLE;
@@ -776,6 +790,8 @@ void CUnfreeze::OnRender()
 		const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
 
 		m_FreezeAhead = Predict(LocalId, PredTick, Horizon);
+		if(!m_FreezeAhead)
+			Debug("quiet: no freeze within %d ticks", Horizon);
 		if(m_FreezeAhead)
 		{
 			// Firing a tick later moves every bounce with it, so the shot is not
@@ -828,6 +844,15 @@ void CUnfreeze::OnRender()
 				m_PlanFireTick = Best.m_FireTick;
 				m_SolutionDir = normalize(vec2((float)Best.m_TargetX, (float)Best.m_TargetY));
 				m_vSolution = vBestPath;
+				Debug("plan: fire on tick %d (+%d), hit +%d, saves %d ticks, margin %d, tile end %d",
+					Best.m_FireTick, Best.m_FireTick - PredTick, Best.m_EvalTick - 1 - PredTick,
+					Best.m_Saved, Best.m_Margin, (int)Best.m_TileEnd);
+			}
+			else
+			{
+				Debug("no shot: window ticks %d..%d (+%d..+%d), %d fire delays tried, holding laser %d",
+					m_FirstUsefulTick, m_LastUsefulTick, m_FirstUsefulTick - PredTick, m_LastUsefulTick - PredTick,
+					NumDelays, (int)HoldsLaser);
 			}
 		}
 
@@ -843,6 +868,8 @@ void CUnfreeze::OnRender()
 		const bool Landed = PredTick >= m_ShotLandsTick;
 		if(Cooled && Landed)
 			m_WantShot = true;
+		else
+			Debug("holding off: reloaded %d, previous shot landed %d", (int)Cooled, (int)Landed);
 	}
 
 	if(m_HasSolution)
@@ -878,6 +905,8 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 	// the snapshot does, and it runs the same switch code as the server.
 	if(pPredicted->GetActiveWeapon() != WEAPON_LASER)
 	{
+		Debug("waiting for the laser, weapon %d in hand, plan tick %d, now %d",
+			pPredicted->GetActiveWeapon(), m_PlanFireTick, PredTick);
 		if(m_PlanFireTick >= 0 && PredTick > m_PlanFireTick)
 		{
 			// The laser did not arrive in time. Drop the plan and look again at
@@ -899,6 +928,8 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 		// new one is looked for straight away.
 		if(PredTick > m_PlanFireTick)
 		{
+			Debug("plan missed: it was for tick %d and the input is for %d, looking again",
+				m_PlanFireTick, PredTick);
 			m_WantShot = false;
 			m_HasSolution = false;
 			m_LastSearchTime = -1000.0f;
@@ -907,6 +938,7 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 	}
 
 	m_WantShot = false;
+	Debug("SHOT on tick %d, aim %d,%d", PredTick, m_Solution.m_TargetX, m_Solution.m_TargetY);
 
 	// An even step leaves the parity alone, so the player's own fire key stays in
 	// step with the counter, and the laser's full automatic mode is not armed.
@@ -972,6 +1004,8 @@ bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
 	// to them; asking forever would only eat their weapon wheel.
 	if(!pPredicted->GetWeaponGot(WEAPON_LASER) || pPredicted->GetActiveWeapon() == WEAPON_NINJA)
 	{
+		Debug("no laser to switch to: got it %d, weapon %d in hand",
+			(int)pPredicted->GetWeaponGot(WEAPON_LASER), pPredicted->GetActiveWeapon());
 		m_WantShot = false;
 		m_WantLaser = false;
 		return false;
@@ -983,10 +1017,12 @@ bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
 		// The weapon itself, not the field the input happened to carry.
 		m_RestoreWeapon = pPredicted->GetActiveWeapon();
 		m_SwitchDeadlineTick = PredTick + 50;
+		Debug("asking for the laser, putting weapon %d back afterwards", m_RestoreWeapon);
 	}
 	else if(PredTick > m_SwitchDeadlineTick)
 	{
 		// The server is not giving us the laser. Stop asking.
+		Debug("gave up asking for the laser after 50 ticks");
 		m_WantShot = false;
 		m_WantLaser = false;
 		return false;
@@ -1008,6 +1044,36 @@ bool CUnfreeze::ApplyAim(CNetObj_PlayerInput *pInput) const
 	pInput->m_TargetX = m_FiredTargetX;
 	pInput->m_TargetY = m_FiredTargetY;
 	return true;
+}
+
+void CUnfreeze::Debug(const char *pFormat, ...) const
+{
+	if(!g_Config.m_ClUnfreezeDebug)
+		return;
+
+	char aBuf[256];
+	va_list Args;
+	va_start(Args, pFormat);
+	str_format_v(aBuf, sizeof(aBuf), pFormat, Args);
+	va_end(Args);
+
+	// The same line every frame would drown the interesting ones, so a line only
+	// repeats when something else has been said in between or a second has gone by.
+	const int Tick = Client()->PredGameTick(g_Config.m_ClDummy);
+	if(str_comp(aBuf, m_aLastDebug) == 0 && Tick - m_LastDebugTick < Client()->GameTickSpeed())
+		return;
+	str_copy(m_aLastDebug, aBuf, sizeof(m_aLastDebug));
+	m_LastDebugTick = Tick;
+
+	IOHANDLE File = Storage()->OpenFile("unfreeze.log", IOFLAG_APPEND, IStorage::TYPE_SAVE);
+	if(!File)
+		return;
+	char aLine[320];
+	str_format(aLine, sizeof(aLine), "tick %d: %s", Tick, aBuf);
+	const char Newline = 10;
+	io_write(File, aLine, str_length(aLine));
+	io_write(File, &Newline, 1);
+	io_close(File);
 }
 
 void CUnfreeze::RenderPlan() const
