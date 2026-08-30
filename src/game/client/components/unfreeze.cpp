@@ -773,10 +773,18 @@ void CUnfreeze::OnRender()
 
 	const float Now = Client()->LocalTime();
 	const float Interval = std::clamp(g_Config.m_ClUnfreezeInterval, 40, 500) / 1000.0f;
-	if(Now - m_LastSearchTime >= Interval || Now < m_LastSearchTime)
+	// A shot that has been decided on is left alone until it has been taken or
+	// its tick has gone by. The search runs several times more often than the
+	// lead a plan needs, and a search that finds nothing used to throw the
+	// decided shot away a tick or two after it was armed. Against a real server
+	// that was 160 shots armed and 3 fired.
+	const bool Committed = m_WantShot && m_HasSolution && m_PlanFireTick >= 0 && PredTick <= m_PlanFireTick;
+	if(!Committed && (Now - m_LastSearchTime >= Interval || Now < m_LastSearchTime))
 	{
 		m_LastSearchTime = Now;
 		m_HasSolution = false;
+		// Whatever was wanted was wanted for the plan that is being replaced.
+		m_WantShot = false;
 		m_vSolution.clear();
 
 		// Whatever the settings ask for, the search may not cost more than this,
