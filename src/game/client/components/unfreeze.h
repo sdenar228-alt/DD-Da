@@ -11,6 +11,7 @@
 #include <generated/protocol.h>
 
 #include <array>
+#include <utility>
 #include <vector>
 
 // Works out the shot that unfreezes you with your own laser.
@@ -31,10 +32,15 @@ public:
 	void OnRender() override;
 	void OnReset() override;
 
-	// Both are called from CControls::SnapInput. The weapon request and the shot
-	// go on the stored input, so the client's own bookkeeping stays in step; the
-	// aim may only go on the send copy, never on the stored input.
+	// All three are called from CControls::SnapInput.
+	//
+	// Only the shot itself goes on the stored input, because the fire counter is
+	// cumulative and the client's own bookkeeping has to stay in step with it.
+	// The aim and the weapon request may only go on the send copy: both fields
+	// belong to the player, and the weapon one in particular is sticky, so a
+	// value left in the stored input disables their weapon wheel for good.
 	bool ApplyInput(CNetObj_PlayerInput *pInput);
+	bool ApplyWeapon(CNetObj_PlayerInput *pSendData);
 	bool ApplyAim(CNetObj_PlayerInput *pInput) const;
 
 private:
@@ -88,6 +94,10 @@ private:
 		int m_Margin = 0;
 		// How far the beam passes from the tee on the aimed tick.
 		float m_Miss = 0.0f;
+		// The nearest the beam came to a tick worth hitting, whether or not it
+		// got there. The sweep ranks angles by this, so a window narrower than
+		// the coarse step is still found.
+		float m_Approach = 0.0f;
 		// True when the freed stretch ends because a tile freezes the tee again
 		// rather than because the freeze would have run out anyway. Those windows
 		// are short but they are the whole prize: they hand back control.
@@ -117,6 +127,9 @@ private:
 
 	std::vector<CSegment> m_vSegments;
 	std::vector<CSegment> m_vSolution;
+	// Angle and how promising it looked, filled by the coarse sweep and read by
+	// the refining pass. A member so the sweep does not allocate every frame.
+	std::vector<std::pair<float, float>> m_vProbes;
 
 	bool m_HasSolution = false;
 	CCandidate m_Solution;
@@ -135,28 +148,37 @@ private:
 	int m_FiredTargetY = 0;
 	int m_AimUntilTick = -1;
 	int m_LastShotTick = -1;
+	// What the last search cost, shown in the status line. The sweep is the one
+	// part of this module that can be felt in the frame rate.
+	float m_LastSearchMs = 0.0f;
 	// No second shot before the one already on its way has arrived.
 	int m_ShotLandsTick = -1;
 	float m_LastSearchTime = 0.0f;
 
-	// The weapon the player had before the module asked for the laser, plus one,
-	// which is how the protocol carries it. -1 while the module is not holding
-	// the field.
+	// The weapon the player was holding before the module asked for the laser,
+	// as a plain weapon index. -1 while the module is not touching the field.
+	// It has to be the weapon itself rather than whatever the input carried:
+	// that field is zero whenever the player last used the wheel, and writing
+	// the zero back does not restore anything, it just leaves them on the laser.
 	int m_RestoreWeapon = -1;
-	// How many more sends the laser request rides on. The server acts on the
-	// wanted weapon out of two different copies of the input, so one send is not
-	// reliably enough.
-	int m_SwitchSends = 0;
+	// True while the laser is being asked for. The server only acts on the
+	// wanted weapon when two inputs in a row carry it, because the tick it takes
+	// the value from is one behind the tick it takes the request from, so the
+	// field is written on every send until the switch has happened.
+	bool m_WantLaser = false;
 	int m_SwitchDeadlineTick = -1;
 
 	void Reset();
 	bool Predict(int LocalId, int StartTick, int Horizon);
 	// Sweeps the angles for one fire tick and keeps the best plan found so far.
-	bool Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath);
+	// Gives up at the deadline with whatever it has, so a heavy setting costs
+	// frames it was allowed to cost rather than however many it takes.
+	bool Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline);
 	// Which fire delays could put a bounce on a tick worth hitting. Bounces land
 	// every BounceTicks, so firing a tick later moves all of them by a tick, and
-	// only a couple of delays are ever worth tracing.
-	int UsefulDelays(int PredTick, int BounceTicks, bool *pDelays, int MaxDelays) const;
+	// only a couple of delays are ever worth tracing. Delays below MinDelay are
+	// left out because the shot cannot leave that soon.
+	int UsefulDelays(int PredTick, int BounceTicks, int MinDelay, int MaxDelay, bool *pDelays, int MaxDelays) const;
 	// What a plan is worth, in ticks of freeze taken off plus how likely it is to
 	// survive the flight being slightly off what was predicted.
 	static float ScoreOf(const CCandidate &Candidate, int FireTick, float Radius);
