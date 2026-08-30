@@ -668,6 +668,7 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 		}
 		// A hit sorts ahead of every miss, and among misses the nearest first.
 		*pRank = Good ? -1.0f : Candidate.m_Approach;
+		m_BestApproach = std::min(m_BestApproach, Candidate.m_Approach);
 		return Good;
 	};
 
@@ -925,6 +926,7 @@ void CUnfreeze::OnRender()
 			const int NumDelays = UsefulDelays(PredTick, BounceTicks, MinDelay, std::min(2 * BounceTicks, MAX_DELAYS), aDelays, MAX_DELAYS);
 			CCandidate Best;
 			float BestScore = 0.0f;
+			m_BestApproach = std::numeric_limits<float>::max();
 			std::vector<CSegment> vBestPath;
 			// Which delays to trace has to be settled before any of them is
 			// traced, because the budget is then split evenly between them. Spent
@@ -965,9 +967,11 @@ void CUnfreeze::OnRender()
 			}
 			else
 			{
-				Debug("no shot: window ticks %d..%d (+%d..+%d), %d fire delays tried, holding laser %d",
-					m_FirstUsefulTick, m_LastUsefulTick, m_FirstUsefulTick - PredTick, m_LastUsefulTick - PredTick,
-					NumDelays, (int)InHand);
+				Debug("no shot: window +%d..+%d (%d ticks), %d delays, laser %d, closest the beam came %.0f, speed %.0f (%.0f,%.0f)",
+					m_FirstUsefulTick - PredTick, m_LastUsefulTick - PredTick, m_LastUsefulTick - m_FirstUsefulTick + 1,
+					NumDelays, (int)InHand,
+					m_BestApproach == std::numeric_limits<float>::max() ? -1.0f : m_BestApproach,
+					length(pPredicted->Core()->m_Vel), pPredicted->Core()->m_Vel.x, pPredicted->Core()->m_Vel.y);
 			}
 		}
 

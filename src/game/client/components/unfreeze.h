@@ -134,6 +134,10 @@ private:
 	// Angle and how promising it looked, filled by the coarse sweep and read by
 	// the refining pass. A member so the sweep does not allocate every frame.
 	std::vector<std::pair<float, float>> m_vProbes;
+	// The nearest any traced angle came to a tick worth hitting during the last
+	// search. It separates a flight with no geometry for a shot from one where
+	// the sweep walked past a band it should have found.
+	float m_BestApproach = 0.0f;
 
 	bool m_HasSolution = false;
 	CCandidate m_Solution;
