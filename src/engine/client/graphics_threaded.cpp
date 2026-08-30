@@ -536,6 +536,26 @@ bool CGraphics_Threaded::UpdateTextTexture(CTextureHandle TextureId, int x, int 
 	return true;
 }
 
+bool CGraphics_Threaded::UpdateTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData)
+{
+	if(!TextureId.IsValid())
+	{
+		free(pData);
+		return false;
+	}
+
+	CCommandBuffer::SCommand_Texture_Update Cmd;
+	Cmd.m_Slot = TextureId.Id();
+	Cmd.m_X = x;
+	Cmd.m_Y = y;
+	Cmd.m_Width = Width;
+	Cmd.m_Height = Height;
+	Cmd.m_pData = pData;
+	AddCmd(Cmd);
+
+	return true;
+}
+
 static SWarning FormatPngliteIncompatibilityWarning(int PngliteIncompatible, const char *pContextName)
 {
 	SWarning Warning;

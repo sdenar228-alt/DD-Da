@@ -40,7 +40,10 @@ public:
 	// Fills `vRgba` with `Width() * Height() * 4` bytes of RGBA. For videos it
 	// returns false while the frame that is already shown is still the right one
 	// for `Time` (in seconds), looping at the end.
-	bool NextFrame(double Time, std::vector<uint8_t> &vRgba);
+	// Writes the frame straight into the caller's buffer, which has to hold
+	// Width() * Height() * 4 bytes. The caller owns it, so the picture can go to
+	// the graphics thread without being copied again on the way.
+	bool NextFrame(double Time, uint8_t *pRgba, size_t Size);
 
 private:
 	class CImpl;

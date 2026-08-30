@@ -123,6 +123,7 @@ public:
 		// texture commands
 		CMD_TEXTURE_CREATE,
 		CMD_TEXTURE_DESTROY,
+		CMD_TEXTURE_UPDATE,
 		CMD_TEXT_TEXTURES_CREATE,
 		CMD_TEXT_TEXTURES_DESTROY,
 		CMD_TEXT_TEXTURE_UPDATE,
@@ -545,6 +546,25 @@ public:
 		int m_Slot;
 	};
 
+	// Writes over part of a texture that already exists, instead of throwing the
+	// texture away and making another one. A video background is the case this
+	// was added for: it replaces the whole picture every frame, and creating a
+	// texture every frame reallocates the storage on the graphics card as well.
+	struct SCommand_Texture_Update : public SCommand
+	{
+		SCommand_Texture_Update() :
+			SCommand(CMD_TEXTURE_UPDATE) {}
+
+		int m_Slot;
+
+		int m_X;
+		int m_Y;
+		size_t m_Width;
+		size_t m_Height;
+		// data must be in RGBA format
+		uint8_t *m_pData; // will be freed by the command processor
+	};
+
 	struct SCommand_TextTextures_Create : public SCommand
 	{
 		SCommand_TextTextures_Create() :
@@ -956,6 +976,7 @@ public:
 	bool LoadTextTextures(size_t Width, size_t Height, CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture, uint8_t *pTextData, uint8_t *pTextOutlineData) override;
 	bool UnloadTextTextures(CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture) override;
 	bool UpdateTextTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData, bool IsMovedPointer) override;
+	bool UpdateTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData) override;
 
 	CTextureHandle LoadSpriteTexture(const CImageInfo &FromImageInfo, const std::optional<CImageInfo> &FallbackImageInfo, const struct CDataSprite *pSprite) override;
 

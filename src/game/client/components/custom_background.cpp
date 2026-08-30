@@ -383,6 +383,8 @@ void CCustomBackground::Unload()
 {
 	if(m_Texture.IsValid())
 		Graphics()->UnloadTexture(&m_Texture);
+	m_TextureWidth = 0;
+	m_TextureHeight = 0;
 	m_pMedia->Close();
 #if defined(CONF_FAMILY_WINDOWS)
 	m_pWindowsMedia->Close();
@@ -516,15 +518,39 @@ void CCustomBackground::Update()
 	{
 		// Applied every frame so that changing the setting takes effect at once.
 		m_pWindowsMedia->SetMaxDuration(g_Config.m_ClCustomBackgroundVideoLength);
-		// Kept between frames so that a video does not reallocate its whole frame
-		// on every one of them.
-		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), m_vFrameBuffer) || m_vFrameBuffer.empty())
+
+		const int Width = m_pWindowsMedia->Width();
+		const int Height = m_pWindowsMedia->Height();
+		if(Width <= 0 || Height <= 0)
 			return;
-		Frame.m_Width = m_pWindowsMedia->Width();
-		Frame.m_Height = m_pWindowsMedia->Height();
+		const size_t Size = (size_t)Width * Height * 4;
+		// One buffer, handed straight to the graphics thread, which frees it. The
+		// decoder writes the picture into it, so the frame is not copied at all
+		// between the file and the graphics card.
+		uint8_t *pPixels = static_cast<uint8_t *>(malloc(Size));
+		if(pPixels == nullptr)
+			return;
+		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), pPixels, Size))
+		{
+			free(pPixels);
+			return;
+		}
+
+		// Only the first frame of a video makes a texture. Every frame after it
+		// is written over the one that is already there: making a new texture per
+		// frame throws away the storage on the graphics card and asks for it
+		// again, which costs more than the picture itself.
+		if(m_Texture.IsValid() && m_TextureWidth == Width && m_TextureHeight == Height)
+		{
+			Graphics()->UpdateTexture(m_Texture, 0, 0, Width, Height, pPixels);
+			m_HasFrame = true;
+			return;
+		}
+
+		Frame.m_Width = Width;
+		Frame.m_Height = Height;
 		Frame.m_Format = CImageInfo::FORMAT_RGBA;
-		Frame.Allocate();
-		mem_copy(Frame.m_pData, m_vFrameBuffer.data(), std::min(m_vFrameBuffer.size(), Frame.DataSize()));
+		Frame.m_pData = pPixels;
 	}
 	else
 #endif
@@ -533,6 +559,8 @@ void CCustomBackground::Update()
 
 	if(m_Texture.IsValid())
 		Graphics()->UnloadTexture(&m_Texture);
+	m_TextureWidth = Frame.m_Width;
+	m_TextureHeight = Frame.m_Height;
 	// A background is drawn once, filling the screen, so the mipmap chain that
 	// would be built for every video frame is never sampled.
 	m_Texture = Graphics()->LoadTextureRawMove(Frame, IGraphics::TEXLOAD_NO_MIPMAPS, "custom background");

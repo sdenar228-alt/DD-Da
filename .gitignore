@@ -163,3 +163,6 @@ tags
 
 # our own build helper, not caught by the /build* rule above
 !/build.bat
+
+# Built artifacts handed out by hand, like the iOS app from the workflow.
+/dist/
