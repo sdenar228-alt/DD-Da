@@ -78,6 +78,7 @@ void CUnfreeze::Reset()
 	m_FirstUsefulTick = -1;
 	m_LastUsefulTick = -1;
 	m_FreezeAhead = false;
+	m_WindowAhead = false;
 	m_Status = EStatus::QUIET;
 }
 
@@ -751,6 +752,7 @@ void CUnfreeze::OnRender()
 		else
 			Debug("too late: already frozen for %d more ticks", pPredicted->m_FreezeTime);
 		m_HasSolution = false;
+		m_WindowAhead = false;
 		m_vSolution.clear();
 		m_Status = pPredicted != nullptr ? EStatus::TOO_LATE : EStatus::QUIET;
 		RenderStatus();
@@ -790,6 +792,15 @@ void CUnfreeze::OnRender()
 		const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
 
 		m_FreezeAhead = Predict(LocalId, PredTick, Horizon);
+		// Reaching for the laser is worth starting the moment a stretch worth
+		// shooting into is coming, rather than once an angle has been found for
+		// it. Waiting for the plan costs the switch's ticks out of the few the
+		// freeze leaves, and measured against a real server that is most of the
+		// difference between a shot that leaves and one that is still being
+		// prepared when the tee freezes.
+		m_WindowAhead = m_FreezeAhead && m_FirstUsefulTick >= 0;
+		if(m_WindowAhead && m_WantLaser)
+			m_SwitchDeadlineTick = PredTick + 50;
 		if(!m_FreezeAhead)
 			Debug("quiet: no freeze within %d ticks", Horizon);
 		if(m_FreezeAhead)
@@ -867,7 +878,10 @@ void CUnfreeze::OnRender()
 		const bool Cooled = m_LastShotTick < 0 || PredTick - m_LastShotTick >= FireDelay;
 		const bool Landed = PredTick >= m_ShotLandsTick;
 		if(Cooled && Landed)
+		{
 			m_WantShot = true;
+			Debug("armed: taking the shot planned for tick %d", m_PlanFireTick);
+		}
 		else
 			Debug("holding off: reloaded %d, previous shot landed %d", (int)Cooled, (int)Landed);
 	}
@@ -889,11 +903,18 @@ void CUnfreeze::OnRender()
 bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 {
 	if(!m_HasSolution || !m_WantShot)
+	{
+		if(m_WantShot)
+			Debug("shot wanted but the plan is gone");
 		return false;
+	}
 
 	const CCharacter *pPredicted = GameClient()->m_PredictedWorld.GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
 	if(pPredicted == nullptr)
+	{
+		Debug("shot wanted but there is no predicted character to fire it");
 		return false;
+	}
 
 	// The input being built here is the one the server runs on the tick that
 	// PredGameTick names right now, not the one after it. Getting that wrong
@@ -981,7 +1002,8 @@ bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
 		return true;
 	}
 
-	if(!m_HasSolution || !m_WantShot || !g_Config.m_ClUnfreezeSwitchWeapon)
+	const bool Wanted = (m_HasSolution && m_WantShot) || m_WindowAhead;
+	if(!Wanted || g_Config.m_ClUnfreeze == 0 || !g_Config.m_ClUnfreezeSwitchWeapon)
 	{
 		m_WantLaser = false;
 		return false;
