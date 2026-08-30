@@ -208,6 +208,10 @@ private:
 	const CTuningParams *ReachTuning(vec2 FirePos) const;
 	// False on servers where a laser can never touch the tee that fired it.
 	bool SelfHitPossible() const;
+	// Whether the laser is in hand. The predicted character is a round trip
+	// ahead, but it only believes in the weapons it has seen, so the snapshot has
+	// the last word when it disagrees.
+	bool HoldsLaser() const;
 	// Says what the module just decided, into unfreeze.log in the config folder,
 	// while cl_unfreeze_debug is on. A module that refuses silently is a module
 	// nobody can tell apart from a broken one.

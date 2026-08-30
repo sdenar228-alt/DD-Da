@@ -178,6 +178,19 @@ bool CUnfreeze::SelfHitPossible() const
 	return !pWorld->m_WorldConfig.m_OldLaser && pWorld->m_WorldConfig.m_IsDDRace;
 }
 
+bool CUnfreeze::HoldsLaser() const
+{
+	const CCharacter *pPredicted = GameClient()->m_PredictedWorld.GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
+	if(pPredicted != nullptr && pPredicted->GetActiveWeapon() == WEAPON_LASER)
+		return true;
+	// The prediction refuses to switch to a weapon it has not seen in a snapshot,
+	// and a snapshot only ever carries the weapon in hand, so it will not model a
+	// switch to the laser however many times the server grants one. What the
+	// server says is therefore the only signal that the switch happened.
+	const CNetObj_Character *pSnap = GameClient()->m_Snap.m_pLocalCharacter;
+	return pSnap != nullptr && pSnap->m_Weapon == WEAPON_LASER;
+}
+
 const CTuningParams *CUnfreeze::LaserTuning(vec2 FirePos) const
 {
 	CGameWorld *pWorld = &GameClient()->m_PredictedWorld;
@@ -824,8 +837,8 @@ void CUnfreeze::OnRender()
 			// made the module look like it did nothing at all.
 			constexpr int MAX_DELAYS = 16;
 			constexpr int MAX_SWEPT = 6;
-			const bool HoldsLaser = pPredicted->GetActiveWeapon() == WEAPON_LASER;
-			const int MinDelay = HoldsLaser || !g_Config.m_ClUnfreezeSwitchWeapon ? 2 : 8;
+			const bool InHand = HoldsLaser();
+			const int MinDelay = InHand || !g_Config.m_ClUnfreezeSwitchWeapon ? 2 : 8;
 			bool aDelays[MAX_DELAYS] = {};
 			const int NumDelays = UsefulDelays(PredTick, BounceTicks, MinDelay, std::min(2 * BounceTicks, MAX_DELAYS), aDelays, MAX_DELAYS);
 			CCandidate Best;
@@ -871,7 +884,7 @@ void CUnfreeze::OnRender()
 			{
 				Debug("no shot: window ticks %d..%d (+%d..+%d), %d fire delays tried, holding laser %d",
 					m_FirstUsefulTick, m_LastUsefulTick, m_FirstUsefulTick - PredTick, m_LastUsefulTick - PredTick,
-					NumDelays, (int)HoldsLaser);
+					NumDelays, (int)InHand);
 			}
 		}
 
@@ -896,8 +909,7 @@ void CUnfreeze::OnRender()
 
 	if(m_HasSolution)
 	{
-		const bool HoldsLaser = pPredicted->GetActiveWeapon() == WEAPON_LASER;
-		m_Status = HoldsLaser || g_Config.m_ClUnfreezeSwitchWeapon ? EStatus::READY : EStatus::NO_LASER;
+		m_Status = HoldsLaser() || g_Config.m_ClUnfreezeSwitchWeapon ? EStatus::READY : EStatus::NO_LASER;
 	}
 	else if(m_FreezeAhead)
 	{
@@ -932,10 +944,12 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 
 	// The predicted character knows which weapon is in hand a round trip before
 	// the snapshot does, and it runs the same switch code as the server.
-	if(pPredicted->GetActiveWeapon() != WEAPON_LASER)
+	if(!HoldsLaser())
 	{
-		Debug("waiting for the laser, weapon %d in hand, plan tick %d, now %d",
-			pPredicted->GetActiveWeapon(), m_PlanFireTick, PredTick);
+		Debug("waiting for the laser, weapon %d predicted, %d in the snapshot, plan tick %d, now %d",
+			pPredicted->GetActiveWeapon(),
+			GameClient()->m_Snap.m_pLocalCharacter != nullptr ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : -1,
+			m_PlanFireTick, PredTick);
 		if(m_PlanFireTick >= 0 && PredTick > m_PlanFireTick)
 		{
 			// The laser did not arrive in time. Drop the plan and look again at
@@ -1017,7 +1031,7 @@ bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
 		return false;
 	}
 
-	if(pPredicted->GetActiveWeapon() == WEAPON_LASER)
+	if(HoldsLaser())
 	{
 		// Already in hand. The field still goes out while the shot is pending,
 		// because the server reads the request from one tick and the value from
@@ -1030,12 +1044,14 @@ bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
 		return false;
 	}
 
-	// A weapon the player does not have, or a ninja in hand, will never be given
-	// to them; asking forever would only eat their weapon wheel.
-	if(!pPredicted->GetWeaponGot(WEAPON_LASER) || pPredicted->GetActiveWeapon() == WEAPON_NINJA)
+	// Whether the player owns the laser at all cannot be known here: a snapshot
+	// carries the weapon in hand and nothing else, so the predicted inventory
+	// says no to every weapon that is not already held. Asking and waiting for
+	// the deadline is the only way to find out. A ninja is different, that one is
+	// visible and no switch will ever come out of it.
+	if(pPredicted->GetActiveWeapon() == WEAPON_NINJA)
 	{
-		Debug("no laser to switch to: got it %d, weapon %d in hand",
-			(int)pPredicted->GetWeaponGot(WEAPON_LASER), pPredicted->GetActiveWeapon());
+		Debug("ninja in hand, no switch is possible");
 		m_WantShot = false;
 		m_WantLaser = false;
 		return false;
