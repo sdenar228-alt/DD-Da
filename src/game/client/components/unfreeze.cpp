@@ -183,12 +183,23 @@ bool CUnfreeze::HoldsLaser() const
 	const CCharacter *pPredicted = GameClient()->m_PredictedWorld.GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
 	if(pPredicted != nullptr && pPredicted->GetActiveWeapon() == WEAPON_LASER)
 		return true;
-	// The prediction refuses to switch to a weapon it has not seen in a snapshot,
-	// and a snapshot only ever carries the weapon in hand, so it will not model a
-	// switch to the laser however many times the server grants one. What the
-	// server says is therefore the only signal that the switch happened.
+	// The prediction only believes in weapons it has been told about, so on a
+	// server that sends no extended character it will not model the switch at
+	// all. What the server says the tee is holding is then the only signal.
 	const CNetObj_Character *pSnap = GameClient()->m_Snap.m_pLocalCharacter;
 	return pSnap != nullptr && pSnap->m_Weapon == WEAPON_LASER;
+}
+
+// Whether the player owns the laser, when that can be known. A DDNet server
+// puts the whole inventory in the extended character object, and the core reads
+// it; without one, only the weapon in hand is ever known and asking is the only
+// way to find out.
+bool CUnfreeze::OwnsLaser() const
+{
+	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || !GameClient()->m_Snap.m_aCharacters[LocalId].m_HasExtendedData)
+		return true;
+	return (GameClient()->m_Snap.m_aCharacters[LocalId].m_ExtendedData.m_Flags & CHARACTERFLAG_WEAPON_LASER) != 0;
 }
 
 const CTuningParams *CUnfreeze::LaserTuning(vec2 FirePos) const
@@ -768,6 +779,21 @@ void CUnfreeze::OnRender()
 		m_WindowAhead = false;
 		m_vSolution.clear();
 		m_Status = pPredicted != nullptr ? EStatus::TOO_LATE : EStatus::QUIET;
+		RenderStatus();
+		return;
+	}
+
+	// A shot that needs a weapon the player does not have is not worth searching
+	// for, and asking for it would only take their weapon wheel away for the
+	// whole window while nothing arrives.
+	if(!OwnsLaser())
+	{
+		Debug("no laser owned: the extended character says it is not in the inventory");
+		m_HasSolution = false;
+		m_WantShot = false;
+		m_WindowAhead = false;
+		m_vSolution.clear();
+		m_Status = EStatus::NO_LASER;
 		RenderStatus();
 		return;
 	}

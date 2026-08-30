@@ -212,6 +212,8 @@ private:
 	// ahead, but it only believes in the weapons it has seen, so the snapshot has
 	// the last word when it disagrees.
 	bool HoldsLaser() const;
+	// Whether the player owns it at all, when the server says so.
+	bool OwnsLaser() const;
 	// Says what the module just decided, into unfreeze.log in the config folder,
 	// while cl_unfreeze_debug is on. A module that refuses silently is a module
 	// nobody can tell apart from a broken one.
