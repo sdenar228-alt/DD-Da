@@ -11,6 +11,8 @@
 
 #include "custom_media_win.h"
 
+#include <cstring>
+
 #if defined(CONF_FAMILY_WINDOWS)
 
 #include <base/log.h>
@@ -76,7 +78,7 @@ public:
 	bool OpenImage(const char *pAbsolutePath);
 	bool OpenVideo(const char *pAbsolutePath);
 	void Close();
-	bool NextFrame(double Time, std::vector<uint8_t> &vRgba);
+	bool NextFrame(double Time, uint8_t *pRgba, size_t Size);
 
 	bool m_IsOpen = false;
 	bool m_IsStill = false;
@@ -361,7 +363,7 @@ void CWindowsMedia::CImpl::SeekToStart()
 	PropVariantClear(&Position);
 }
 
-bool CWindowsMedia::CImpl::NextFrame(double Time, std::vector<uint8_t> &vRgba)
+bool CWindowsMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
 {
 	if(!m_IsOpen)
 		return false;
@@ -369,9 +371,9 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, std::vector<uint8_t> &vRgba)
 	// A picture is decoded once and handed out as is.
 	if(m_pReader == nullptr)
 	{
-		if(m_vStillRgba.empty())
+		if(m_vStillRgba.empty() || pRgba == nullptr || Size < m_vStillRgba.size())
 			return false;
-		vRgba = m_vStillRgba;
+		std::memcpy(pRgba, m_vStillRgba.data(), m_vStillRgba.size());
 		return true;
 	}
 
@@ -437,25 +439,30 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, std::vector<uint8_t> &vRgba)
 	}
 
 	const size_t RowSize = (size_t)m_Width * 4;
-	// Resized rather than assigned: assigning zero-fills the whole frame every
-	// time, and every byte of it is overwritten below anyway.
 	const size_t Needed = RowSize * m_Height;
-	if(vRgba.size() != Needed)
-		vRgba.resize(Needed);
+	if(pRgba == nullptr || Size < Needed)
+	{
+		pBuffer->Unlock();
+		SafeRelease(pBuffer);
+		SafeRelease(pSample);
+		return false;
+	}
 	for(int y = 0; y < m_Height; ++y)
 	{
 		const int SourceRow = m_Flipped ? m_Height - 1 - y : y;
 		if((size_t)(SourceRow + 1) * m_Stride > CurrentLength)
 			continue;
 		const BYTE *pSrc = pData + (size_t)SourceRow * m_Stride;
-		uint8_t *pDst = &vRgba[(size_t)y * RowSize];
-		// Media Foundation RGB32 is stored as BGRX.
+		uint8_t *pDst = pRgba + (size_t)y * RowSize;
+		// Media Foundation RGB32 is stored as BGRX. A whole pixel at a time
+		// rather than four bytes: this loop runs over every pixel of every frame,
+		// and byte-wise it was one of the more expensive things in the client.
 		for(int x = 0; x < m_Width; ++x)
 		{
-			pDst[x * 4 + 0] = pSrc[x * 4 + 2];
-			pDst[x * 4 + 1] = pSrc[x * 4 + 1];
-			pDst[x * 4 + 2] = pSrc[x * 4 + 0];
-			pDst[x * 4 + 3] = 255;
+			uint32_t Pixel;
+			std::memcpy(&Pixel, pSrc + (size_t)x * 4, sizeof(Pixel));
+			Pixel = 0xFF000000u | ((Pixel & 0x00FF0000u) >> 16) | (Pixel & 0x0000FF00u) | ((Pixel & 0x000000FFu) << 16);
+			std::memcpy(pDst + (size_t)x * 4, &Pixel, sizeof(Pixel));
 		}
 	}
 
@@ -481,6 +488,6 @@ bool CWindowsMedia::IsStill() const { return m_pImpl->m_IsStill; }
 int CWindowsMedia::Width() const { return m_pImpl->m_Width; }
 int CWindowsMedia::Height() const { return m_pImpl->m_Height; }
 void CWindowsMedia::SetMaxDuration(double Seconds) { m_pImpl->m_MaxDuration = Seconds > 0.0 ? Seconds : 0.0; }
-bool CWindowsMedia::NextFrame(double Time, std::vector<uint8_t> &vRgba) { return m_pImpl->NextFrame(Time, vRgba); }
+bool CWindowsMedia::NextFrame(double Time, uint8_t *pRgba, size_t Size) { return m_pImpl->NextFrame(Time, pRgba, Size); }
 
 #endif

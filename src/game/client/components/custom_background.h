@@ -42,7 +42,11 @@ private:
 
 	// Reused between video frames, a fresh one per frame was megabytes of
 	// allocation and zero fill at the video's frame rate.
-	std::vector<uint8_t> m_vFrameBuffer;
+	// The size the texture was created at. A video keeps the same one for its
+	// whole run, which is what lets every frame after the first be written into
+	// the texture that is already there.
+	int m_TextureWidth = 0;
+	int m_TextureHeight = 0;
 	IGraphics::CTextureHandle m_Texture;
 	std::string m_LoadedFile;
 	bool m_LoadFailed = false;
