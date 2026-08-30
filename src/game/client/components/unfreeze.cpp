@@ -67,6 +67,7 @@ void CUnfreeze::Reset()
 	m_LastShotTick = -1;
 	m_ShotLandsTick = -1;
 	m_PlanFireTick = -1;
+	m_LastValidateTick = -1;
 	m_FiredTargetX = 0;
 	m_FiredTargetY = 0;
 	m_RestoreWeapon = -1;
@@ -740,6 +741,45 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 	return Improved;
 }
 
+// A committed plan is not searched over again, or a search that finds nothing
+// would throw it away. But it still has to be true: the flight it was made from
+// is a prediction, and by the tick the shot is due the tee may not be where it
+// was going to be. So the flight is predicted afresh and the one angle already
+// chosen is traced again. That is a single Evaluate rather than a whole sweep.
+bool CUnfreeze::StillHolds(int LocalId, int PredTick)
+{
+	const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
+	const int BounceTicks = std::clamp((int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1, 1, 16);
+	const int Reach = std::clamp(g_Config.m_ClUnfreezeBounces, 4, 40) * BounceTicks + 4;
+	const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
+	if(!Predict(LocalId, PredTick, Horizon))
+		return false;
+
+	const int Delay = m_PlanFireTick - 1 - PredTick;
+	const CFlightStep *pAt = Delay > 0 ? FlightAt(PredTick + Delay) : nullptr;
+	if(Delay > 0 && pAt == nullptr)
+		return false;
+	CCharacter *pChar = GameClient()->m_PredictedWorld.GetCharacterById(LocalId);
+	if(Delay <= 0 && pChar == nullptr)
+		return false;
+	const vec2 FirePos = Delay > 0 ? pAt->m_Pos : pChar->Core()->m_Pos;
+
+	const CTuningParams *pLaser = LaserTuning(FirePos);
+	const int MaxBounces = BounceBudget(m_PlanFireTick, BounceTicks, pLaser->m_LaserBounceNum);
+	if(MaxBounces < 1)
+		return false;
+
+	const CCandidate Now = Evaluate(std::atan2(m_SolutionDir.y, m_SolutionDir.x), m_PlanFireTick, FirePos,
+		MaxBounces, BounceTicks, ReachTuning(FirePos)->m_LaserReach, pLaser->m_LaserBounceCost);
+	if(!Now.m_Hits || Now.m_EvalTick != m_Solution.m_EvalTick)
+		return false;
+
+	// The flight moved a little; aim at where the tee is going to be now.
+	m_Solution = Now;
+	m_vSolution = m_vSegments;
+	return true;
+}
+
 void CUnfreeze::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -817,7 +857,23 @@ void CUnfreeze::OnRender()
 	// lead a plan needs, and a search that finds nothing used to throw the
 	// decided shot away a tick or two after it was armed. Against a real server
 	// that was 160 shots armed and 3 fired.
-	const bool Committed = m_WantShot && m_HasSolution && m_PlanFireTick >= 0 && PredTick <= m_PlanFireTick;
+	bool Committed = m_WantShot && m_HasSolution && m_PlanFireTick >= 0 && PredTick <= m_PlanFireTick;
+	// Once a tick while it waits, the plan is held up against a fresh prediction.
+	// A tee flung sideways covers more than its own width in a tick, so a plan
+	// made ten ticks ago can be aimed at thin air by the time it fires.
+	if(Committed && PredTick != m_LastValidateTick)
+	{
+		m_LastValidateTick = PredTick;
+		if(!StillHolds(LocalId, PredTick))
+		{
+			Debug("plan went stale: the flight moved, looking again");
+			m_HasSolution = false;
+			m_WantShot = false;
+			m_vSolution.clear();
+			m_LastSearchTime = -1000.0f;
+			Committed = false;
+		}
+	}
 	if(!Committed && (Now - m_LastSearchTime >= Interval || Now < m_LastSearchTime))
 	{
 		m_LastSearchTime = Now;
@@ -902,9 +958,10 @@ void CUnfreeze::OnRender()
 				m_PlanFireTick = Best.m_FireTick;
 				m_SolutionDir = normalize(vec2((float)Best.m_TargetX, (float)Best.m_TargetY));
 				m_vSolution = vBestPath;
-				Debug("plan: fire on tick %d (+%d), hit +%d, saves %d ticks, margin %d, tile end %d",
+				Debug("plan: fire on tick %d (+%d), hit +%d, saves %d ticks, margin %d, tile end %d, speed %.0f (%.0f,%.0f)",
 					Best.m_FireTick, Best.m_FireTick - PredTick, Best.m_EvalTick - 1 - PredTick,
-					Best.m_Saved, Best.m_Margin, (int)Best.m_TileEnd);
+					Best.m_Saved, Best.m_Margin, (int)Best.m_TileEnd,
+					length(pPredicted->Core()->m_Vel), pPredicted->Core()->m_Vel.x, pPredicted->Core()->m_Vel.y);
 			}
 			else
 			{

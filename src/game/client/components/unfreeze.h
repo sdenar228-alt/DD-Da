@@ -141,6 +141,10 @@ private:
 	// tee was going to be at a different moment.
 	int m_PlanFireTick = -1;
 	vec2 m_SolutionDir = vec2(1.0f, 0.0f);
+	// The last tick the committed plan was checked against a fresh flight. A
+	// plan waits several ticks for its moment, and a tee flung sideways covers
+	// more than its own width in one of them, so an unchecked plan goes stale.
+	int m_LastValidateTick = -1;
 
 	// Set by the console command or by the automatic mode, consumed by the next
 	// input that is actually sent.
@@ -214,6 +218,9 @@ private:
 	bool HoldsLaser() const;
 	// Whether the player owns it at all, when the server says so.
 	bool OwnsLaser() const;
+	// Re-runs the chosen angle against a freshly predicted flight. False when it
+	// would no longer land, which means the plan has to be thrown away.
+	bool StillHolds(int LocalId, int PredTick);
 	// Says what the module just decided, into unfreeze.log in the config folder,
 	// while cl_unfreeze_debug is on. A module that refuses silently is a module
 	// nobody can tell apart from a broken one.
