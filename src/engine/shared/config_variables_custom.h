@@ -112,6 +112,7 @@ MACRO_CONFIG_INT(ClUnfreezeSteps, cl_unfreeze_steps, 360, 120, 1440, CFGFLAG_CLI
 MACRO_CONFIG_INT(ClUnfreezeBounces, cl_unfreeze_bounces, 16, 4, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many bounces of the shot are followed")
 MACRO_CONFIG_INT(ClUnfreezeInterval, cl_unfreeze_interval, 100, 40, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How often the shot is searched for, in milliseconds")
 MACRO_CONFIG_INT(ClUnfreezeBudget, cl_unfreeze_budget, 3, 1, 20, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long one search may take, in milliseconds, before it settles for the best it has")
+MACRO_CONFIG_INT(ClUnfreezeDebug, cl_unfreeze_debug, 0, 0, 1, CFGFLAG_CLIENT, "Write what the unfreeze module decides, and why, to unfreeze.log in the config folder")
 MACRO_CONFIG_INT(ClUnfreezeSwitchWeapon, cl_unfreeze_switch_weapon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Switch to the laser by yourself when a shot was found")
 MACRO_CONFIG_INT(ClUnfreezeShowPath, cl_unfreeze_show_path, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the path the shot would take")
 MACRO_CONFIG_INT(ClUnfreezeShowStatus, cl_unfreeze_show_status, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Say on screen what the unfreeze module is doing")

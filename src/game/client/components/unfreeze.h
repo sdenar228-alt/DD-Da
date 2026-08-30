@@ -204,6 +204,13 @@ private:
 	const CTuningParams *ReachTuning(vec2 FirePos) const;
 	// False on servers where a laser can never touch the tee that fired it.
 	bool SelfHitPossible() const;
+	// Says what the module just decided, into unfreeze.log in the config folder,
+	// while cl_unfreeze_debug is on. A module that refuses silently is a module
+	// nobody can tell apart from a broken one.
+	void Debug(const char *pFormat, ...) const;
+	mutable char m_aLastDebug[256] = {};
+	mutable int m_LastDebugTick = -1;
+
 	void RenderPlan() const;
 	// A line of text under the crosshair, because without it the module is
 	// invisible until it happens to fire.
