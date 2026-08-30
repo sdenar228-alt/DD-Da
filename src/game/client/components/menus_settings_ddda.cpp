@@ -591,6 +591,10 @@ void CMenus::RenderSettingsDDDaUnfreeze(CUIRect MainView)
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
 		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeInterval, &g_Config.m_ClUnfreezeInterval, &Button, Localize("Searched every"), 40, 500, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ms"));
 
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClUnfreezeBudget, &g_Config.m_ClUnfreezeBudget, &Button, Localize("Search may take"), 1, 20, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ms"));
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClUnfreezeBudget, &Button, Localize("The search stops at this and keeps the best shot it has found. This is what a heavy setting is allowed to cost you in frames."));
+
 		Ui()->DoLabel_AutoLineSize(Localize("Drawing"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 

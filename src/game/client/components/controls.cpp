@@ -337,7 +337,10 @@ int CControls::SnapInput(int *pData)
 
 		// The unfreeze shot goes on the stored input, after the dummy has taken
 		// its copy so that it does not shoot too, and before the checks below so
-		// that the changed counter is what makes the message go out.
+		// that the changed counter is what makes the message go out. Only the
+		// shot: the weapon request it needs is written further down, on the send
+		// copy, because this one is sticky and would take the weapon wheel away
+		// from the player for the rest of the round.
 		GameClient()->m_Unfreeze.ApplyInput(&m_aInputData[g_Config.m_ClDummy]);
 
 		// check if we need to send input
@@ -373,6 +376,14 @@ int CControls::SnapInput(int *pData)
 	// After the spin on purpose: the aim of the unfreeze shot has to be the one
 	// that reaches the server, whatever the spin settings are.
 	if((SendData.m_PlayerFlags & PLAYERFLAG_PLAYING) != 0 && GameClient()->m_Unfreeze.ApplyAim(&SendData))
+	{
+		Send = true;
+	}
+
+	// The laser the unfreeze shot needs, and the player's own weapon afterwards.
+	// On the copy, so that the player's selection is never overwritten, and the
+	// send is forced because the copy is not what the checks above compared.
+	if((SendData.m_PlayerFlags & PLAYERFLAG_PLAYING) != 0 && GameClient()->m_Unfreeze.ApplyWeapon(&SendData))
 	{
 		Send = true;
 	}

@@ -3042,6 +3042,12 @@ Flight looked ahead
 Searched every
 == Искать раз в
 
+Search may take
+== Поиску можно тратить
+
+The search stops at this and keeps the best shot it has found. This is what a heavy setting is allowed to cost you in frames.
+== Поиск останавливается на этом и берёт лучшее из найденного. Столько тяжёлые настройки могут стоить тебе кадров.
+
  ticks
 ==  тиков
 
@@ -3075,6 +3081,9 @@ Unfreeze shot ready, press your unfreeze key
 Freeze ahead, no shot found
 == Впереди фриз, выстрела не нашлось
 
+Freeze ahead, no shot found (%.1f ms)
+== Впереди фриз, выстрела не нашлось (%.1f мс)
+
 Unfreeze shot found, but you are not holding the laser
 == Выстрел есть, но в руках не лазер
 
@@ -3083,6 +3092,9 @@ Frozen already, the shot had to leave earlier
 
 Unfreeze shot ready, saves %d ticks of freeze
 == Выстрел готов, снимет %d тиков фриза
+
+Unfreeze shot ready, saves %d ticks of freeze (%.1f ms)
+== Выстрел готов, снимет %d тиков фриза (%.1f мс)
 
 On this server a laser cannot hit the tee that fired it
 == На этом сервере лазер не может попасть в того, кто выстрелил

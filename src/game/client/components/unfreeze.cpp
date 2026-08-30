@@ -1,6 +1,7 @@
 #include "unfreeze.h"
 
 #include <base/math.h>
+#include <base/time.h>
 #include <base/vmath.h>
 
 #include <engine/graphics.h>
@@ -64,7 +65,7 @@ void CUnfreeze::Reset()
 	m_FiredTargetX = 0;
 	m_FiredTargetY = 0;
 	m_RestoreWeapon = -1;
-	m_SwitchSends = 0;
+	m_WantLaser = false;
 	m_SwitchDeadlineTick = -1;
 	m_vSolution.clear();
 	m_vFlight.clear();
@@ -430,6 +431,10 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 	TraceLaser(FirePos, Dir, Energy, FireTick, MaxBounces, BounceCost, BounceTicks);
 
 	const float Radius = CCharacterCore::PhysicalSize();
+	// How near the beam came to a tick worth hitting, even on angles that never
+	// reach one. The sweep ranks angles by this, which is what lets it look at a
+	// few dozen angles closely instead of all of them.
+	float Approach = std::numeric_limits<float>::max();
 	for(const CSegment &Segment : m_vSegments)
 	{
 		// A stretch of no length is not something the game would test against.
@@ -459,6 +464,8 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 		if(OwnerReachable)
 		{
 			Miss = distance(pStep->m_Pos, Closest);
+			if(IsUsefulTick(Segment.m_EvalTick - 1))
+				Approach = std::min(Approach, Miss);
 			if(Miss < Radius)
 				OwnerAlong = distance(Segment.m_From, Closest);
 		}
@@ -478,7 +485,7 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 			}
 		}
 		if(Blocked)
-			return Candidate;
+			break;
 
 		if(OwnerAlong == std::numeric_limits<float>::max())
 			continue;
@@ -486,7 +493,7 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 		// This is where the shot ends, whatever it is worth. If the tick is no
 		// good the angle is dead, because everything after it never happens.
 		if(!IsUsefulTick(Segment.m_EvalTick - 1))
-			return Candidate;
+			break;
 
 		int Margin = 0;
 		for(int Offset = -1; Offset <= 1; Offset++)
@@ -508,9 +515,10 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 		Candidate.m_Margin = Margin;
 		Candidate.m_Miss = Miss;
 		Candidate.m_HitPos = pStep->m_Pos;
-		return Candidate;
+		break;
 	}
 
+	Candidate.m_Approach = Approach;
 	return Candidate;
 }
 
@@ -535,38 +543,44 @@ float CUnfreeze::ScoreOf(const CCandidate &Candidate, int FireTick, float Radius
 // ticks a shot fired now can reach are one residue class in eight; firing a tick
 // later moves the whole schedule. Every tick worth hitting names exactly one
 // delay that reaches it, so the list is short and costs nothing to work out.
-int CUnfreeze::UsefulDelays(int PredTick, int BounceTicks, bool *pDelays, int MaxDelays) const
+int CUnfreeze::UsefulDelays(int PredTick, int BounceTicks, int MinDelay, int MaxDelay, bool *pDelays, int MaxDelays) const
 {
 	for(int i = 0; i < MaxDelays; i++)
 		pDelays[i] = false;
 
 	int Count = 0;
-	const int Limit = std::min(BounceTicks, MaxDelays);
+	const int Limit = std::min(MaxDelay, MaxDelays);
 	for(int Tick = m_FirstUsefulTick; Tick >= 0 && Tick <= m_LastUsefulTick; Tick++)
 	{
 		if(!IsUsefulTick(Tick))
 			continue;
-		const int Delay = ((Tick - PredTick + 1) % BounceTicks + BounceTicks) % BounceTicks;
-		if(Delay >= Limit || pDelays[Delay])
-			continue;
-		// The bounce has to be a real one: the stretch before the first wall can
-		// never touch the tee that fired it.
-		if(Tick < PredTick + Delay - 1 + BounceTicks)
-			continue;
-		// And the tee has to still be able to shoot on that tick.
-		if(Delay > 0)
+		const int Residue = ((Tick - PredTick + 1) % BounceTicks + BounceTicks) % BounceTicks;
+		// The same tick is reachable by firing now, or by firing a whole bounce
+		// later with one bounce fewer. That second one used to be left out, and
+		// it is the only one left when the shot cannot leave for a few ticks.
+		for(int Delay = Residue; Delay < Limit; Delay += BounceTicks)
 		{
-			const CFlightStep *pAt = FlightAt(PredTick + Delay);
-			if(pAt == nullptr || pAt->m_FreezeTime > 0)
+			if(Delay < MinDelay || pDelays[Delay])
 				continue;
+			// The bounce has to be a real one: the stretch before the first wall
+			// can never touch the tee that fired it.
+			if(Tick < PredTick + Delay - 1 + BounceTicks)
+				continue;
+			// And the tee has to still be able to shoot on that tick.
+			if(Delay > 0)
+			{
+				const CFlightStep *pAt = FlightAt(PredTick + Delay);
+				if(pAt == nullptr || pAt->m_FreezeTime > 0)
+					continue;
+			}
+			pDelays[Delay] = true;
+			Count++;
 		}
-		pDelays[Delay] = true;
-		Count++;
 	}
 	return Count;
 }
 
-bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath)
+bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline)
 {
 	if(!SelfHitPossible())
 		return false;
@@ -588,53 +602,108 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 	const int Steps = std::clamp(g_Config.m_ClUnfreezeSteps, 120, 1440);
 	const float Radius = CCharacterCore::PhysicalSize();
 
-	bool Improved = false;
-	float BestAngle = 0.0f;
-	bool HaveAngle = false;
+	// Tracing every angle at the resolution the setting asks for is nearly all of
+	// what this module costs, and nearly all of that is spent on angles that send
+	// the beam nowhere near the flight. So the sweep is coarse, and only the few
+	// angles that came closest are then looked at closely. The fine resolution is
+	// still reached, on the angles where it changes the answer.
+	const int Coarse = std::max(60, Steps / 6);
+	const float CoarseStep = 2.0f * pi / (float)Coarse;
 
-	// A coarse sweep first. Every angle is judged on what it is worth rather than
-	// on how soon it lands, and none is skipped: stopping at the first passable
-	// shot is how this used to settle for the worst one.
-	for(int Step = 0; Step < Steps; Step++)
-	{
-		const float Angle = (float)Step * 2.0f * pi / (float)Steps;
+	bool Improved = false;
+	int Since = 0;
+	// Checked every so often rather than every angle, because reading the clock
+	// costs about as much as tracing one.
+	const auto OutOfTime = [&]() {
+		if(++Since < 32)
+			return false;
+		Since = 0;
+		return time_get_impl() > Deadline;
+	};
+
+	const auto Try = [&](float Angle, float *pRank) {
 		const CCandidate Candidate = Evaluate(Angle, FireTick, FirePos, MaxBounces, BounceTicks, Energy, BounceCost);
-		if(!Candidate.m_Hits || Candidate.m_Saved < (Candidate.m_TileEnd ? MIN_SAVED_TILE : MIN_SAVED_NATURAL))
-			continue;
-		const float Score = ScoreOf(Candidate, FireTick, Radius);
-		if(Score <= BestScore)
-			continue;
-		BestScore = Score;
-		BestAngle = Angle;
-		HaveAngle = true;
-		Best = Candidate;
-		vBestPath = m_vSegments;
-		Improved = true;
+		const bool Good = Candidate.m_Hits && Candidate.m_Saved >= (Candidate.m_TileEnd ? MIN_SAVED_TILE : MIN_SAVED_NATURAL);
+		if(Good)
+		{
+			const float Score = ScoreOf(Candidate, FireTick, Radius);
+			if(Score > BestScore)
+			{
+				BestScore = Score;
+				Best = Candidate;
+				vBestPath = m_vSegments;
+				Improved = true;
+			}
+		}
+		// A hit sorts ahead of every miss, and among misses the nearest first.
+		*pRank = Good ? -1.0f : Candidate.m_Approach;
+		return Good;
+	};
+
+	// Tracing every angle at the resolution the setting asks for is nearly all of
+	// what this module costs, and nearly all of that is spent on angles that send
+	// the beam nowhere near the flight. So the sweep is coarse, and only the few
+	// angles that came closest are looked at closely, twice: once to find the
+	// band, once to find the middle of it. That reaches an angle finer than a
+	// plain sweep of the same cost, which matters because a band wide enough to
+	// hit a tee across a room can still be a quarter of a degree.
+	m_vProbes.clear();
+	for(int Step = 0; Step < Coarse; Step++)
+	{
+		if(OutOfTime())
+			break;
+		const float Angle = (float)Step * CoarseStep;
+		float Rank = 0.0f;
+		const bool Good = Try(Angle, &Rank);
+		if(Good || Rank < 4.0f * Radius)
+			m_vProbes.emplace_back(Angle, Rank);
 	}
 
-	if(!HaveAngle)
-		return Improved;
+	constexpr int MAX_REFINED = 8;
+	constexpr int MAX_DEEP = 2;
+	const auto KeepBest = [&](size_t Count) {
+		if(m_vProbes.size() <= Count)
+			return;
+		std::partial_sort(m_vProbes.begin(), m_vProbes.begin() + Count, m_vProbes.end(),
+			[](const std::pair<float, float> &Left, const std::pair<float, float> &Right) { return Left.second < Right.second; });
+		m_vProbes.resize(Count);
+	};
 
-	// Then walk around the winner to find the middle of the band that works
-	// rather than the edge the coarse step happened to land on. An aim that only
-	// works at the edge is one packet of jitter away from missing.
-	const float CoarseStep = 2.0f * pi / (float)Steps;
-	for(int Refine = 1; Refine <= 6; Refine++)
+	KeepBest(MAX_REFINED);
+	std::vector<std::pair<float, float>> vDeep;
+	for(const auto &[Around, Rank] : m_vProbes)
 	{
-		const float Offset = CoarseStep * (float)Refine / 7.0f;
-		const float aAngles[2] = {BestAngle - Offset, BestAngle + Offset};
-		for(const float Angle : aAngles)
+		for(int Refine = -8; Refine <= 8; Refine++)
 		{
-			const CCandidate Candidate = Evaluate(Angle, FireTick, FirePos, MaxBounces, BounceTicks, Energy, BounceCost);
-			if(!Candidate.m_Hits || Candidate.m_Saved < (Candidate.m_TileEnd ? MIN_SAVED_TILE : MIN_SAVED_NATURAL))
+			if(Refine == 0)
 				continue;
-			const float Score = ScoreOf(Candidate, FireTick, Radius);
-			if(Score <= BestScore)
+			if(OutOfTime())
+			{
+				vDeep.clear();
+				return Improved;
+			}
+			const float Angle = Around + CoarseStep * (float)Refine / 9.0f;
+			float SubRank = 0.0f;
+			const bool Good = Try(Angle, &SubRank);
+			if(Good || SubRank < Radius * 2.0f)
+				vDeep.emplace_back(Angle, SubRank);
+		}
+	}
+
+	// The narrowest bands are still between two of those, so the best couple get
+	// one more pass five times finer again.
+	m_vProbes = vDeep;
+	KeepBest(MAX_DEEP);
+	for(const auto &[Around, Rank] : m_vProbes)
+	{
+		for(int Refine = -4; Refine <= 4; Refine++)
+		{
+			if(Refine == 0)
 				continue;
-			BestScore = Score;
-			Best = Candidate;
-			vBestPath = m_vSegments;
-			Improved = true;
+			if(OutOfTime())
+				return Improved;
+			float SubRank = 0.0f;
+			Try(Around + CoarseStep * (float)Refine / 45.0f, &SubRank);
 		}
 	}
 
@@ -694,6 +763,12 @@ void CUnfreeze::OnRender()
 		m_HasSolution = false;
 		m_vSolution.clear();
 
+		// Whatever the settings ask for, the search may not cost more than this,
+		// and it keeps the best it had when the time runs out. Without it a heavy
+		// setting is felt as a stutter every time a freeze comes into range.
+		const int64_t Started = time_get_impl();
+		const int64_t Deadline = Started + (int64_t)std::clamp(g_Config.m_ClUnfreezeBudget, 1, 20) * time_freq() / 1000;
+
 		// Simulating further than the shot can ever reach is wasted work.
 		const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
 		const int BounceTicks = std::clamp((int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1, 1, 16);
@@ -706,18 +781,44 @@ void CUnfreeze::OnRender()
 			// Firing a tick later moves every bounce with it, so the shot is not
 			// limited to the ticks a shot fired right now happens to land on.
 			// Only the delays that could reach a tick worth hitting are traced.
-			bool aDelays[16] = {};
-			const int NumDelays = UsefulDelays(PredTick, BounceTicks, aDelays, (int)std::size(aDelays));
+			//
+			// The earliest of them is not zero. The search runs on a render frame,
+			// the shot can only leave on an input that has not gone out yet, and a
+			// laser that is not in hand costs a few ticks to switch to. A plan made
+			// for a tick that has already passed is dropped unfired, which is what
+			// made the module look like it did nothing at all.
+			constexpr int MAX_DELAYS = 16;
+			constexpr int MAX_SWEPT = 6;
+			const bool HoldsLaser = pPredicted->GetActiveWeapon() == WEAPON_LASER;
+			const int MinDelay = HoldsLaser || !g_Config.m_ClUnfreezeSwitchWeapon ? 2 : 8;
+			bool aDelays[MAX_DELAYS] = {};
+			const int NumDelays = UsefulDelays(PredTick, BounceTicks, MinDelay, std::min(2 * BounceTicks, MAX_DELAYS), aDelays, MAX_DELAYS);
 			CCandidate Best;
 			float BestScore = 0.0f;
 			std::vector<CSegment> vBestPath;
-			for(int Delay = 0; Delay < (int)std::size(aDelays) && NumDelays > 0; Delay++)
+			// Which delays to trace has to be settled before any of them is
+			// traced, because the budget is then split evenly between them. Spent
+			// first come first served, the earliest delays eat all of it and the
+			// later ones are never looked at, and the shot is often in one of
+			// those: a bounce ladder that starts later can be the only one that
+			// puts a bounce inside the window.
+			int aSwept[MAX_SWEPT];
+			int Count = 0;
+			for(int Delay = 0; Delay < MAX_DELAYS && NumDelays > 0 && Count < MAX_SWEPT; Delay++)
 			{
 				if(!aDelays[Delay])
 					continue;
+				if(Delay > 0 && FlightAt(PredTick + Delay) == nullptr)
+					continue;
+				aSwept[Count++] = Delay;
+			}
+			const int64_t Slice = Count > 0 ? (Deadline - Started) / Count : 0;
+			for(int i = 0; i < Count; i++)
+			{
+				const int Delay = aSwept[i];
 				const CFlightStep *pAt = Delay > 0 ? FlightAt(PredTick + Delay) : nullptr;
 				const vec2 FirePos = Delay > 0 ? pAt->m_Pos : pPredicted->Core()->m_Pos;
-				Search(PredTick + 1 + Delay, FirePos, Best, BestScore, vBestPath);
+				Search(PredTick + 1 + Delay, FirePos, Best, BestScore, vBestPath, Started + Slice * (i + 1));
 			}
 
 			if(Best.m_Hits)
@@ -729,6 +830,8 @@ void CUnfreeze::OnRender()
 				m_vSolution = vBestPath;
 			}
 		}
+
+		m_LastSearchMs = (float)((time_get_impl() - Started) * 1000.0 / (double)time_freq());
 	}
 
 	// Automatic mode fires as soon as it has a plan, then holds off until the shot
@@ -758,73 +861,47 @@ void CUnfreeze::OnRender()
 
 bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 {
-	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
-
-	// Handing the weapon back comes first, so the player is never left holding a
-	// laser because a plan disappeared.
-	if(m_RestoreWeapon >= 0 && m_SwitchSends <= 0)
-	{
-		pInput->m_WantedWeapon = m_RestoreWeapon;
-		m_RestoreWeapon = -1;
-		m_SwitchDeadlineTick = -1;
-		return true;
-	}
-
 	if(!m_HasSolution || !m_WantShot)
-	{
-		// A switch started for a plan that has since vanished is wound back on
-		// the next input.
-		if(m_RestoreWeapon >= 0)
-			m_SwitchSends = 0;
 		return false;
-	}
 
 	const CCharacter *pPredicted = GameClient()->m_PredictedWorld.GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
 	if(pPredicted == nullptr)
 		return false;
 
+	// The input being built here is the one the server runs on the tick that
+	// PredGameTick names right now, not the one after it. Getting that wrong
+	// means the plan's tick is never the tick that arrives, and the shot is
+	// dropped as stale every single time without ever being fired.
+	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
+
 	// The predicted character knows which weapon is in hand a round trip before
-	// the snapshot does, which is the difference between firing on the tick the
-	// plan was made for and firing far too late.
+	// the snapshot does, and it runs the same switch code as the server.
 	if(pPredicted->GetActiveWeapon() != WEAPON_LASER)
 	{
-		if(!g_Config.m_ClUnfreezeSwitchWeapon)
-			return false;
-
-		if(m_RestoreWeapon < 0)
+		if(m_PlanFireTick >= 0 && PredTick > m_PlanFireTick)
 		{
-			// Remembered so the player gets their weapon back, including the zero
-			// that means "whatever the wheel last picked".
-			m_RestoreWeapon = pInput->m_WantedWeapon;
-			m_SwitchDeadlineTick = PredTick + 50;
-			// The server reads the wanted weapon out of two different copies of
-			// the input, so one send is not reliably enough.
-			m_SwitchSends = 3;
-		}
-		else if(PredTick > m_SwitchDeadlineTick)
-		{
-			// The server is not giving us the laser. Stop asking.
+			// The laser did not arrive in time. Drop the plan and look again at
+			// once rather than sitting out the rest of the interval.
 			m_WantShot = false;
-			m_SwitchSends = 0;
-			return false;
+			m_HasSolution = false;
+			m_LastSearchTime = -1000.0f;
 		}
-
-		m_SwitchSends--;
-		pInput->m_WantedWeapon = WEAPON_LASER + 1;
-		return true;
+		return false;
 	}
 
-	// A plan belongs to one tick. Earlier than that it waits; later than that the
-	// tee has moved on and the plan is dropped rather than fired at where it used
-	// to be going.
 	if(m_PlanFireTick >= 0)
 	{
-		if(PredTick + 1 < m_PlanFireTick)
+		if(PredTick < m_PlanFireTick)
 			return false;
-		if(PredTick + 1 > m_PlanFireTick)
+		// A plan belongs to one tick. The predicted tick can skip one when a
+		// frame runs long or the ping jumps, and then the aim points at where the
+		// tee was going to be at another moment, so the plan is thrown away and a
+		// new one is looked for straight away.
+		if(PredTick > m_PlanFireTick)
 		{
 			m_WantShot = false;
 			m_HasSolution = false;
+			m_LastSearchTime = -1000.0f;
 			return false;
 		}
 	}
@@ -839,8 +916,83 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 	m_LastShotTick = PredTick;
 	m_AimUntilTick = PredTick + 3;
 	m_ShotLandsTick = m_Solution.m_EvalTick + 1;
-	// The weapon goes back on the next input, now that the shot is out.
-	m_SwitchSends = 0;
+	// The shot is out, so the laser is no longer wanted and the player's weapon
+	// goes back from the next send on.
+	m_WantLaser = false;
+	return true;
+}
+
+bool CUnfreeze::ApplyWeapon(CNetObj_PlayerInput *pSendData)
+{
+	// Not const: asking the predicted character which weapons it has is not a
+	// const call there.
+	CCharacter *pPredicted = GameClient()->m_PredictedWorld.GetCharacterById(GameClient()->m_Snap.m_LocalClientId);
+	if(pPredicted == nullptr)
+	{
+		m_WantLaser = false;
+		m_RestoreWeapon = -1;
+		return false;
+	}
+	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
+
+	// Handing the weapon back has to come first and has to keep going until the
+	// player is really holding it again, or a plan that vanished mid switch
+	// leaves them on the laser.
+	if(!m_WantLaser && m_RestoreWeapon >= 0)
+	{
+		if(pPredicted->GetActiveWeapon() == m_RestoreWeapon)
+		{
+			m_RestoreWeapon = -1;
+			return false;
+		}
+		pSendData->m_WantedWeapon = m_RestoreWeapon + 1;
+		return true;
+	}
+
+	if(!m_HasSolution || !m_WantShot || !g_Config.m_ClUnfreezeSwitchWeapon)
+	{
+		m_WantLaser = false;
+		return false;
+	}
+
+	if(pPredicted->GetActiveWeapon() == WEAPON_LASER)
+	{
+		// Already in hand. The field still goes out while the shot is pending,
+		// because the server reads the request from one tick and the value from
+		// the one before it, and a gap would let the switch lapse.
+		if(m_WantLaser)
+		{
+			pSendData->m_WantedWeapon = WEAPON_LASER + 1;
+			return true;
+		}
+		return false;
+	}
+
+	// A weapon the player does not have, or a ninja in hand, will never be given
+	// to them; asking forever would only eat their weapon wheel.
+	if(!pPredicted->GetWeaponGot(WEAPON_LASER) || pPredicted->GetActiveWeapon() == WEAPON_NINJA)
+	{
+		m_WantShot = false;
+		m_WantLaser = false;
+		return false;
+	}
+
+	if(!m_WantLaser)
+	{
+		m_WantLaser = true;
+		// The weapon itself, not the field the input happened to carry.
+		m_RestoreWeapon = pPredicted->GetActiveWeapon();
+		m_SwitchDeadlineTick = PredTick + 50;
+	}
+	else if(PredTick > m_SwitchDeadlineTick)
+	{
+		// The server is not giving us the laser. Stop asking.
+		m_WantShot = false;
+		m_WantLaser = false;
+		return false;
+	}
+
+	pSendData->m_WantedWeapon = WEAPON_LASER + 1;
 	return true;
 }
 
@@ -920,12 +1072,13 @@ void CUnfreeze::RenderStatus() const
 	switch(m_Status)
 	{
 	case EStatus::READY:
-		str_format(aBuf, sizeof(aBuf), Localize("Unfreeze shot ready, saves %d ticks of freeze"), m_Solution.m_Saved);
+		str_format(aBuf, sizeof(aBuf), Localize("Unfreeze shot ready, saves %d ticks of freeze (%.1f ms)"), m_Solution.m_Saved, m_LastSearchMs);
 		pText = aBuf;
 		Color = ColorRGBA(0.35f, 0.9f, 0.45f, 1.0f);
 		break;
 	case EStatus::SEARCHING:
-		pText = Localize("Freeze ahead, no shot found");
+		str_format(aBuf, sizeof(aBuf), Localize("Freeze ahead, no shot found (%.1f ms)"), m_LastSearchMs);
+		pText = aBuf;
 		Color = ColorRGBA(1.0f, 0.75f, 0.3f, 1.0f);
 		break;
 	case EStatus::NO_LASER:

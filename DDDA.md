@@ -230,22 +230,68 @@ bind mouse3 unfreeze_shoot
 `cl_unfreeze 2` also fires it. Aiming and firing by itself is what the official
 servers call a bot, so it is off by default and the setting says so.
 
-The aim is written onto the copy of the input that is sent, never onto the
-stored one, for the same reason the spinning tee does that. The shot itself is a
-step of two on the fire counter, which is one press and one release without
-touching the parity, so your own fire key stays in step and the laser's full
-automatic mode is not armed by accident. The plan is re-checked against the tick
-it would actually leave on before every shot, since a plan made two ticks ago
-aims at where you were going to be two ticks ago.
+Three fields of the input are involved, and each one belongs somewhere else.
+
+The **shot** goes on the stored input, because the fire counter is cumulative and
+the client's own bookkeeping has to stay in step with it. It is a step of two,
+which is one press and one release without touching the parity, so your own fire
+key stays in step and the laser's full automatic mode is not armed by accident.
+
+The **aim** and the **weapon request** go on the copy that is sent, never on the
+stored input. For the aim that is the same reason the spinning tee does it. For
+the weapon it matters far more than it looks: that field is sticky, and DDNet
+clears it every time you turn the wheel, because otherwise the last weapon you
+picked by number would override the wheel on every tick for the rest of the
+round. A module that writes it into the stored input wipes that clearing out and
+takes your weapon wheel away. Restoring it is the same trap from the other side:
+the field reads zero whenever you last used the wheel, so writing the saved value
+back restores nothing and leaves you holding the laser, which is exactly what
+looked like the client scrolling through your weapons by itself. The weapon is
+therefore put back by its own number, read off the predicted character before the
+switch, and the module keeps asking until the predicted character is holding it
+again.
+
+The request has to go out on more than one input as well. The server takes the
+*value* from one tick and the *request* from the tick before it, so a single
+input carrying the laser switches nothing.
+
+Which tick a plan is fired on is not a detail either. The input that
+`CControls::SnapInput` builds is the one the server runs on the tick
+`PredGameTick()` names **at that moment**, and `SnapInput` runs before the
+components render. So a plan made while rendering can never be for the tick that
+has just gone out; the earliest it can name is the next one, and the module fires
+it when `PredGameTick()` is that tick exactly. Off by one here and the plan is
+stale on every single input, which is a module that quietly never shoots. It
+therefore plans at least two ticks ahead, and eight when the laser still has to
+be switched to, and if the predicted tick skips over the one the plan named, the
+plan is dropped and a new search starts at once rather than after the rest of the
+interval.
 
 Deep freeze is never attempted: a laser does not lift it, the tile puts it back
 every tick. Live freeze is left alone for the same reason.
 
 The search only runs while a freeze is actually coming: predicting the flight
-costs about a third of a millisecond, and the angle sweep, which is the
-expensive half at a few milliseconds, is skipped entirely when there is nothing
-worth hitting ahead. `cl_unfreeze_interval` decides how often it may run at all,
-and `cl_unfreeze_steps` trades the cost against how tight an aim it can find.
+costs about a third of a millisecond, and the angle sweep, which is the expensive
+half, is skipped entirely when there is nothing worth hitting ahead.
+`cl_unfreeze_interval` decides how often it may run at all, and
+`cl_unfreeze_steps` trades the cost against how tight an aim it can find.
+
+The sweep itself is coarse first. Nearly every angle sends the beam nowhere near
+the flight, so tracing all of them at the resolution the setting asks for is
+almost all waste. Instead a sixth of them are traced, the handful that landed or
+came closest are traced again around their neighbourhood, and the best couple of
+those are traced a third time five times finer still. That reaches an angle finer
+than a plain sweep of the same cost, which matters because a band wide enough to
+hit a tee across a room can still be a quarter of a degree wide. Measured against
+a plain sweep on the same flights it finds the same shots for a third of the
+time.
+
+Whatever the settings say, `cl_unfreeze_budget` is the most one search may cost,
+three milliseconds by default. When it runs out the search keeps the best plan it
+had. Without it a heavy setting is felt as a stutter every time a freeze comes
+into range, and worse: a frame that runs long makes the predicted tick skip, and
+the skipped tick can be the one the plan was going to fire on. The status line
+shows what the last search actually took.
 
 `cl_unfreeze_bounces` is the setting that decides whether the module can do
 anything at all. Every bounce buys the shot eight more ticks of life, and the
