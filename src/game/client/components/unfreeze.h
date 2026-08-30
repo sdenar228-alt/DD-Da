@@ -119,6 +119,10 @@ private:
 	int m_FirstUsefulTick = -1;
 	int m_LastUsefulTick = -1;
 	bool m_FreezeAhead = false;
+	// A stretch worth shooting into is coming, whether or not an angle for it has
+	// been found yet. The laser is asked for on this rather than on a finished
+	// plan: the switch costs ticks the freeze does not give back.
+	bool m_WindowAhead = false;
 	// A box around every tick worth hitting. A beam that cannot reach it with the
 	// energy it has left is abandoned instead of traced to the end.
 	bool m_HasUsefulBox = false;
