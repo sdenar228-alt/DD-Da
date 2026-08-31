@@ -27,9 +27,15 @@
 namespace {
 // The aim is sent as whole units, so the angle that leaves the client is never
 // exactly the angle that was wanted. Everything is therefore traced through the
-// integer target, at a length long enough that the rounding is worth well under
-// a tenth of a degree.
-constexpr float AIM_RADIUS = 2000.0f;
+// integer target that will actually be sent.
+//
+// The length of that target is not ours to choose. The player's own aim is
+// clamped to cl_mouse_max_distance, four hundred by default, and a target longer
+// than that is one this client could not have produced by any movement of the
+// mouse. Sending one anyway was a plain defect: it asked the server to believe in
+// a cursor that cannot exist. It also quietly searched a finer grid of angles
+// than a real aim has, so some of the shots it found were unreachable in
+// principle, whoever was aiming.
 // A hit that only shortens a freeze the tee was going to sit out anyway has to
 // be worth something; two ticks of that is not. A stretch that ends because a
 // tile freezes the tee again is different: those ticks are control handed back,
@@ -178,6 +184,14 @@ bool CUnfreeze::SelfHitPossible() const
 	// A laser only becomes able to touch its owner after a bounce, and only on a
 	// DDRace server running the current laser.
 	return !pWorld->m_WorldConfig.m_OldLaser && pWorld->m_WorldConfig.m_IsDDRace;
+}
+
+// The furthest the aim can be from the tee, which is what one whole unit of the
+// target on the wire is worth in angle. The same clamp the player's own cursor
+// obeys.
+float CUnfreeze::AimReach() const
+{
+	return std::max(1.0f, GameClient()->m_Controls.GetMaxMouseDistance());
 }
 
 bool CUnfreeze::HoldsLaser() const
@@ -483,8 +497,9 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 	CCandidate Candidate;
 	// Trace the direction that will actually be sent, not the one that was
 	// wanted: the target is whole units on the wire.
-	Candidate.m_TargetX = round_to_int(std::cos(Angle) * AIM_RADIUS);
-	Candidate.m_TargetY = round_to_int(std::sin(Angle) * AIM_RADIUS);
+	const float AimRadius = AimReach();
+	Candidate.m_TargetX = round_to_int(std::cos(Angle) * AimRadius);
+	Candidate.m_TargetY = round_to_int(std::sin(Angle) * AimRadius);
 	if(Candidate.m_TargetX == 0 && Candidate.m_TargetY == 0)
 		return Candidate;
 	const vec2 Dir = normalize(vec2((float)Candidate.m_TargetX, (float)Candidate.m_TargetY));
@@ -806,7 +821,7 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 			}
 			// Below what one unit of the aim on the wire can express there is
 			// nothing left to find.
-			if(High - Low < 1.0f / AIM_RADIUS)
+			if(High - Low < 1.0f / AimReach())
 				break;
 		}
 	}
