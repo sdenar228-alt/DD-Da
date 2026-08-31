@@ -18,9 +18,13 @@ class CTileColors : public CComponent
 public:
 	CTileColors() { m_aBucketForTile.fill(-1); }
 	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
+	void OnShutdown() override;
 	void OnRender() override;
 	// A new map invalidates the cached geometry, the old tiles are gone.
 	void OnMapLoad() override { m_QuadsValid = false; }
+	// Disconnecting unloads the collision the quads were built from.
+	void OnReset() override;
 
 private:
 	// One bucket per colored tile type, filled with the quads to draw.
@@ -48,6 +52,16 @@ private:
 
 	void RebuildBuckets();
 	void RebuildQuads(int StartX, int StartY, int EndX, int EndY, bool UseFront);
+	// Hands the quads to the graphics card once, with the color of their bucket
+	// baked into the vertices. Drawing them then costs neither vertex data nor
+	// color state, which is the whole point: the geometry only changes when the
+	// camera crosses a tile boundary, but it used to be streamed every frame.
+	void UploadQuads();
+
+	int m_QuadContainerIndex = -1;
+	// How many quads the container holds. Zero means the view did not fit into
+	// one and is streamed the old way instead.
+	int m_ContainerQuadNum = 0;
 };
 
 #endif
