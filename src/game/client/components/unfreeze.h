@@ -222,6 +222,13 @@ private:
 	bool HoldsLaser() const;
 	// Whether the player owns it at all, when the server says so.
 	bool OwnsLaser() const;
+	// How far the tee moves in one tick, at a tick of the predicted flight. This
+	// is the number that decides whether a shot is realistic: the hit radius is
+	// 28, so a tee covering more than that in a tick can only be hit by a plan
+	// that is right to the tick.
+	float StepAt(int Tick) const;
+	// The largest of those across the whole window worth hitting.
+	float FastestInWindow() const;
 	// Re-runs the chosen angle against a freshly predicted flight. False when it
 	// would no longer land, which means the plan has to be thrown away.
 	bool StillHolds(int LocalId, int PredTick);
