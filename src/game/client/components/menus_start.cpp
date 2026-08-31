@@ -62,6 +62,16 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.VSplitLeft(100.0f, &ExtMenu, nullptr);
 
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
+	static CButtonContainer s_TelegramButton;
+	if(GameClient()->m_Menus.DoButton_Menu(&s_TelegramButton, Localize("Telegram"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	{
+		// Not localised: it is an address, and a translator changing it would send
+		// people somewhere else.
+		Client()->ViewLink("https://t.me/leviathanddnet");
+	}
+
+	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
+	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_DiscordButton;
 	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordButton, Localize("Discord"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{

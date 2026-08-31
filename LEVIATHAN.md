@@ -18,6 +18,13 @@ The Ninja generator is used on purpose: CMake copies the runtime DLLs and the
 "Visual Studio" would put the executable into `build\Release\` where it finds
 neither and fails to start with missing DLL errors.
 
+### The Telegram button
+
+Under the other links in the start menu, opening <https://t.me/leviathanddnet>.
+The address is deliberately not passed through the translations, unlike the DDNet
+links above it: a translated string is something a translator may change, and an
+address that changes sends people somewhere else.
+
 ### Artwork
 
 The client's own icon lives in `other/icons/Leviathan.ico`, built with every size
