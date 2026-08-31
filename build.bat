@@ -1,5 +1,5 @@
 @echo off
-rem Builds the client into build\DDNet.exe.
+rem Builds the client into build\Leviathan.exe.
 rem
 rem Uses the Ninja generator on purpose: CMake copies the runtime DLLs and the
 rem data folder into the build directory root, so a multi-config generator like
@@ -26,4 +26,4 @@ cmake -S "%~dp0." -B "%~dp0build" -G Ninja -DCMAKE_BUILD_TYPE=Release || exit /b
 cmake --build "%~dp0build" --target game-client || exit /b 1
 
 echo.
-echo Built %~dp0build\DDNet.exe
+echo Built %~dp0build\Leviathan.exe

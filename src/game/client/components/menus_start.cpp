@@ -25,13 +25,17 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 {
 	GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_START);
 
-	// render logo
-	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_BANNER].m_Id);
-	Graphics()->QuadsBegin();
-	Graphics()->SetColor(1, 1, 1, 1);
-	IGraphics::CQuadItem QuadItem(MainView.w / 2 - 170, 60, 360, 103);
-	Graphics()->QuadsDrawTL(&QuadItem, 1);
-	Graphics()->QuadsEnd();
+	// The name, drawn where the banner picture used to be. Text rather than an
+	// image so that it stays sharp at any resolution and can be changed without
+	// touching the data files.
+	{
+		CUIRect Logo = {MainView.w / 2.0f - 170.0f, 60.0f, 360.0f, 103.0f};
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f));
+		Ui()->DoLabel(&Logo, "Leviathan", 58.0f, TEXTALIGN_MC);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
+	}
 
 	const float Rounding = 10.0f;
 	const float VMargin = MainView.w / 2 - 190.0f;
