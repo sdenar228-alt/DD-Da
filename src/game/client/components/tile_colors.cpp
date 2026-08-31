@@ -64,6 +64,72 @@ void CTileColors::RebuildBuckets()
 // changes when the camera crosses a tile boundary, so it is kept until it does.
 // Neighbouring tiles of one color also become a single quad, which is what most
 // of a freeze area is.
+// QuadContainerAddQuads refuses to grow a container past the vertex buffer the
+// backend streams through, so a view that produces more quads than this is drawn
+// the old way rather than losing tiles without saying so.
+static constexpr int MAX_CONTAINER_QUADS = 32 * 1024;
+// The unbuffered fallback path copies six vertices per quad into a fixed array,
+// so a single render call has to stay well inside it.
+static constexpr int MAX_QUADS_PER_CALL = 4096;
+
+void CTileColors::OnInit()
+{
+	m_QuadContainerIndex = Graphics()->CreateQuadContainer(false);
+}
+
+void CTileColors::OnShutdown()
+{
+	Graphics()->DeleteQuadContainer(m_QuadContainerIndex);
+	m_ContainerQuadNum = 0;
+}
+
+void CTileColors::OnReset()
+{
+	if(m_QuadContainerIndex != -1)
+		Graphics()->QuadContainerReset(m_QuadContainerIndex);
+	m_ContainerQuadNum = 0;
+	m_QuadsValid = false;
+}
+
+void CTileColors::UploadQuads()
+{
+	m_ContainerQuadNum = 0;
+	if(m_QuadContainerIndex == -1)
+		return;
+	Graphics()->QuadContainerReset(m_QuadContainerIndex);
+
+	size_t Total = 0;
+	for(const SBucket &Bucket : m_vBuckets)
+		Total += Bucket.m_vQuads.size();
+	if(Total == 0 || Total > (size_t)MAX_CONTAINER_QUADS)
+		return;
+
+	// The color and the rotation are baked into the vertices as they are added,
+	// which is what lets every bucket share one container and one draw.
+	Graphics()->QuadsSetRotation(0.0f);
+	Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
+	for(SBucket &Bucket : m_vBuckets)
+	{
+		if(Bucket.m_vQuads.empty())
+			continue;
+		Graphics()->SetColor(Bucket.m_Color);
+		if(Graphics()->QuadContainerAddQuads(m_QuadContainerIndex, Bucket.m_vQuads.data(), (int)Bucket.m_vQuads.size()) < 0)
+		{
+			// A half filled container would draw a half colored map.
+			Graphics()->QuadContainerReset(m_QuadContainerIndex);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+			return;
+		}
+	}
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	Graphics()->QuadContainerUpload(m_QuadContainerIndex);
+	// The shared quad index buffer only covers a few thousand quads by default.
+	if(Graphics()->IsQuadContainerBufferingEnabled())
+		Graphics()->IndicesNumRequiredNotify((unsigned)Total * 6);
+	m_ContainerQuadNum = (int)Total;
+}
+
 void CTileColors::RebuildQuads(int StartX, int StartY, int EndX, int EndY, bool UseFront)
 {
 	const CCollision *pCollision = Collision();
@@ -108,6 +174,8 @@ void CTileColors::RebuildQuads(int StartX, int StartY, int EndX, int EndY, bool 
 	m_CachedEndY = EndY;
 	m_CachedUseFront = UseFront;
 	m_QuadsValid = true;
+
+	UploadQuads();
 }
 
 void CTileColors::OnRender()
@@ -154,24 +222,35 @@ void CTileColors::OnRender()
 
 	Graphics()->TextureClear();
 	Graphics()->BlendNormal();
-	// The vertex buffer behind QuadsDrawTL is a fixed size array, so the quads have
-	// to be handed over in chunks. It is only flushed once another chunk of the
-	// size that was just drawn would no longer fit, so the short trailing chunk of
-	// a bucket can leave it nearly full; every bucket therefore ends its own batch
-	// and the next one starts from an empty buffer.
-	constexpr size_t MaxQuadsPerCall = 1024;
-	for(const SBucket &Bucket : m_vBuckets)
+	if(m_ContainerQuadNum > 0)
 	{
-		if(Bucket.m_vQuads.empty())
-			continue;
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(Bucket.m_Color);
-		for(size_t Offset = 0; Offset < Bucket.m_vQuads.size(); Offset += MaxQuadsPerCall)
+		// Nothing is sent per frame here: the geometry is already on the card and
+		// carries its own colors.
+		for(int Offset = 0; Offset < m_ContainerQuadNum; Offset += MAX_QUADS_PER_CALL)
+			Graphics()->RenderQuadContainer(m_QuadContainerIndex, Offset, std::min(MAX_QUADS_PER_CALL, m_ContainerQuadNum - Offset));
+	}
+	else
+	{
+		// More quads than a container will take. The vertex buffer behind
+		// QuadsDrawTL is a fixed size array, so the quads have to be handed over in
+		// chunks. It is only flushed once another chunk of the size that was just
+		// drawn would no longer fit, so the short trailing chunk of a bucket can
+		// leave it nearly full; every bucket therefore ends its own batch and the
+		// next one starts from an empty buffer.
+		constexpr size_t MaxQuadsPerCall = 1024;
+		for(const SBucket &Bucket : m_vBuckets)
 		{
-			const size_t Count = std::min(MaxQuadsPerCall, Bucket.m_vQuads.size() - Offset);
-			Graphics()->QuadsDrawTL(Bucket.m_vQuads.data() + Offset, (int)Count);
+			if(Bucket.m_vQuads.empty())
+				continue;
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(Bucket.m_Color);
+			for(size_t Offset = 0; Offset < Bucket.m_vQuads.size(); Offset += MaxQuadsPerCall)
+			{
+				const size_t Count = std::min(MaxQuadsPerCall, Bucket.m_vQuads.size() - Offset);
+				Graphics()->QuadsDrawTL(Bucket.m_vQuads.data() + Offset, (int)Count);
+			}
+			Graphics()->QuadsEnd();
 		}
-		Graphics()->QuadsEnd();
 	}
 
 	Graphics()->MapScreen(SavedScreenRect);
