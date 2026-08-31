@@ -18,6 +18,17 @@ The Ninja generator is used on purpose: CMake copies the runtime DLLs and the
 "Visual Studio" would put the executable into `build\Release\` where it finds
 neither and fails to start with missing DLL errors.
 
+### Artwork
+
+The client's own icon lives in `other/icons/Leviathan.ico`, built with every size
+Windows asks for from 16 up to 256, and is compiled into the executable. The logo
+above the buttons in the start menu is `data/leviathan_logo.png`, loaded the first
+time that menu is drawn; if it is missing the menu falls back to the name in
+writing rather than leaving a hole. Replacing either is a matter of replacing the
+file, but a new file under `data` also has to be listed in `EXPECTED_DATA` in
+`CMakeLists.txt`, or it will not be copied next to the executable and the client
+will show the missing texture instead.
+
 ### For an iPhone
 
 DDNet carries a full iOS port, so the fork builds for a phone as it is. Xcode is
