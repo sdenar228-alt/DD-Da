@@ -195,6 +195,20 @@ bool CUnfreeze::HoldsLaser() const
 // puts the whole inventory in the extended character object, and the core reads
 // it; without one, only the weapon in hand is ever known and asking is the only
 // way to find out.
+float CUnfreeze::StepAt(int Tick) const
+{
+	const CFlightStep *pStep = FlightAt(Tick);
+	return pStep == nullptr ? 0.0f : distance(pStep->m_PrevPos, pStep->m_Pos);
+}
+
+float CUnfreeze::FastestInWindow() const
+{
+	float Fastest = 0.0f;
+	for(int Tick = m_FirstUsefulTick; Tick >= 0 && Tick <= m_LastUsefulTick; Tick++)
+		Fastest = std::max(Fastest, StepAt(Tick));
+	return Fastest;
+}
+
 bool CUnfreeze::OwnsLaser() const
 {
 	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
@@ -960,18 +974,18 @@ void CUnfreeze::OnRender()
 				m_PlanFireTick = Best.m_FireTick;
 				m_SolutionDir = normalize(vec2((float)Best.m_TargetX, (float)Best.m_TargetY));
 				m_vSolution = vBestPath;
-				Debug("plan: fire on tick %d (+%d), hit +%d, saves %d ticks, margin %d, tile end %d, speed %.0f (%.0f,%.0f)",
+				Debug("plan: fire on tick %d (+%d), hit +%d, saves %d ticks, margin %d, tile end %d, step at the hit %.0f, fastest in window %.0f",
 					Best.m_FireTick, Best.m_FireTick - PredTick, Best.m_EvalTick - 1 - PredTick,
 					Best.m_Saved, Best.m_Margin, (int)Best.m_TileEnd,
-					length(pPredicted->Core()->m_Vel), pPredicted->Core()->m_Vel.x, pPredicted->Core()->m_Vel.y);
+					StepAt(Best.m_EvalTick - 1), FastestInWindow());
 			}
 			else
 			{
-				Debug("no shot: window +%d..+%d (%d ticks), %d delays, laser %d, closest the beam came %.0f, speed %.0f (%.0f,%.0f)",
+				Debug("no shot: window +%d..+%d (%d ticks), %d delays, laser %d, closest the beam came %.0f, fastest in window %.0f, slowest %.0f",
 					m_FirstUsefulTick - PredTick, m_LastUsefulTick - PredTick, m_LastUsefulTick - m_FirstUsefulTick + 1,
 					NumDelays, (int)InHand,
 					m_BestApproach == std::numeric_limits<float>::max() ? -1.0f : m_BestApproach,
-					length(pPredicted->Core()->m_Vel), pPredicted->Core()->m_Vel.x, pPredicted->Core()->m_Vel.y);
+					FastestInWindow(), StepAt(m_FirstUsefulTick));
 			}
 		}
 
