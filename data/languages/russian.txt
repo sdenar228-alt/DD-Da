@@ -3098,3 +3098,6 @@ Unfreeze shot ready, saves %d ticks of freeze (%.1f ms)
 
 On this server a laser cannot hit the tee that fired it
 == На этом сервере лазер не может попасть в того, кто выстрелил
+
+Telegram
+== Телеграм
