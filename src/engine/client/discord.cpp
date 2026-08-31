@@ -42,8 +42,11 @@ class CDiscord : public IDiscord
 	IDiscordActivityManager *m_pActivityManager;
 
 public:
-	bool Init(FDiscordCreate pfnDiscordCreate)
+	int64_t m_AppId = 0;
+
+	bool Init(FDiscordCreate pfnDiscordCreate, int64_t AppId)
 	{
+		m_AppId = AppId;
 		m_pCore = nullptr;
 		mem_zero(&m_ActivityEvents, sizeof(m_ActivityEvents));
 
@@ -53,7 +56,12 @@ public:
 		DiscordCreateParams Params;
 		DiscordCreateParamsSetDefault(&Params);
 
-		Params.client_id = 752165779117441075; // DDNet
+		// Whose Discord application the presence belongs to. The name and the
+		// artwork Discord shows belong to the application, not to us, so under the
+		// default one it says DDNet. Make an application of your own at
+		// discord.com/developers, upload an image asset named leviathan_logo, and
+		// put its id in cl_discord_app_id to have it say Leviathan instead.
+		Params.client_id = AppId > 0 ? AppId : 752165779117441075;
 		Params.flags = EDiscordCreateFlags::DiscordCreateFlags_NoRequireDiscord;
 		Params.event_data = this;
 		Params.activity_events = &m_ActivityEvents;
@@ -94,10 +102,10 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, "ddnet_logo");
-		str_copy(m_Activity.assets.large_text, "DDNet logo");
+		str_copy(m_Activity.assets.large_image, m_AppId > 0 ? "leviathan_logo" : "ddnet_logo");
+		str_copy(m_Activity.assets.large_text, "Leviathan");
 		m_Activity.timestamps.start = time_timestamp();
-		str_copy(m_Activity.details, "Offline");
+		str_copy(m_Activity.details, "In the menus");
 		m_Activity.instance = false;
 
 		m_UpdateActivity = true;
@@ -107,10 +115,10 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, "ddnet_logo");
-		str_copy(m_Activity.assets.large_text, "DDNet logo");
+		str_copy(m_Activity.assets.large_image, m_AppId > 0 ? "leviathan_logo" : "ddnet_logo");
+		str_copy(m_Activity.assets.large_text, "Leviathan");
 		m_Activity.timestamps.start = time_timestamp();
-		str_copy(m_Activity.name, "Online");
+		str_copy(m_Activity.name, "Leviathan");
 		m_Activity.instance = true;
 
 		str_copy(m_Activity.details, ServerInfo.m_aName);
@@ -192,7 +200,7 @@ public:
 	}
 };
 
-static IDiscord *CreateDiscordImpl()
+static IDiscord *CreateDiscordImpl(int64_t AppId)
 {
 	FDiscordCreate pfnDiscordCreate = GetDiscordCreate();
 	if(!pfnDiscordCreate)
@@ -200,7 +208,7 @@ static IDiscord *CreateDiscordImpl()
 		return nullptr;
 	}
 	CDiscord *pDiscord = new CDiscord();
-	if(pDiscord->Init(pfnDiscordCreate))
+	if(pDiscord->Init(pfnDiscordCreate, AppId))
 	{
 		delete pDiscord;
 		return nullptr;
@@ -208,8 +216,9 @@ static IDiscord *CreateDiscordImpl()
 	return pDiscord;
 }
 #else
-static IDiscord *CreateDiscordImpl()
+static IDiscord *CreateDiscordImpl(int64_t AppId)
 {
+	(void)AppId;
 	return nullptr;
 }
 #endif
@@ -223,9 +232,9 @@ class CDiscordStub : public IDiscord
 	void UpdatePlayerCount(int Count) override {}
 };
 
-IDiscord *CreateDiscord()
+IDiscord *CreateDiscord(int64_t AppId)
 {
-	IDiscord *pDiscord = CreateDiscordImpl();
+	IDiscord *pDiscord = CreateDiscordImpl(AppId);
 	if(pDiscord)
 	{
 		return pDiscord;

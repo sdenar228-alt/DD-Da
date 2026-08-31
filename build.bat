@@ -22,7 +22,7 @@ if not defined VSPATH (
 call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 set "PATH=%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja;%PATH%"
 
-cmake -S "%~dp0." -B "%~dp0build" -G Ninja -DCMAKE_BUILD_TYPE=Release || exit /b 1
+cmake -S "%~dp0." -B "%~dp0build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCLIENT_EXECUTABLE=Leviathan -DDISCORD=ON || exit /b 1
 cmake --build "%~dp0build" --target game-client || exit /b 1
 
 echo.

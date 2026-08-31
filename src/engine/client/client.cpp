@@ -5120,7 +5120,7 @@ int main(int argc, const char **argv)
 	pKernel->RegisterInterface(pEngineHttp); // IEngineHttp
 	pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
 
-	IDiscord *pDiscord = CreateDiscord();
+	IDiscord *pDiscord = CreateDiscord(str_toint64_base(g_Config.m_ClDiscordAppId, 10));
 	pKernel->RegisterInterface(pDiscord);
 
 	ISteam *pSteam = CreateSteam();

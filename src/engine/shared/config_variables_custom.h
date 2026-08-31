@@ -118,3 +118,6 @@ MACRO_CONFIG_INT(ClUnfreezeShowPath, cl_unfreeze_show_path, 1, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(ClUnfreezeShowStatus, cl_unfreeze_show_status, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Say on screen what the unfreeze module is doing")
 MACRO_CONFIG_INT(ClUnfreezeShowFlight, cl_unfreeze_show_flight, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw where the freeze is going to carry you")
 MACRO_CONFIG_COL(ClUnfreezeColor, cl_unfreeze_color, 0xFF55DDFF, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color the unfreeze shot is drawn in")
+
+// Discord rich presence
+MACRO_CONFIG_STR(ClDiscordAppId, cl_discord_app_id, 24, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord application id the rich presence runs under, empty uses DDNet's")
