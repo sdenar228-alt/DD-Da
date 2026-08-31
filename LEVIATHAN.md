@@ -47,7 +47,13 @@ red for someone you are at war with, nothing at all for everybody else. It rides
 on the game's own friend and foe lists, so the marks survive a restart and the
 same people show up in the server browser and the menus.
 
-War is declared from the chat box:
+The **Friends** tab of the settings holds both lists side by side, green on the
+left and red on the right, with a box to type a name into and a button to take
+one off again. Nothing there is separate from the rest of the game: a name added
+here is a friend or a foe everywhere, the browser included.
+
+War is also declared from the chat box, which is quicker in the middle of a
+round:
 
 ```
 !war name
