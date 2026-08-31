@@ -19,6 +19,9 @@ public:
 	virtual void UpdatePlayerCount(int Count) = 0;
 };
 
-IDiscord *CreateDiscord();
+// The Discord application the rich presence runs under. Zero uses DDNet's, which
+// is what makes Discord show DDNet's name and artwork; pass your own to have it
+// show yours.
+IDiscord *CreateDiscord(int64_t AppId);
 
 #endif // ENGINE_DISCORD_H

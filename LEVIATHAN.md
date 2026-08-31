@@ -40,6 +40,19 @@ background falls back to PNG only: the iOS build has no FFmpeg and no Media
 Foundation, so videos and jpg do not load. Everything else, the unfreeze module
 and the tee shader included, works the same.
 
+## Discord presence
+
+Built in, and on. While the client is running Discord shows what you are doing:
+the server's name, the map, and how many people are on it, with an "Ask to join"
+button on servers that are publicly listed. On unlisted ones the party id is
+random so the address does not leak.
+
+The name and the picture Discord puts next to it belong to whoever owns the
+Discord application, and by default that is DDNet's, so it says DDNet. To have it
+say Leviathan, make an application at <https://discord.com/developers>, upload an
+image asset named `leviathan_logo` under Rich Presence, and put the application
+id in `cl_discord_app_id`. Left empty, DDNet's is used and everything still works.
+
 ## Config folder
 
 New folders in `%APPDATA%\DDNet`:
