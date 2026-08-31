@@ -232,6 +232,8 @@ private:
 	// Whether the laser is in hand. The predicted character is a round trip
 	// ahead, but it only believes in the weapons it has seen, so the snapshot has
 	// the last word when it disagrees.
+	// How long the aim vector may be, the same clamp the player's cursor obeys.
+	float AimReach() const;
 	bool HoldsLaser() const;
 	// Whether the player owns it at all, when the server says so.
 	bool OwnsLaser() const;
