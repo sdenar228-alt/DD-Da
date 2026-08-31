@@ -8,6 +8,7 @@
 #include <engine/keys.h>
 #include <engine/serverbrowser.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <generated/client_data.h>
@@ -25,16 +26,29 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 {
 	GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_START);
 
-	// The name, drawn where the banner picture used to be. Text rather than an
-	// image so that it stays sharp at any resolution and can be changed without
-	// touching the data files.
+	// The logo above the buttons. Square, because that is the shape it was drawn
+	// in; the old banner was a wide strip and stretching one into the other would
+	// only make it look wrong.
+	if(!m_LogoLoaded)
 	{
+		m_LogoLoaded = true;
+		m_LogoTexture = Graphics()->LoadTexture("leviathan_logo.png", IStorage::TYPE_ALL);
+	}
+	if(m_LogoTexture.IsValid())
+	{
+		constexpr float LogoSize = 150.0f;
+		Graphics()->TextureSet(m_LogoTexture);
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+		const IGraphics::CQuadItem QuadItem(MainView.w / 2.0f - LogoSize / 2.0f, 30.0f, LogoSize, LogoSize);
+		Graphics()->QuadsDrawTL(&QuadItem, 1);
+		Graphics()->QuadsEnd();
+	}
+	else
+	{
+		// No picture, so the name in writing rather than a hole in the menu.
 		CUIRect Logo = {MainView.w / 2.0f - 170.0f, 60.0f, 360.0f, 103.0f};
-		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
-		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f));
 		Ui()->DoLabel(&Logo, "Leviathan", 58.0f, TEXTALIGN_MC);
-		TextRender()->TextColor(TextRender()->DefaultTextColor());
-		TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
 	}
 
 	const float Rounding = 10.0f;

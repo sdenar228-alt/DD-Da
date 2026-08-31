@@ -1638,6 +1638,7 @@ set(EXPECTED_DATA
   gui_icons.png
   gui_logo.png
   hud.png
+  leviathan_logo.png
   languages/README.txt
   languages/arabic.txt
   languages/azerbaijani.txt
