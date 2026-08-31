@@ -3,6 +3,8 @@
 
 #include <base/str.h>
 
+#include <engine/font_icons.h>
+#include <engine/friends.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/storage.h>
@@ -31,6 +33,7 @@ enum
 	LEVIATHAN_TAB_SOUNDS,
 	LEVIATHAN_TAB_MODELS,
 	LEVIATHAN_TAB_UNFREEZE,
+	LEVIATHAN_TAB_FRIENDS,
 	LEVIATHAN_TAB_MISC,
 	NUMBER_OF_LEVIATHAN_TABS,
 };
@@ -89,6 +92,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 		Localize("Sounds"),
 		Localize("Models"),
 		Localize("Unfreeze"),
+		Localize("Friends"),
 		Localize("Misc")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_LEVIATHAN_TABS; ++Tab)
@@ -127,6 +131,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 	case LEVIATHAN_TAB_SOUNDS: RenderSettingsLeviathanSounds(MainView); break;
 	case LEVIATHAN_TAB_MODELS: RenderSettingsLeviathanModels(MainView); break;
 	case LEVIATHAN_TAB_UNFREEZE: RenderSettingsLeviathanUnfreeze(MainView); break;
+	case LEVIATHAN_TAB_FRIENDS: RenderSettingsLeviathanFriends(MainView); break;
 	case LEVIATHAN_TAB_MISC: RenderSettingsLeviathanMisc(MainView); break;
 	default: break;
 	}
@@ -1078,4 +1083,112 @@ void CMenus::RenderSettingsLeviathanModels(CUIRect MainView)
 	{
 		RefreshGameAssetList();
 	}
+}
+
+// One list per side: the people you like on the left, the people you do not on
+// the right. Both are the game's own lists, so anything done here shows up in
+// the server browser and on the name plates at once.
+void CMenus::RenderSettingsLeviathanFriends(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button, Row;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	struct SColumn
+	{
+		IFriends *m_pList;
+		const char *m_pTitle;
+		const char *m_pAddLabel;
+		ColorRGBA m_Color;
+		CUIRect m_View;
+	};
+	SColumn aColumns[2] = {
+		{GameClient()->Friends(), Localize("Friends"), Localize("Add friend"), ColorRGBA(0.35f, 0.9f, 0.35f), LeftView},
+		{GameClient()->Foes(), Localize("At war with"), Localize("Declare war"), ColorRGBA(0.95f, 0.25f, 0.25f), RightView}};
+
+	static CLineInputBuffered<MAX_NAME_LENGTH> s_aNameInputs[2];
+	static CButtonContainer s_aAddButtons[2];
+	// One remove button per row, and the rows are rebuilt every frame, so the ids
+	// have to be stable across frames rather than tied to the entry.
+	static CButtonContainer s_aaRemoveButtons[2][16];
+	static CScrollRegion s_aScrollRegions[2];
+
+	for(int Side = 0; Side < 2; ++Side)
+	{
+		SColumn &Column = aColumns[Side];
+		CUIRect View = Column.m_View;
+
+		Ui()->DoLabel_AutoLineSize(Column.m_pTitle, HEADLINE_FONT_SIZE, TEXTALIGN_ML, &View, HEADLINE_HEIGHT);
+		View.HSplitTop(MARGIN_SMALL, nullptr, &View);
+
+		// Adding one. The name has to be written the way it appears in game,
+		// because that is what the list matches against.
+		View.HSplitTop(LINE_SIZE, &Row, &View);
+		Row.VSplitRight(100.0f, &Button, &Row);
+		Ui()->DoEditBox(&s_aNameInputs[Side], &Button, 12.0f);
+		Row.VSplitRight(MARGIN_SMALL, &Row, nullptr);
+		if(DoButton_Menu(&s_aAddButtons[Side], Column.m_pAddLabel, 0, &Row) && !s_aNameInputs[Side].IsEmpty())
+		{
+			Column.m_pList->AddFriend(s_aNameInputs[Side].GetString(), "");
+			s_aNameInputs[Side].Clear();
+			FriendlistOnUpdate();
+			Client()->ServerBrowserUpdate();
+		}
+
+		View.HSplitTop(MARGIN_SMALL, nullptr, &View);
+
+		CUIRect ListView = View;
+		CScrollRegionParams Params;
+		Params.m_ScrollUnit = 60.0f;
+		s_aScrollRegions[Side].Begin(&ListView, &Params);
+
+		int Shown = 0;
+		for(int i = 0; i < Column.m_pList->NumFriends(); ++i)
+		{
+			const CFriendInfo *pInfo = Column.m_pList->GetFriend(i);
+			if(pInfo == nullptr || pInfo->m_aName[0] == 0)
+				continue;
+
+			ListView.HSplitTop(LINE_SIZE, &Row, &ListView);
+			s_aScrollRegions[Side].AddRect(Row);
+
+			CUIRect Dot, Name, Remove;
+			Row.VSplitLeft(14.0f, &Dot, &Name);
+			Name.VSplitRight(70.0f, &Name, &Remove);
+
+			TextRender()->TextColor(Column.m_Color);
+			TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+			Ui()->DoLabel(&Dot, FontIcon::CIRCLE, 8.0f, TEXTALIGN_MC);
+			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+			Ui()->DoLabel(&Name, pInfo->m_aName, 12.0f, TEXTALIGN_ML);
+
+			if(Shown < (int)std::size(s_aaRemoveButtons[Side]))
+			{
+				if(DoButton_Menu(&s_aaRemoveButtons[Side][Shown], Localize("Remove"), 0, &Remove, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.4f, 0.15f, 0.15f, 0.4f)))
+				{
+					Column.m_pList->RemoveFriend(pInfo->m_aName, pInfo->m_aClan);
+					FriendlistOnUpdate();
+					Client()->ServerBrowserUpdate();
+					break;
+				}
+			}
+			++Shown;
+		}
+		s_aScrollRegions[Side].End();
+
+		if(Shown == 0)
+		{
+			CUIRect Empty = View;
+			Empty.HSplitTop(LINE_SIZE, &Empty, nullptr);
+			TextRender()->TextColor(ColorRGBA(0.6f, 0.6f, 0.6f, 1.0f));
+			Ui()->DoLabel(&Empty, Localize("Nobody yet"), 12.0f, TEXTALIGN_ML);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+	}
+
+	// The one setting that belongs here, under both lists.
+	CUIRect Bottom;
+	MainView.HSplitBottom(LINE_SIZE, nullptr, &Bottom);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRelationDots, Localize("Show the dot by their name in game"), &g_Config.m_ClRelationDots, &Bottom, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClRelationDots, &Bottom, Localize("Green for a friend, red for war, nothing for everybody else. Say !war <name> in the chat to declare war without coming here."));
 }
