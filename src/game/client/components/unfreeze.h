@@ -149,6 +149,12 @@ private:
 	// plan waits several ticks for its moment, and a tee flung sideways covers
 	// more than its own width in one of them, so an unchecked plan goes stale.
 	int m_LastValidateTick = -1;
+	// What the last shot was supposed to achieve, and when, so that what really
+	// happened can be written down next to it. Until now the log said a shot was
+	// fired and nothing about whether it landed.
+	int m_OutcomeTick = -1;
+	int m_OutcomeFreezeAtFire = 0;
+	int m_OutcomeSaved = 0;
 
 	// Set by the console command or by the automatic mode, consumed by the next
 	// input that is actually sent.

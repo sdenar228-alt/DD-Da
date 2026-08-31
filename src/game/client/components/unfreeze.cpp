@@ -68,6 +68,7 @@ void CUnfreeze::Reset()
 	m_ShotLandsTick = -1;
 	m_PlanFireTick = -1;
 	m_LastValidateTick = -1;
+	m_OutcomeTick = -1;
 	m_FiredTargetX = 0;
 	m_FiredTargetY = 0;
 	m_RestoreWeapon = -1;
@@ -860,6 +861,20 @@ void CUnfreeze::OnRender()
 
 	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
 	CCharacter *pPredicted = pGameClient->m_PredictedWorld.GetCharacterById(LocalId);
+
+	// What became of the last shot. Waited out a few ticks past the moment it was
+	// due, so that the server's answer has arrived rather than the prediction's.
+	if(m_OutcomeTick >= 0 && PredTick >= m_OutcomeTick + 4)
+	{
+		const int Now = pPredicted != nullptr ? pPredicted->m_FreezeTime : -1;
+		// Four ticks of freeze run out by themselves; anything more than that came
+		// off because the shot landed.
+		const int Dropped = m_OutcomeFreezeAtFire - Now;
+		Debug("OUTCOME: %s. freeze was %d at the shot, %d now, so %d ticks came off, %d were promised",
+			Now == 0 || Dropped > 8 ? "the shot landed" : "nothing came off, the shot missed",
+			m_OutcomeFreezeAtFire, Now, Dropped, m_OutcomeSaved);
+		m_OutcomeTick = -1;
+	}
 	// While already frozen there is nothing to look for: the shot cannot be taken
 	// any more, it had to leave before the freeze started.
 	if(pPredicted == nullptr || pPredicted->m_FreezeTime > 0)
@@ -1120,7 +1135,11 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 	}
 
 	m_WantShot = false;
-	Debug("SHOT on tick %d, aim %d,%d", PredTick, m_Solution.m_TargetX, m_Solution.m_TargetY);
+	m_OutcomeTick = m_Solution.m_EvalTick - 1;
+	m_OutcomeFreezeAtFire = pPredicted->m_FreezeTime;
+	m_OutcomeSaved = m_Solution.m_Saved;
+	Debug("SHOT on tick %d, aim %d,%d, expecting the hit on +%d and %d ticks off",
+		PredTick, m_Solution.m_TargetX, m_Solution.m_TargetY, m_OutcomeTick - PredTick, m_Solution.m_Saved);
 
 	// An even step leaves the parity alone, so the player's own fire key stays in
 	// step with the counter, and the laser's full automatic mode is not armed.
