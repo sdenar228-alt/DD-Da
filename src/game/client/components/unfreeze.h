@@ -250,6 +250,9 @@ private:
 	// nobody can tell apart from a broken one.
 	void Debug(const char *pFormat, ...) const;
 	mutable char m_aLastDebug[256] = {};
+	// The log holds one session. It used to be appended to for ever, which after
+	// an evening of playing is a file too large to do anything with.
+	mutable bool m_DebugFileStarted = false;
 	mutable int m_LastDebugTick = -1;
 
 	void RenderPlan() const;

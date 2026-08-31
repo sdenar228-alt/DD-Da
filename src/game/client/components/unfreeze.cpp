@@ -1298,7 +1298,10 @@ void CUnfreeze::Debug(const char *pFormat, ...) const
 	str_copy(m_aLastDebug, aBuf, sizeof(m_aLastDebug));
 	m_LastDebugTick = Tick;
 
-	IOHANDLE File = Storage()->OpenFile("unfreeze.log", IOFLAG_APPEND, IStorage::TYPE_SAVE);
+	// Started fresh once per session, appended to after that, so the file is
+	// always the run being asked about and never an evening of them.
+	IOHANDLE File = Storage()->OpenFile("unfreeze.log", m_DebugFileStarted ? IOFLAG_APPEND : IOFLAG_WRITE, IStorage::TYPE_SAVE);
+	m_DebugFileStarted = true;
 	if(!File)
 		return;
 	char aLine[320];
