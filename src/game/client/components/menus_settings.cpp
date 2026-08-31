@@ -52,7 +52,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 		Localize("DDNet"),
 		Localize("Assets"),
 		Localize("Credits"),
-		"DD-Da"};
+		"Leviathan"};
 	static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
 
 	for(int i = 0; i < SETTINGS_LENGTH; i++)
@@ -121,10 +121,10 @@ void CMenus::RenderSettings(CUIRect MainView)
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_CREDITS);
 		RenderSettingsCredits(MainView);
 	}
-	else if(g_Config.m_UiSettingsPage == SETTINGS_DDDA)
+	else if(g_Config.m_UiSettingsPage == SETTINGS_LEVIATHAN)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_RESERVED0);
-		RenderSettingsDDDa(MainView);
+		RenderSettingsLeviathan(MainView);
 	}
 	else
 	{

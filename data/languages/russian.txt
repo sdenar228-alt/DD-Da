@@ -2693,7 +2693,7 @@ Always predict frozen players
 No country flags match your filter criteria
 == 
 
-# DD-Da client settings
+# Leviathan client settings
 Tees
 == Тишки
 

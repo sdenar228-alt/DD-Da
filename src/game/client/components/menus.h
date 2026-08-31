@@ -577,27 +577,27 @@ protected:
 	// found in menus_settings_credits.cpp
 	void RenderSettingsCredits(CUIRect MainView);
 
-	// found in menus_settings_ddda.cpp
-	void RenderSettingsDDDa(CUIRect MainView);
-	void RenderSettingsDDDaTees(CUIRect MainView);
-	void RenderSettingsDDDaHook(CUIRect MainView);
-	void RenderSettingsDDDaCrosshair(CUIRect MainView);
-	void RenderSettingsDDDaTiles(CUIRect MainView);
-	void RenderSettingsDDDaMisc(CUIRect MainView);
+	// found in menus_settings_leviathan.cpp
+	void RenderSettingsLeviathan(CUIRect MainView);
+	void RenderSettingsLeviathanTees(CUIRect MainView);
+	void RenderSettingsLeviathanHook(CUIRect MainView);
+	void RenderSettingsLeviathanCrosshair(CUIRect MainView);
+	void RenderSettingsLeviathanTiles(CUIRect MainView);
+	void RenderSettingsLeviathanMisc(CUIRect MainView);
 	bool RenderCustomMenuBackground();
-	void RenderDDDaTeePreview(const CUIRect *pRect);
+	void RenderLeviathanTeePreview(const CUIRect *pRect);
 	// A color picker row followed by an opacity row, so that the alpha of a color
 	// is adjustable without having to open the picker popup.
-	void DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default);
-	void RenderSettingsDDDaBackground(CUIRect MainView);
+	void DoLeviathanColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default);
+	void RenderSettingsLeviathanBackground(CUIRect MainView);
 	void RefreshCrosshairList();
 	void RefreshBackgroundList();
 	void RefreshAvatarList();
 	void RefreshSoundPackList();
 	void RefreshGameAssetList();
-	void RenderSettingsDDDaSounds(CUIRect MainView);
-	void RenderSettingsDDDaModels(CUIRect MainView);
-	void RenderSettingsDDDaUnfreeze(CUIRect MainView);
+	void RenderSettingsLeviathanSounds(CUIRect MainView);
+	void RenderSettingsLeviathanModels(CUIRect MainView);
+	void RenderSettingsLeviathanUnfreeze(CUIRect MainView);
 	std::vector<std::string> m_vGameAssetNames;
 	bool m_GameAssetListLoaded = false;
 	std::vector<std::string> m_vSoundPackNames;
@@ -747,7 +747,7 @@ public:
 		SETTINGS_CREDITS,
 		// Appended at the end on purpose: the indices above are shared with the
 		// official client through `ui_settings_page` in settings_ddnet.cfg.
-		SETTINGS_DDDA,
+		SETTINGS_LEVIATHAN,
 
 		SETTINGS_LENGTH,
 	};
