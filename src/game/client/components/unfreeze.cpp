@@ -357,14 +357,29 @@ bool CUnfreeze::Predict(int LocalId, int StartTick, int Horizon)
 		Step.m_Live = pChar->Core()->m_LiveFrozen;
 		Step.m_OnFreeze = TouchesFreeze(Step.m_PrevPos, Step.m_Pos);
 
-		for(int i = 0; i < MAX_CLIENTS && Step.m_NumOthers < MAX_TRACKED; i++)
+		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			const CCharacter *pOther = m_ScratchWorld.GetCharacterById(i);
 			if(pOther == nullptr || pOther == pChar)
 				continue;
-			if(distance(pOther->m_Pos, Step.m_Pos) > SIMULATE_RADIUS)
+			const float Away = distance(pOther->m_Pos, Step.m_Pos);
+			if(Away > SIMULATE_RADIUS)
 				continue;
-			Step.m_aOthers[Step.m_NumOthers++] = pOther->m_Pos;
+			if(Step.m_NumOthers < MAX_TRACKED)
+			{
+				Step.m_aOthers[Step.m_NumOthers++] = pOther->m_Pos;
+				continue;
+			}
+			// Past the cap, keep the nearest: a tee across the room cannot block
+			// a beam that a nearer one already stops.
+			int Furthest = 0;
+			for(int k = 1; k < Step.m_NumOthers; k++)
+			{
+				if(distance(Step.m_aOthers[k], Step.m_Pos) > distance(Step.m_aOthers[Furthest], Step.m_Pos))
+					Furthest = k;
+			}
+			if(Away < distance(Step.m_aOthers[Furthest], Step.m_Pos))
+				Step.m_aOthers[Furthest] = pOther->m_Pos;
 		}
 
 		m_vFlight.push_back(Step);
@@ -522,7 +537,11 @@ CUnfreeze::CCandidate CUnfreeze::Evaluate(float Angle, int FireTick, vec2 FirePo
 			vec2 OtherClosest;
 			if(!closest_point_on_line(Segment.m_From, Segment.m_To, pStep->m_aOthers[i], OtherClosest))
 				continue;
-			if(distance(pStep->m_aOthers[i], OtherClosest) >= Radius)
+			// With a margin: their predicted position is only as good as ours, and
+			// a beam that shaves past someone by a couple of units is a beam that
+			// ends on them instead. Another angle is nearly always available, so
+			// there is no reason to take the close one.
+			if(distance(pStep->m_aOthers[i], OtherClosest) >= Radius + 6.0f)
 				continue;
 			if(distance(Segment.m_From, OtherClosest) < OwnerAlong)
 			{
@@ -862,18 +881,27 @@ void CUnfreeze::OnRender()
 	const int PredTick = Client()->PredGameTick(g_Config.m_ClDummy);
 	CCharacter *pPredicted = pGameClient->m_PredictedWorld.GetCharacterById(LocalId);
 
-	// What became of the last shot. Waited out a few ticks past the moment it was
-	// due, so that the server's answer has arrived rather than the prediction's.
-	if(m_OutcomeTick >= 0 && PredTick >= m_OutcomeTick + 4)
+	// What became of the last shot, sampled on the three ticks around the moment
+	// the hit was due. The freeze can be back within one tick of coming off, so
+	// looking later cannot tell a hit from a miss.
+	if(m_OutcomeTick >= 0 && pPredicted != nullptr)
 	{
-		const int Now = pPredicted != nullptr ? pPredicted->m_FreezeTime : -1;
-		// Four ticks of freeze run out by themselves; anything more than that came
-		// off because the shot landed.
-		const int Dropped = m_OutcomeFreezeAtFire - Now;
-		Debug("OUTCOME: %s. freeze was %d at the shot, %d now, so %d ticks came off, %d were promised",
-			Now == 0 || Dropped > 8 ? "the shot landed" : "nothing came off, the shot missed",
-			m_OutcomeFreezeAtFire, Now, Dropped, m_OutcomeSaved);
-		m_OutcomeTick = -1;
+		const int Offset = PredTick - (m_OutcomeTick - 1);
+		if(Offset >= 0 && Offset <= 2 && m_aOutcomeFreeze[Offset] < 0)
+		{
+			m_aOutcomeFreeze[Offset] = pPredicted->m_FreezeTime;
+			if(Offset == 1)
+				m_OutcomeOnTile = TouchesFreeze(pPredicted->m_PrevPos, pPredicted->m_Pos);
+		}
+		if(PredTick > m_OutcomeTick + 1)
+		{
+			// It landed if the freeze was on before the hit and gone on it.
+			const bool Landed = m_aOutcomeFreeze[0] > 0 && m_aOutcomeFreeze[1] == 0;
+			Debug("OUTCOME: %s. freeze %d -> %d -> %d around the hit, on a freeze tile %d, %d ticks were promised",
+				Landed ? "LANDED" : (m_aOutcomeFreeze[0] <= 0 ? "the tee was not frozen then, the flight was wrong" : "MISSED, still frozen"),
+				m_aOutcomeFreeze[0], m_aOutcomeFreeze[1], m_aOutcomeFreeze[2], (int)m_OutcomeOnTile, m_OutcomeSaved);
+			m_OutcomeTick = -1;
+		}
 	}
 	// While already frozen there is nothing to look for: the shot cannot be taken
 	// any more, it had to leave before the freeze started.
@@ -1136,8 +1164,9 @@ bool CUnfreeze::ApplyInput(CNetObj_PlayerInput *pInput)
 
 	m_WantShot = false;
 	m_OutcomeTick = m_Solution.m_EvalTick - 1;
-	m_OutcomeFreezeAtFire = pPredicted->m_FreezeTime;
 	m_OutcomeSaved = m_Solution.m_Saved;
+	m_aOutcomeFreeze[0] = m_aOutcomeFreeze[1] = m_aOutcomeFreeze[2] = -1;
+	m_OutcomeOnTile = false;
 	Debug("SHOT on tick %d, aim %d,%d, expecting the hit on +%d and %d ticks off",
 		PredTick, m_Solution.m_TargetX, m_Solution.m_TargetY, m_OutcomeTick - PredTick, m_Solution.m_Saved);
 
