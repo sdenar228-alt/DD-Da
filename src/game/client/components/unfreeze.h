@@ -45,8 +45,10 @@ public:
 
 private:
 	// How many other tees are followed through the flight. They matter because a
-	// laser stops at the first tee it touches, whoever that is.
-	static constexpr int MAX_TRACKED = 4;
+	// laser stops at the first tee it touches, whoever that is, and four was not
+	// enough on a populated server: the ones that were dropped still ate the
+	// beam, they were just invisible to the search.
+	static constexpr int MAX_TRACKED = 16;
 
 	// One predicted tick of the tee's flight.
 	class CFlightStep
@@ -153,8 +155,13 @@ private:
 	// happened can be written down next to it. Until now the log said a shot was
 	// fired and nothing about whether it landed.
 	int m_OutcomeTick = -1;
-	int m_OutcomeFreezeAtFire = 0;
 	int m_OutcomeSaved = 0;
+	// The freeze on the tick before the hit was due, on the tick itself, and on
+	// the one after. Sampled rather than looked at afterwards, because a tile can
+	// put the freeze back within a tick of the shot taking it off, and then a
+	// later look cannot tell a hit from a miss at all.
+	int m_aOutcomeFreeze[3] = {-1, -1, -1};
+	bool m_OutcomeOnTile = false;
 
 	// Set by the console command or by the automatic mode, consumed by the next
 	// input that is actually sent.
