@@ -269,9 +269,18 @@ class CDiscordStub : public IDiscord
 	void UpdatePlayerCount(int Count) override {}
 };
 
+// Defined in discord_ipc.cpp. Preferred where it exists, because the socket
+// takes buttons and the SDK does not, and because it needs no library.
+IDiscord *CreateDiscordIpc();
+
 IDiscord *CreateDiscord()
 {
-	IDiscord *pDiscord = CreateDiscordImpl();
+	IDiscord *pDiscord = CreateDiscordIpc();
+	if(pDiscord)
+	{
+		return pDiscord;
+	}
+	pDiscord = CreateDiscordImpl();
 	if(pDiscord)
 	{
 		return pDiscord;
