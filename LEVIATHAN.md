@@ -1,7 +1,7 @@
-﻿# DD-Da
+﻿# Leviathan
 
 A DDNet 20.1 fork with extra client side features. Everything is configured in
-the **DD-Da** tab of the settings, or from the console (F1) with the
+the **Leviathan** tab of the settings, or from the console (F1) with the
 `cl_custom_*` variables.
 
 ## Building
@@ -23,7 +23,7 @@ neither and fails to start with missing DLL errors.
 DDNet carries a full iOS port, so the fork builds for a phone as it is. Xcode is
 macOS only, so the build runs on a GitHub Actions macOS runner instead: the
 **iOS app** workflow can be started by hand from the Actions tab and leaves a
-`DDDa.ipa` as its artifact. It fetches `ddnet-libs` itself, because this
+`Leviathan.ipa` as its artifact. It fetches `ddnet-libs` itself, because this
 repository does not carry it, and it boots the simulator build once and checks
 that the client actually starts before it packages the device build.
 

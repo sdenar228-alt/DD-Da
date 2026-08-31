@@ -18,10 +18,10 @@ concurrency:
 
 env:
   # The name shown under the icon on the phone, and the name of the bundle.
-  APP_NAME: DDDa
+  APP_NAME: Leviathan
   # Has to be unique to whoever signs it. Sideloadly rewrites this anyway when
   # it signs with a free Apple ID, because those cannot reuse an identifier.
-  BUNDLE_ID: com.ddda.client
+  BUNDLE_ID: com.leviathan.client
 
 jobs:
   build:
@@ -77,5 +77,5 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v6
       with:
-        name: ddda-ios-ipa
+        name: leviathan-ios-ipa
         path: artifacts

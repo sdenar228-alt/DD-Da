@@ -23,16 +23,16 @@
 
 enum
 {
-	DDDA_TAB_TEES = 0,
-	DDDA_TAB_HOOK,
-	DDDA_TAB_CROSSHAIR,
-	DDDA_TAB_TILES,
-	DDDA_TAB_BACKGROUND,
-	DDDA_TAB_SOUNDS,
-	DDDA_TAB_MODELS,
-	DDDA_TAB_UNFREEZE,
-	DDDA_TAB_MISC,
-	NUMBER_OF_DDDA_TABS,
+	LEVIATHAN_TAB_TEES = 0,
+	LEVIATHAN_TAB_HOOK,
+	LEVIATHAN_TAB_CROSSHAIR,
+	LEVIATHAN_TAB_TILES,
+	LEVIATHAN_TAB_BACKGROUND,
+	LEVIATHAN_TAB_SOUNDS,
+	LEVIATHAN_TAB_MODELS,
+	LEVIATHAN_TAB_UNFREEZE,
+	LEVIATHAN_TAB_MISC,
+	NUMBER_OF_LEVIATHAN_TABS,
 };
 
 // Layout constants, kept in sync with the appearance settings page so that both
@@ -51,7 +51,7 @@ static ColorRGBA DefaultColor(unsigned Packed)
 	return color_cast<ColorRGBA>(ColorHSLA(Packed, true));
 }
 
-void CMenus::DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default)
+void CMenus::DoLeviathanColorLine(CButtonContainer *pResetId, const void *pOpacityId, CUIRect *pView, const char *pLabel, unsigned *pColor, unsigned Default)
 {
 	DoLine_ColorPicker(pResetId, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, pView,
 		pLabel, pColor, DefaultColor(Default), false, nullptr, true);
@@ -72,15 +72,15 @@ void CMenus::DoDDDaColorLine(CButtonContainer *pResetId, const void *pOpacityId,
 	pView->HSplitTop(COLOR_PICKER_LINE_SPACING, nullptr, pView);
 }
 
-void CMenus::RenderSettingsDDDa(CUIRect MainView)
+void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 {
-	static int s_CurTab = DDDA_TAB_TEES;
+	static int s_CurTab = LEVIATHAN_TAB_TEES;
 
 	CUIRect TabBar, Button;
 	MainView.HSplitTop(20.0f, &TabBar, &MainView);
-	const float TabWidth = TabBar.w / (float)NUMBER_OF_DDDA_TABS;
-	static CButtonContainer s_aPageTabs[NUMBER_OF_DDDA_TABS] = {};
-	const char *apTabNames[NUMBER_OF_DDDA_TABS] = {
+	const float TabWidth = TabBar.w / (float)NUMBER_OF_LEVIATHAN_TABS;
+	static CButtonContainer s_aPageTabs[NUMBER_OF_LEVIATHAN_TABS] = {};
+	const char *apTabNames[NUMBER_OF_LEVIATHAN_TABS] = {
 		Localize("Tees"),
 		Localize("Hook"),
 		Localize("Crosshair"),
@@ -91,10 +91,10 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 		Localize("Unfreeze"),
 		Localize("Misc")};
 
-	for(int Tab = 0; Tab < NUMBER_OF_DDDA_TABS; ++Tab)
+	for(int Tab = 0; Tab < NUMBER_OF_LEVIATHAN_TABS; ++Tab)
 	{
 		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
-		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == NUMBER_OF_DDDA_TABS - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == NUMBER_OF_LEVIATHAN_TABS - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
 		if(DoButton_MenuTab(&s_aPageTabs[Tab], apTabNames[Tab], s_CurTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
 		{
 			s_CurTab = Tab;
@@ -119,20 +119,20 @@ void CMenus::RenderSettingsDDDa(CUIRect MainView)
 
 	switch(s_CurTab)
 	{
-	case DDDA_TAB_TEES: RenderSettingsDDDaTees(MainView); break;
-	case DDDA_TAB_HOOK: RenderSettingsDDDaHook(MainView); break;
-	case DDDA_TAB_CROSSHAIR: RenderSettingsDDDaCrosshair(MainView); break;
-	case DDDA_TAB_TILES: RenderSettingsDDDaTiles(MainView); break;
-	case DDDA_TAB_BACKGROUND: RenderSettingsDDDaBackground(MainView); break;
-	case DDDA_TAB_SOUNDS: RenderSettingsDDDaSounds(MainView); break;
-	case DDDA_TAB_MODELS: RenderSettingsDDDaModels(MainView); break;
-	case DDDA_TAB_UNFREEZE: RenderSettingsDDDaUnfreeze(MainView); break;
-	case DDDA_TAB_MISC: RenderSettingsDDDaMisc(MainView); break;
+	case LEVIATHAN_TAB_TEES: RenderSettingsLeviathanTees(MainView); break;
+	case LEVIATHAN_TAB_HOOK: RenderSettingsLeviathanHook(MainView); break;
+	case LEVIATHAN_TAB_CROSSHAIR: RenderSettingsLeviathanCrosshair(MainView); break;
+	case LEVIATHAN_TAB_TILES: RenderSettingsLeviathanTiles(MainView); break;
+	case LEVIATHAN_TAB_BACKGROUND: RenderSettingsLeviathanBackground(MainView); break;
+	case LEVIATHAN_TAB_SOUNDS: RenderSettingsLeviathanSounds(MainView); break;
+	case LEVIATHAN_TAB_MODELS: RenderSettingsLeviathanModels(MainView); break;
+	case LEVIATHAN_TAB_UNFREEZE: RenderSettingsLeviathanUnfreeze(MainView); break;
+	case LEVIATHAN_TAB_MISC: RenderSettingsLeviathanMisc(MainView); break;
 	default: break;
 	}
 }
 
-void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanTees(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -154,7 +154,7 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		static CButtonContainer s_OutlineColor;
 		static int s_OutlineOpacity;
-		DoDDDaColorLine(&s_OutlineColor, &s_OutlineOpacity, &LeftView, Localize("Outline color"),
+		DoLeviathanColorLine(&s_OutlineColor, &s_OutlineOpacity, &LeftView, Localize("Outline color"),
 			&g_Config.m_ClCustomOutlineColor, DefaultConfig::ClCustomOutlineColor);
 	}
 
@@ -195,7 +195,7 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 	Ui()->DoLabel_AutoLineSize(Localize("Preview"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 	RightView.HSplitTop(70.0f, &Button, &RightView);
-	RenderDDDaTeePreview(&Button);
+	RenderLeviathanTeePreview(&Button);
 
 	if(g_Config.m_ClCustomAvatar)
 	{
@@ -275,7 +275,7 @@ void CMenus::RenderSettingsDDDaTees(CUIRect MainView)
 }
 
 
-void CMenus::RenderSettingsDDDaHook(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanHook(CUIRect MainView)
 {
 	CUIRect LeftView, RightView;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -298,7 +298,7 @@ void CMenus::RenderSettingsDDDaHook(CUIRect MainView)
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		static CButtonContainer s_HookColor;
 		static int s_HookOpacity;
-		DoDDDaColorLine(&s_HookColor, &s_HookOpacity, &LeftView, Localize("Hook chain color"),
+		DoLeviathanColorLine(&s_HookColor, &s_HookOpacity, &LeftView, Localize("Hook chain color"),
 			&g_Config.m_ClCustomHookColorValue, DefaultConfig::ClCustomHookColorValue);
 
 		CUIRect Button;
@@ -382,7 +382,7 @@ void CMenus::RefreshSoundPackList()
 	m_SoundPackListLoaded = true;
 }
 
-void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanCrosshair(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -404,7 +404,7 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 	static CButtonContainer s_CrosshairColor;
 	static int s_CrosshairOpacity;
-	DoDDDaColorLine(&s_CrosshairColor, &s_CrosshairOpacity, &LeftView, Localize("Tint color"),
+	DoLeviathanColorLine(&s_CrosshairColor, &s_CrosshairOpacity, &LeftView, Localize("Tint color"),
 		&g_Config.m_ClCustomCrosshairColor, DefaultConfig::ClCustomCrosshairColor);
 
 	// Image list
@@ -487,7 +487,7 @@ void CMenus::RenderSettingsDDDaCrosshair(CUIRect MainView)
 	}
 }
 
-void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanTiles(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -538,12 +538,12 @@ void CMenus::RenderSettingsDDDaTiles(CUIRect MainView)
 			// same height.
 			RightView.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL + 2.0f * LINE_SIZE + MARGIN_SMALL, nullptr, &RightView);
 		}
-		DoDDDaColorLine(&s_aTileColorButtons[i], &s_aTileColorOpacity[i], pView,
+		DoLeviathanColorLine(&s_aTileColorButtons[i], &s_aTileColorOpacity[i], pView,
 			aColors[i].m_pLabel, aColors[i].m_pValue, aColors[i].m_Default);
 	}
 }
 
-void CMenus::RenderSettingsDDDaUnfreeze(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanUnfreeze(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -605,12 +605,12 @@ void CMenus::RenderSettingsDDDaUnfreeze(CUIRect MainView)
 		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 		static CButtonContainer s_UnfreezeColorReset;
 		static int s_UnfreezeColorOpacity;
-		DoDDDaColorLine(&s_UnfreezeColorReset, &s_UnfreezeColorOpacity, &RightView,
+		DoLeviathanColorLine(&s_UnfreezeColorReset, &s_UnfreezeColorOpacity, &RightView,
 			Localize("Color"), &g_Config.m_ClUnfreezeColor, DefaultConfig::ClUnfreezeColor);
 	}
 }
 
-void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanMisc(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -684,7 +684,7 @@ void CMenus::RenderSettingsDDDaMisc(CUIRect MainView)
 	}
 }
 
-void CMenus::RenderDDDaTeePreview(const CUIRect *pRect)
+void CMenus::RenderLeviathanTeePreview(const CUIRect *pRect)
 {
 	const CSkin *pDefaultSkin = GameClient()->m_Skins.Find("default");
 	if(pDefaultSkin == nullptr)
@@ -713,7 +713,7 @@ void CMenus::RenderDDDaTeePreview(const CUIRect *pRect)
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeeRenderPos);
 }
 
-void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -830,7 +830,7 @@ void CMenus::RenderSettingsDDDaBackground(CUIRect MainView)
 	}
 }
 
-void CMenus::RenderSettingsDDDaSounds(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanSounds(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
@@ -965,7 +965,7 @@ void CMenus::RefreshGameAssetList()
 	m_GameAssetListLoaded = true;
 }
 
-void CMenus::RenderSettingsDDDaModels(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanModels(CUIRect MainView)
 {
 	struct SGroup
 	{
