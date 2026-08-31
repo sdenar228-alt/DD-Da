@@ -106,6 +106,16 @@ The connection is made after the config file has been read, not while the client
 is being built, because the application id is a setting and at construction time
 nothing has been read yet. Changing either setting therefore takes a restart.
 
+Under the presence there is a **Telegram** button. That is why the presence talks
+to Discord over its own socket on Windows rather than through the Game SDK the
+rest of DDNet uses: the SDK's activity has no field for buttons and never has.
+The socket takes the activity as JSON and accepts up to two of them, needs no
+library beside it, and saves shipping three and a half megabytes of DLL. The SDK
+remains as a fallback and is what every other platform uses.
+
+Discord does not show your own buttons back to you, so the only way to see one is
+from somebody else's client.
+
 ## Config folder
 
 New folders in `%APPDATA%\DDNet`:

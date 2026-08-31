@@ -2575,6 +2575,7 @@ if(CLIENT)
     demoedit.cpp
     demoedit.h
     discord.cpp
+    discord_ipc.cpp
     enums.h
     favorites.cpp
     friends.cpp
