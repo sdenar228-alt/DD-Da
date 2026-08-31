@@ -30,6 +30,10 @@ public:
 	bool m_ShowName;
 	char m_aName[std::max((size_t)MAX_NAME_LENGTH, (size_t)protocol7::MAX_NAME_ARRAY_SIZE)];
 	bool m_ShowFriendMark;
+	// A dot next to the name saying how this player stands with us: green for a
+	// friend, red for someone declared war on, nothing for everybody else.
+	bool m_ShowRelationDot;
+	ColorRGBA m_RelationColor;
 	bool m_ShowClientId;
 	int m_ClientId;
 	float m_FontSizeClientId;
@@ -336,6 +340,42 @@ public:
 	}
 };
 
+// A filled circle in front of the name. The colour is the whole message, so it
+// is set from the data every frame rather than baked in at construction.
+class CNamePlatePartRelationDot : public CNamePlatePartText
+{
+private:
+	float m_FontSize = -INFINITY;
+
+protected:
+	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_Visible = Data.m_ShowRelationDot;
+		if(!m_Visible)
+			return false;
+		m_Color = Data.m_RelationColor;
+		m_Color.a = Data.m_Color.a;
+		return m_FontSize != Data.m_FontSize;
+	}
+	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_FontSize = Data.m_FontSize;
+		CTextCursor Cursor;
+		This.TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		// Smaller than the name: it is a marker, not a decoration.
+		Cursor.m_FontSize = m_FontSize * 0.6f;
+		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, FontIcon::CIRCLE);
+		This.TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	}
+
+public:
+	CNamePlatePartRelationDot(CGameClient &This) :
+		CNamePlatePartText(This)
+	{
+		m_Color = ColorRGBA(1.0f, 1.0f, 1.0f);
+	}
+};
+
 class CNamePlatePartName : public CNamePlatePartText
 {
 private:
@@ -517,6 +557,7 @@ private:
 		AddPart<CNamePlatePartNewLine>(This);
 
 		AddPart<CNamePlatePartFriendMark>(This);
+		AddPart<CNamePlatePartRelationDot>(This);
 		AddPart<CNamePlatePartClientId>(This, false);
 		AddPart<CNamePlatePartName>(This);
 		AddPart<CNamePlatePartNewLine>(This);
@@ -644,6 +685,11 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	Data.m_ShowName = pPlayerInfo->m_Local ? g_Config.m_ClNamePlatesOwn : g_Config.m_ClNamePlates;
 	str_copy(Data.m_aName, GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_aName);
 	Data.m_ShowFriendMark = Data.m_ShowName && g_Config.m_ClNamePlatesFriendMark && GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_Friend;
+	const bool IsFoe = GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_Foe;
+	const bool IsFriend = GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_Friend;
+	Data.m_ShowRelationDot = Data.m_ShowName && g_Config.m_ClRelationDots && (IsFriend || IsFoe);
+	// War wins when someone is on both lists: the warning is the useful half.
+	Data.m_RelationColor = IsFoe ? ColorRGBA(0.95f, 0.25f, 0.25f) : ColorRGBA(0.35f, 0.9f, 0.35f);
 	Data.m_ShowClientId = Data.m_ShowName && (g_Config.m_Debug || g_Config.m_ClNamePlatesIds);
 	Data.m_FontSize = 18.0f + 20.0f * g_Config.m_ClNamePlatesSize / 100.0f;
 
@@ -787,6 +833,8 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_FontSize = FontSize;
 
 	Data.m_ShowFriendMark = Data.m_ShowName && g_Config.m_ClNamePlatesFriendMark;
+	Data.m_ShowRelationDot = Data.m_ShowName && g_Config.m_ClRelationDots;
+	Data.m_RelationColor = ColorRGBA(0.35f, 0.9f, 0.35f);
 
 	Data.m_ShowClientId = Data.m_ShowName && (g_Config.m_Debug || g_Config.m_ClNamePlatesIds);
 	Data.m_ClientId = Dummy;

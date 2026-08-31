@@ -40,6 +40,29 @@ background falls back to PNG only: the iOS build has no FFmpeg and no Media
 Foundation, so videos and jpg do not load. Everything else, the unfreeze module
 and the tee shader included, works the same.
 
+## Friends and war
+
+A dot in front of the name says how somebody stands with you: green for a friend,
+red for someone you are at war with, nothing at all for everybody else. It rides
+on the game's own friend and foe lists, so the marks survive a restart and the
+same people show up in the server browser and the menus.
+
+War is declared from the chat box:
+
+```
+!war name
+!unwar name
+```
+
+The line is caught before anything is sent, so the server never sees it; the
+client answers in the chat to say it took. The name is matched the way the friend
+list matches, so it has to be the player's name as it appears in game.
+
+Friends are added the way they always were, from the scoreboard or the server
+browser, and the dot follows from that.
+
+`cl_relation_dots 0` turns the dots off and leaves the lists alone.
+
 ## Discord presence
 
 Built in, and on. While the client is running Discord shows what you are doing:
