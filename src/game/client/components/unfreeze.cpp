@@ -680,8 +680,11 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 				Improved = true;
 			}
 		}
-		// A hit sorts ahead of every miss, and among misses the nearest first.
-		*pRank = Good ? -1.0f : Candidate.m_Approach;
+		// A hit sorts ahead of every miss, and among misses the nearest first. A
+		// hit is ranked by how far from the middle of the tee it passes, so that
+		// the walk below has something to descend even once it is landing: the
+		// middle of a band is what survives the flight being slightly off.
+		*pRank = Good ? Candidate.m_Miss - Radius : Candidate.m_Approach;
 		m_BestApproach = std::min(m_BestApproach, Candidate.m_Approach);
 		return Good;
 	};
@@ -736,20 +739,55 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 		}
 	}
 
-	// The narrowest bands are still between two of those, so the best couple get
-	// one more pass five times finer again.
+	// The narrowest bands lie between two of those, and sampling ever finer is a
+	// poor way to find them: a band a sixteenth of a degree wide needs a grid of
+	// thousands of angles to be stumbled on. How near the beam passes is a smooth
+	// function of the angle though, so the best few probes are walked downhill on
+	// it instead. A dozen traces then land in the middle of a band that no grid of
+	// this cost would have hit at all.
 	m_vProbes = vDeep;
 	KeepBest(MAX_DEEP);
 	for(const auto &[Around, Rank] : m_vProbes)
 	{
-		for(int Refine = -4; Refine <= 4; Refine++)
+		// Bracket the probe a fifth of a coarse step either side and close in on
+		// the nearest pass. Golden section, so every step but the first reuses one
+		// of the two angles already traced.
+		constexpr float GOLDEN = 0.61803399f;
+		float Low = Around - CoarseStep * 0.2f;
+		float High = Around + CoarseStep * 0.2f;
+		float LeftAngle = High - GOLDEN * (High - Low);
+		float RightAngle = Low + GOLDEN * (High - Low);
+		float LeftRank = 0.0f, RightRank = 0.0f;
+		if(OutOfTime())
+			return Improved;
+		Try(LeftAngle, &LeftRank);
+		if(OutOfTime())
+			return Improved;
+		Try(RightAngle, &RightRank);
+		for(int Step = 0; Step < 12; Step++)
 		{
-			if(Refine == 0)
-				continue;
 			if(OutOfTime())
 				return Improved;
-			float SubRank = 0.0f;
-			Try(Around + CoarseStep * (float)Refine / 45.0f, &SubRank);
+			if(LeftRank < RightRank)
+			{
+				High = RightAngle;
+				RightAngle = LeftAngle;
+				RightRank = LeftRank;
+				LeftAngle = High - GOLDEN * (High - Low);
+				Try(LeftAngle, &LeftRank);
+			}
+			else
+			{
+				Low = LeftAngle;
+				LeftAngle = RightAngle;
+				LeftRank = RightRank;
+				RightAngle = Low + GOLDEN * (High - Low);
+				Try(RightAngle, &RightRank);
+			}
+			// Below what one unit of the aim on the wire can express there is
+			// nothing left to find.
+			if(High - Low < 1.0f / AIM_RADIUS)
+				break;
 		}
 	}
 
