@@ -5120,7 +5120,7 @@ int main(int argc, const char **argv)
 	pKernel->RegisterInterface(pEngineHttp); // IEngineHttp
 	pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
 
-	IDiscord *pDiscord = CreateDiscord(str_toint64_base(g_Config.m_ClDiscordAppId, 10));
+	IDiscord *pDiscord = CreateDiscord();
 	pKernel->RegisterInterface(pDiscord);
 
 	ISteam *pSteam = CreateSteam();
@@ -5160,6 +5160,10 @@ int main(int argc, const char **argv)
 		}
 		pConsole->SetUnknownCommandCallback(IConsole::EmptyUnknownCommandCallback, nullptr);
 	}
+
+	// The presence connects only now, because the application it runs under is a
+	// setting, and the configuration file has just this moment been read.
+	pDiscord->Start(str_toint64_base(g_Config.m_ClDiscordAppId, 10), g_Config.m_ClDiscordAppAsset);
 
 	// execute autoexec file
 	if(pStorage->FileExists(AUTOEXEC_CLIENT_FILE, IStorage::TYPE_ALL))

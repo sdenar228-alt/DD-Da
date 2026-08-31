@@ -79,8 +79,14 @@ random so the address does not leak.
 The name and the picture Discord puts next to it belong to whoever owns the
 Discord application, and by default that is DDNet's, so it says DDNet. To have it
 say Leviathan, make an application at <https://discord.com/developers>, upload an
-image asset named `leviathan_logo` under Rich Presence, and put the application
-id in `cl_discord_app_id`. Left empty, DDNet's is used and everything still works.
+image under Rich Presence, and put the application id in `cl_discord_app_id`.
+Discord looks the image up by name, so if you called it anything other than
+`leviathan_logo`, put that name in `cl_discord_app_asset`. Left empty, DDNet's
+application is used and everything still works, under their name.
+
+The connection is made after the config file has been read, not while the client
+is being built, because the application id is a setting and at construction time
+nothing has been read yet. Changing either setting therefore takes a restart.
 
 ## Config folder
 

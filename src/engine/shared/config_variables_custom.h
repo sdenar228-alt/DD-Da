@@ -121,6 +121,7 @@ MACRO_CONFIG_COL(ClUnfreezeColor, cl_unfreeze_color, 0xFF55DDFF, CFGFLAG_CLIENT 
 
 // Discord rich presence
 MACRO_CONFIG_STR(ClDiscordAppId, cl_discord_app_id, 24, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord application id the rich presence runs under, empty uses DDNet's")
+MACRO_CONFIG_STR(ClDiscordAppAsset, cl_discord_app_asset, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Name of the image asset in your Discord application, empty looks for leviathan_logo")
 
 // Friend and war markers
 MACRO_CONFIG_INT(ClRelationDots, cl_relation_dots, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Green dot by the name of a friend, red by the name of someone you declared war on")
