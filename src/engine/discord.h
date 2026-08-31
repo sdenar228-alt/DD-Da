@@ -11,6 +11,11 @@ class IDiscord : public IInterface
 {
 	MACRO_INTERFACE("discord")
 public:
+	// Connects to Discord. Separate from construction because the application id
+	// comes from the configuration, and the configuration file is executed long
+	// after the interfaces are built.
+	virtual void Start(int64_t AppId, const char *pAssetName) = 0;
+
 	virtual void Update() = 0;
 
 	virtual void ClearGameInfo() = 0;
@@ -19,9 +24,6 @@ public:
 	virtual void UpdatePlayerCount(int Count) = 0;
 };
 
-// The Discord application the rich presence runs under. Zero uses DDNet's, which
-// is what makes Discord show DDNet's name and artwork; pass your own to have it
-// show yours.
-IDiscord *CreateDiscord(int64_t AppId);
+IDiscord *CreateDiscord();
 
 #endif // ENGINE_DISCORD_H

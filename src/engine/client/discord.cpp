@@ -1,4 +1,5 @@
 #include <base/dbg.h>
+#include <base/log.h>
 #include <base/mem.h>
 #include <base/net.h>
 #include <base/secure.h>
@@ -43,8 +44,23 @@ class CDiscord : public IDiscord
 
 public:
 	int64_t m_AppId = 0;
+	FDiscordCreate m_pfnDiscordCreate = nullptr;
+	bool m_Started = false;
+	char m_aAssetName[64] = {};
 
-	bool Init(FDiscordCreate pfnDiscordCreate, int64_t AppId)
+	void SetCreateFunction(FDiscordCreate pfnDiscordCreate) { m_pfnDiscordCreate = pfnDiscordCreate; }
+
+	// Which image Discord shows. It is looked up by name inside the application,
+	// so under our own one it is whatever the setting says, and under DDNet's it
+	// can only be theirs.
+	const char *AssetName() const
+	{
+		if(m_AppId <= 0)
+			return "ddnet_logo";
+		return m_aAssetName[0] == 0 ? "leviathan_logo" : m_aAssetName;
+	}
+
+	bool Connect(int64_t AppId)
 	{
 		m_AppId = AppId;
 		m_pCore = nullptr;
@@ -66,7 +82,7 @@ public:
 		Params.event_data = this;
 		Params.activity_events = &m_ActivityEvents;
 
-		int Error = pfnDiscordCreate(DISCORD_VERSION, &Params, &m_pCore);
+		int Error = m_pfnDiscordCreate(DISCORD_VERSION, &Params, &m_pCore);
 		if(Error != DiscordResult_Ok)
 		{
 			dbg_msg("discord", "error initializing discord instance, error=%d", Error);
@@ -84,8 +100,29 @@ public:
 		return false;
 	}
 
+	void Start(int64_t AppId, const char *pAssetName) override
+	{
+		if(m_Started)
+			return;
+		m_Started = true;
+		str_copy(m_aAssetName, pAssetName == nullptr ? "" : pAssetName);
+		if(Connect(AppId))
+		{
+			// Connect returns true on failure, matching how it was called before.
+			log_info("discord", "rich presence could not start");
+			m_pCore = nullptr;
+			return;
+		}
+		if(AppId > 0)
+			log_info("discord", "rich presence running under application %lld", (long long)AppId);
+		else
+			log_info("discord", "rich presence running under the default application, set cl_discord_app_id for your own");
+	}
+
 	void Update() override
 	{
+		if(m_pCore == nullptr)
+			return;
 		// update every 5 seconds, rate limit is 5 updates per 20 seconds
 		if(m_UpdateActivity && time_get() > m_LastActivityUpdate + time_freq() * 5)
 		{
@@ -102,7 +139,7 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, m_AppId > 0 ? "leviathan_logo" : "ddnet_logo");
+		str_copy(m_Activity.assets.large_image, AssetName());
 		str_copy(m_Activity.assets.large_text, "Leviathan");
 		m_Activity.timestamps.start = time_timestamp();
 		str_copy(m_Activity.details, "In the menus");
@@ -115,7 +152,7 @@ public:
 	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		str_copy(m_Activity.assets.large_image, m_AppId > 0 ? "leviathan_logo" : "ddnet_logo");
+		str_copy(m_Activity.assets.large_image, AssetName());
 		str_copy(m_Activity.assets.large_text, "Leviathan");
 		m_Activity.timestamps.start = time_timestamp();
 		str_copy(m_Activity.name, "Leviathan");
@@ -200,7 +237,7 @@ public:
 	}
 };
 
-static IDiscord *CreateDiscordImpl(int64_t AppId)
+static IDiscord *CreateDiscordImpl()
 {
 	FDiscordCreate pfnDiscordCreate = GetDiscordCreate();
 	if(!pfnDiscordCreate)
@@ -208,23 +245,23 @@ static IDiscord *CreateDiscordImpl(int64_t AppId)
 		return nullptr;
 	}
 	CDiscord *pDiscord = new CDiscord();
-	if(pDiscord->Init(pfnDiscordCreate, AppId))
-	{
-		delete pDiscord;
-		return nullptr;
-	}
+	pDiscord->SetCreateFunction(pfnDiscordCreate);
 	return pDiscord;
 }
 #else
-static IDiscord *CreateDiscordImpl(int64_t AppId)
+static IDiscord *CreateDiscordImpl()
 {
-	(void)AppId;
 	return nullptr;
 }
 #endif
 
 class CDiscordStub : public IDiscord
 {
+	void Start(int64_t AppId, const char *pAssetName) override
+	{
+		(void)AppId;
+		(void)pAssetName;
+	}
 	void Update() override {}
 	void ClearGameInfo() override {}
 	void SetGameInfo(const CServerInfo &ServerInfo, bool Registered) override {}
@@ -232,9 +269,9 @@ class CDiscordStub : public IDiscord
 	void UpdatePlayerCount(int Count) override {}
 };
 
-IDiscord *CreateDiscord(int64_t AppId)
+IDiscord *CreateDiscord()
 {
-	IDiscord *pDiscord = CreateDiscordImpl(AppId);
+	IDiscord *pDiscord = CreateDiscordImpl();
 	if(pDiscord)
 	{
 		return pDiscord;
