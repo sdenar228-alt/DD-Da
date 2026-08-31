@@ -172,6 +172,9 @@ public:
 	void RegisterCommand(const char *pName, const char *pParams, const char *pHelpText);
 	void UnregisterCommand(const char *pName);
 	void Echo(const char *pString);
+	// Handles the !war and !unwar chat commands. True when the line was one of
+	// them and must not be sent on.
+	bool HandleWarCommand(const char *pLine);
 
 	void OnWindowResize() override;
 	void OnConsoleInit() override;

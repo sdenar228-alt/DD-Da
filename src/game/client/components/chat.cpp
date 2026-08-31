@@ -1349,6 +1349,13 @@ void CChat::SendChat(int Team, const char *pLine)
 	if(*str_utf8_skip_whitespaces(pLine) == '\0')
 		return;
 
+	// Every message leaves through here, the chat box and the say command alike,
+	// so this is the place to catch a command of our own. Before the send and
+	// before the timer below, because the point of it is that it is not a message:
+	// the server never sees it and it does not use up the send rate.
+	if(HandleWarCommand(pLine))
+		return;
+
 	m_LastChatSend = time();
 
 	if(GameClient()->Client()->IsSixup())
@@ -1366,6 +1373,47 @@ void CChat::SendChat(int Team, const char *pLine)
 	Msg.m_Team = Team;
 	Msg.m_pMessage = pLine;
 	Client()->SendPackMsgActive(&Msg, MSGFLAG_VITAL);
+}
+
+// The war list, typed rather than clicked: "!war name" in the chat box marks
+// somebody, "!unwar name" takes the mark off. Handled here, before anything is
+// sent, so the command never reaches the server as a message.
+bool CChat::HandleWarCommand(const char *pLine)
+{
+	const char *pName = nullptr;
+	bool Remove = false;
+	if(str_startswith_nocase(pLine, "!war "))
+		pName = pLine + 5;
+	else if(str_startswith_nocase(pLine, "!unwar "))
+	{
+		pName = pLine + 7;
+		Remove = true;
+	}
+	if(pName == nullptr)
+		return false;
+
+	char aName[MAX_NAME_LENGTH];
+	str_copy(aName, str_utf8_skip_whitespaces(pName));
+	str_utf8_trim_right(aName);
+	char aBuf[128];
+	if(aName[0] == 0)
+	{
+		Echo(Localize("Say !war <name> to mark somebody, !unwar <name> to take it off"));
+		return true;
+	}
+
+	if(Remove)
+	{
+		GameClient()->Foes()->RemoveFriend(aName, "");
+		str_format(aBuf, sizeof(aBuf), Localize("No longer at war with '%s'"), aName);
+	}
+	else
+	{
+		GameClient()->Foes()->AddFriend(aName, "");
+		str_format(aBuf, sizeof(aBuf), Localize("At war with '%s'"), aName);
+	}
+	Echo(aBuf);
+	return true;
 }
 
 void CChat::SendChatQueued(const char *pLine)
