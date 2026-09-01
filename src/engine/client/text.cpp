@@ -967,6 +967,11 @@ class CTextRender : public IEngineTextRender
 	unsigned m_RenderFlags;
 
 	ColorRGBA m_Color;
+
+	// The gradient the client asked for, if any.
+	bool m_GradientEnabled = false;
+	float m_GradientPhase = 0.0f;
+	ColorHSLA m_GradientBase = ColorHSLA(0.0f, 1.0f, 0.5f);
 	ColorRGBA m_OutlineColor;
 	ColorRGBA m_SelectionColor;
 
@@ -1097,6 +1102,7 @@ public:
 		m_pGlyphMap = nullptr;
 
 		m_Color = DefaultTextColor();
+		m_GradientEnabled = false;
 		m_OutlineColor = DefaultTextOutlineColor();
 		m_SelectionColor = DefaultTextSelectionColor();
 
@@ -1393,6 +1399,13 @@ public:
 		m_Color.g = g;
 		m_Color.b = b;
 		m_Color.a = a;
+	}
+
+	void SetGradient(bool Enabled, float Phase, ColorHSLA Base) override
+	{
+		m_GradientEnabled = Enabled;
+		m_GradientPhase = Phase;
+		m_GradientBase = Base;
 	}
 
 	void TextColor(ColorRGBA Color) override
@@ -1817,6 +1830,29 @@ public:
 
 					// Check if we have any color split
 					ColorRGBA Color = m_Color;
+
+					// The gradient walks the hue along the line and with the
+					// clock. Only for text drawn once and thrown away: a kept
+					// container would freeze whatever hue it was built with.
+					// The gradient walks the hue along the line and with the clock.
+					// Text kept in a container is colored when the container is
+					// built, so it holds a gradient without travelling along it;
+					// text drawn straight to the screen is rebuilt every frame
+					// and does travel.
+					if(m_GradientEnabled)
+					{
+						// Only text that is rebuilt every frame carries the clock.
+						// A container that is kept would freeze whatever moment it
+						// happened to be built in, and a wall of labels built at
+						// different moments looks like confetti rather than a
+						// gradient, so kept text holds still at the base hue.
+						const float Phase = TextContainer.m_SingleTimeUse ? m_GradientPhase : 0.0f;
+						const float Hue = std::fmod(m_GradientBase.h + CharX * 0.004f + Phase + 1.0f, 1.0f);
+						const ColorRGBA Painted = color_cast<ColorRGBA>(ColorHSLA(Hue, m_GradientBase.s, m_GradientBase.l));
+						// The alpha stays the caller's: text that was fading out
+						// has to keep fading out.
+						Color = ColorRGBA(Painted.r, Painted.g, Painted.b, Color.a);
+					}
 					if(ColorOption < (int)pCursor->m_vColorSplits.size())
 					{
 						STextColorSplit &Split = pCursor->m_vColorSplits.at(ColorOption);

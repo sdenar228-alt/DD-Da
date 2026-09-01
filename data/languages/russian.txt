@@ -3314,3 +3314,21 @@ With the clock beside it
 
 The time on this computer, not the round timer.
 == Время этого компьютера, а не таймер забега.
+
+Gradient text
+== Градиентный текст
+
+Gradient text while playing
+== Градиент в игре
+
+Gradient text in the menus
+== Градиент в меню
+
+Gradient color
+== Цвет градиента
+
+Text kept in a list, like the chat lines already on screen, keeps the color it was drawn with.
+== Текст, который хранится списком — например уже написанные строки чата — остаётся того цвета, с каким был нарисован.
+
+Where the gradient starts. It walks the hue on from there, keeping this saturation and brightness.
+== Откуда начинается градиент. Дальше он ведёт оттенок сам, сохраняя эту насыщенность и яркость.

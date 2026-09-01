@@ -1389,7 +1389,7 @@ void CMenus::RenderSettingsLeviathanEffects(CUIRect MainView)
 		static CButtonContainer s_PickedColor;
 		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 		DoLine_ColorPicker(&s_PickedColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, &RightView,
-			Localize("Particle color"), &g_Config.m_Cl3dParticlesColor, DefaultColor(0x00FF00), false, nullptr, false);
+			Localize("Particle color"), &g_Config.m_Cl3dParticlesColor, DefaultColor(0x55FFB4), false, nullptr, false);
 	}
 
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
@@ -1523,6 +1523,30 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClClientBadgeClock, Localize("With the clock beside it"), &g_Config.m_ClClientBadgeClock, &RightView, LINE_SIZE);
 		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClClientBadgeClock, &RightView, Localize("The time on this computer, not the round timer."));
+	}
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Gradient text"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClGradientTextIngame, Localize("Gradient text while playing"), g_Config.m_ClGradientTextIngame, &Button))
+	{
+		g_Config.m_ClGradientTextIngame ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClGradientTextIngame, &Button, Localize("Text kept in a list, like the chat lines already on screen, keeps the color it was drawn with."));
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClGradientTextMenu, Localize("Gradient text in the menus"), &g_Config.m_ClGradientTextMenu, &LeftView, LINE_SIZE);
+
+	if(g_Config.m_ClGradientTextIngame || g_Config.m_ClGradientTextMenu)
+	{
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClGradientTextSpeed, &g_Config.m_ClGradientTextSpeed, &Button, Localize("Speed"), 0, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		static CButtonContainer s_GradientColor;
+		DoLine_ColorPicker(&s_GradientColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, &LeftView,
+			Localize("Gradient color"), &g_Config.m_ClGradientTextColor, DefaultColor(0x00FFB4), false, nullptr, false);
+		GameClient()->m_Tooltips.DoToolTip(&s_GradientColor, &LeftView, Localize("Where the gradient starts. It walks the hue on from there, keeping this saturation and brightness."));
 	}
 
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);

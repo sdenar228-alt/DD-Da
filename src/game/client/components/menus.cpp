@@ -2398,8 +2398,26 @@ void CMenus::OnWindowResize()
 	TextRender()->DeleteTextContainer(m_MotdTextContainerIndex);
 }
 
+namespace {
+// Puts the in-game gradient back however the menu render leaves.
+class CGradientGuard
+{
+	CGameClient *m_pGameClient;
+
+public:
+	explicit CGradientGuard(CGameClient *pGameClient) :
+		m_pGameClient(pGameClient) {}
+	~CGradientGuard() { m_pGameClient->UpdateTextGradient(g_Config.m_ClGradientTextIngame != 0); }
+};
+} // namespace
+
 void CMenus::OnRender()
 {
+	// The menus have their own say about the gradient, and hand the frame back
+	// to the in-game setting when they are done drawing.
+	GameClient()->UpdateTextGradient(g_Config.m_ClGradientTextMenu != 0);
+	const CGradientGuard GradientGuard(GameClient());
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		SetActive(true);
 
