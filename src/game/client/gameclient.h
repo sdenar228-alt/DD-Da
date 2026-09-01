@@ -62,6 +62,7 @@
 #include "components/music_island.h"
 #include "components/nameplates.h"
 #include "components/particles.h"
+#include "components/particles3d.h"
 #include "components/players.h"
 #include "components/race_demo.h"
 #include "components/scoreboard.h"
@@ -194,6 +195,7 @@ public:
 	CItems m_Items;
 	CTileColors m_TileColors;
 	CTeeTrail m_TeeTrail;
+	CParticles3d m_Particles3d;
 	CUnfreeze m_Unfreeze;
 	CMapImages m_MapImages;
 

@@ -2745,6 +2745,8 @@ if(CLIENT)
     components/nameplates.h
     components/particles.cpp
     components/particles.h
+    components/particles3d.cpp
+    components/particles3d.h
     components/players.cpp
     components/players.h
     components/race_demo.cpp

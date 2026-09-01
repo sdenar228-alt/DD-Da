@@ -141,6 +141,7 @@ void CGameClient::OnConsoleInit()
 					      &m_CustomBackground, // behind everything else
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
+					      &m_Particles3d, // over the background, under everything that matters
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
