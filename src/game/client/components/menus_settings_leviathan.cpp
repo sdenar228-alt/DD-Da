@@ -34,6 +34,7 @@ enum
 	LEVIATHAN_TAB_SOUNDS,
 	LEVIATHAN_TAB_MODELS,
 	LEVIATHAN_TAB_UNFREEZE,
+	LEVIATHAN_TAB_TRAIL,
 	LEVIATHAN_TAB_FRIENDS,
 	LEVIATHAN_TAB_MISC,
 	NUMBER_OF_LEVIATHAN_TABS,
@@ -93,6 +94,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 		Localize("Sounds"),
 		Localize("Models"),
 		Localize("Unfreeze"),
+		Localize("Trail"),
 		Localize("Friends"),
 		Localize("Misc")};
 
@@ -132,6 +134,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 	case LEVIATHAN_TAB_SOUNDS: RenderSettingsLeviathanSounds(MainView); break;
 	case LEVIATHAN_TAB_MODELS: RenderSettingsLeviathanModels(MainView); break;
 	case LEVIATHAN_TAB_UNFREEZE: RenderSettingsLeviathanUnfreeze(MainView); break;
+	case LEVIATHAN_TAB_TRAIL: RenderSettingsLeviathanTrail(MainView); break;
 	case LEVIATHAN_TAB_FRIENDS: RenderSettingsLeviathanFriends(MainView); break;
 	case LEVIATHAN_TAB_MISC: RenderSettingsLeviathanMisc(MainView); break;
 	default: break;
@@ -1254,4 +1257,44 @@ void CMenus::RenderSettingsLeviathanFriends(CUIRect MainView)
 	MainView.HSplitBottom(LINE_SIZE, nullptr, &Bottom);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClRelationDots, Localize("Show the dot by their name in game"), &g_Config.m_ClRelationDots, &Bottom, LINE_SIZE);
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClRelationDots, &Bottom, Localize("Green for a friend, red for war, nothing for everybody else. Say !war <name> in the chat to declare war without coming here."));
+}
+
+void CMenus::RenderSettingsLeviathanTrail(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Tee trail"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTeeTrail, Localize("Draw a trail behind tees"), &g_Config.m_ClTeeTrail, &LeftView, LINE_SIZE);
+	if(g_Config.m_ClTeeTrail)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTeeTrailOthers, Localize("Other tees leave one too"), &g_Config.m_ClTeeTrailOthers, &LeftView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTeeTrailFade, Localize("Fade it out toward the end"), &g_Config.m_ClTeeTrailFade, &LeftView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClTeeTrailTaper, Localize("Narrow it toward the end"), &g_Config.m_ClTeeTrailTaper, &LeftView, LINE_SIZE);
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		static std::vector<CButtonContainer> s_vModeButtons(4);
+		DoLine_RadioMenu(LeftView, Localize("Colored by"),
+			s_vModeButtons,
+			{Localize("Color"), Localize("Tee"), Localize("Rainbow"), Localize("Speed")},
+			{0, 1, 2, 3}, g_Config.m_ClTeeTrailMode);
+
+		if(g_Config.m_ClTeeTrailMode == 0)
+		{
+			static CButtonContainer s_TrailColor;
+			LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+			DoLine_ColorPicker(&s_TrailColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, &LeftView,
+				Localize("Trail color"), &g_Config.m_ClTeeTrailColor, DefaultColor(0xFFFFFF), false, nullptr, false);
+		}
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailWidth, &g_Config.m_ClTeeTrailWidth, &Button, Localize("Width"), 2, 40, &CUi::ms_LinearScrollbarScale);
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailLength, &g_Config.m_ClTeeTrailLength, &Button, Localize("Length"), 5, 150, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ticks"));
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailAlpha, &g_Config.m_ClTeeTrailAlpha, &Button, Localize("Opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
 }

@@ -70,6 +70,7 @@
 #include "components/sounds.h"
 #include "components/spectator.h"
 #include "components/statboard.h"
+#include "components/tee_trail.h"
 #include "components/tile_colors.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
@@ -192,6 +193,7 @@ public:
 	CFreezeBars m_FreezeBars;
 	CItems m_Items;
 	CTileColors m_TileColors;
+	CTeeTrail m_TeeTrail;
 	CUnfreeze m_Unfreeze;
 	CMapImages m_MapImages;
 

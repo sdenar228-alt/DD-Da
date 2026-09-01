@@ -598,6 +598,7 @@ protected:
 	void RenderSettingsLeviathanSounds(CUIRect MainView);
 	void RenderSettingsLeviathanModels(CUIRect MainView);
 	void RenderSettingsLeviathanUnfreeze(CUIRect MainView);
+	void RenderSettingsLeviathanTrail(CUIRect MainView);
 	void RenderSettingsLeviathanFriends(CUIRect MainView);
 	std::vector<std::string> m_vGameAssetNames;
 	bool m_GameAssetListLoaded = false;

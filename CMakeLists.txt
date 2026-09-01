@@ -2761,6 +2761,8 @@ if(CLIENT)
     components/spectator.h
     components/statboard.cpp
     components/statboard.h
+    components/tee_trail.cpp
+    components/tee_trail.h
     components/tile_colors.cpp
     components/tile_colors.h
     components/tooltips.cpp

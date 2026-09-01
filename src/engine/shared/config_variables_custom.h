@@ -121,6 +121,17 @@ MACRO_CONFIG_COL(ClUnfreezeColor, cl_unfreeze_color, 0xFF55DDFF, CFGFLAG_CLIENT 
 
 // Discord rich presence
 MACRO_CONFIG_STR(ClDiscordAppId, cl_discord_app_id, 24, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord application id the rich presence runs under, empty uses DDNet's")
+// Tee trail
+MACRO_CONFIG_INT(ClTeeTrail, cl_tee_trail, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a ribbon behind tees, tracing where they have just been")
+MACRO_CONFIG_INT(ClTeeTrailOthers, cl_tee_trail_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind other tees too, not only your own")
+MACRO_CONFIG_INT(ClTeeTrailFade, cl_tee_trail_fade, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fade the trail out toward its end")
+MACRO_CONFIG_INT(ClTeeTrailTaper, cl_tee_trail_taper, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Narrow the trail toward its end")
+MACRO_CONFIG_INT(ClTeeTrailMode, cl_tee_trail_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What colors the trail: 0 the picked color, 1 the tee's color, 2 a rainbow, 3 the speed")
+MACRO_CONFIG_COL(ClTeeTrailColor, cl_tee_trail_color, 0xFFFFFF, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the trail in the picked color mode")
+MACRO_CONFIG_INT(ClTeeTrailWidth, cl_tee_trail_width, 15, 2, 40, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the trail at the tee")
+MACRO_CONFIG_INT(ClTeeTrailLength, cl_tee_trail_length, 25, 5, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many ticks of flight the trail covers")
+MACRO_CONFIG_INT(ClTeeTrailAlpha, cl_tee_trail_alpha, 80, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the trail in percent")
+
 MACRO_CONFIG_STR(ClDiscordAppAsset, cl_discord_app_asset, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Name of the image asset in your Discord application, empty looks for leviathan_logo")
 
 // Friend and war markers

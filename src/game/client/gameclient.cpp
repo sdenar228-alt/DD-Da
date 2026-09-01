@@ -145,6 +145,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
 					      &m_Ghost,
+					      &m_TeeTrail, // under the players, a tee sits on top of its own trail
 					      &m_Players,
 					      &m_MapLayersForeground,
 					      &m_TileColors, // after the foreground layers, they would paint over it
