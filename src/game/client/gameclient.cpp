@@ -804,7 +804,16 @@ void CGameClient::UpdateTextGradient(bool Enabled)
 	// which is the difference between a control that does something and one that
 	// only ever seemed to change the brightness.
 	const ColorHSLA Picked = ColorHSLA(g_Config.m_ClGradientTextColor);
-	const ColorHSLA Base = ColorHSLA(Picked.h, Picked.s, g_Config.m_ClGradientTextBrightness / 100.0f);
+	// Whether the pick has a color at all is asked of the color it actually
+	// makes, not of its saturation: black and white are picked as a lightness,
+	// and carry whatever saturation the slider happened to be left at.
+	const ColorRGBA AsRgb = color_cast<ColorRGBA>(Picked);
+	const float Lightest = std::max({AsRgb.r, AsRgb.g, AsRgb.b});
+	const float Darkest = std::min({AsRgb.r, AsRgb.g, AsRgb.b});
+	const bool Grey = Lightest - Darkest < 0.04f;
+	// A grey is handed on with no saturation, which is the renderer's cue to
+	// travel the lightness rather than the hue.
+	const ColorHSLA Base = ColorHSLA(Picked.h, Grey ? 0.0f : Picked.s, g_Config.m_ClGradientTextBrightness / 100.0f);
 	const float Phase = Client()->LocalTime() * (g_Config.m_ClGradientTextSpeed / 100.0f) * 0.35f;
 	TextRender()->SetGradient(Enabled, Phase, g_Config.m_ClGradientTextSpread / 100.0f, Base);
 }

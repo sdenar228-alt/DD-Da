@@ -164,6 +164,12 @@ picked. Brightness is its own slider rather than the picked color's lightness,
 so the picker changes the color and the slider changes the brightness, one thing
 each.
 
+Pick a grey, black or white and there is no hue to travel along, so the lightness
+travels instead and the text shimmers from dark to light. Whether a pick counts
+as grey is asked of the color it actually makes rather than of its saturation,
+because black is picked as a lightness and keeps whatever saturation the slider
+was left at.
+
 It is applied where the text is colored, one glyph at a time, so it costs
 nothing beyond the arithmetic. Text drawn straight to the screen is rebuilt every
 frame and so it travels; text kept in a container is colored once when the
