@@ -132,6 +132,11 @@ MACRO_CONFIG_INT(ClFocusHideExtra, cl_focus_hide_extra, 1, 0, 1, CFGFLAG_CLIENT 
 MACRO_CONFIG_INT(ClFocusHideChat, cl_focus_hide_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the chat, except while you are typing")
 MACRO_CONFIG_INT(ClFocusHideScoreboard, cl_focus_hide_scoreboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the scoreboard")
 
+// Fancy weapons: dressed-up beams for the rifle and the shotgun.
+MACRO_CONFIG_INT(ClFancyWeapons, cl_fancy_weapons, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dress up the laser weapons: recolored beams with sparks along them")
+MACRO_CONFIG_INT(ClFancyLaser, cl_fancy_laser, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crystal laser: an icy blue beam with sparks")
+MACRO_CONFIG_INT(ClFancyShotgun, cl_fancy_shotgun, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The sandy shotgun: a golden beam with sparks")
+
 // Tee trail
 MACRO_CONFIG_INT(ClTeeTrail, cl_tee_trail, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a ribbon behind tees, tracing where they have just been")
 MACRO_CONFIG_INT(ClTeeTrailOthers, cl_tee_trail_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind other tees too, not only your own")

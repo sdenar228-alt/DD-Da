@@ -1037,8 +1037,78 @@ void CMenus::RefreshGameAssetList()
 	m_GameAssetListLoaded = true;
 }
 
+// One preview row of a dressed-up weapon: the gun on the left, its beam with
+// the sparks running the rest of the width. The same shapes and colors the real
+// beam is drawn with, so the preview does not lie.
+static void DrawFancyBeamPreview(IGraphics *pGraphics, const CUIRect &Rect, IGraphics::CTextureHandle Weapon, IGraphics::CTextureHandle Star, ColorRGBA Outer, ColorRGBA Inner, float Time)
+{
+	CUIRect Gun, Beam;
+	Rect.VSplitLeft(Rect.h * 2.0f, &Gun, &Beam);
+	Beam.VSplitLeft(6.0f, nullptr, &Beam);
+	Beam.VMargin(4.0f, &Beam);
+
+	const float MidY = Beam.y + Beam.h / 2.0f;
+	pGraphics->TextureClear();
+	pGraphics->QuadsBegin();
+	pGraphics->SetColor(Outer);
+	IGraphics::CQuadItem OuterQuad(Beam.x, MidY - 6.0f, Beam.w, 12.0f);
+	pGraphics->QuadsDrawTL(&OuterQuad, 1);
+	pGraphics->SetColor(Inner);
+	IGraphics::CQuadItem InnerQuad(Beam.x + 1.0f, MidY - 4.0f, Beam.w - 2.0f, 8.0f);
+	pGraphics->QuadsDrawTL(&InnerQuad, 1);
+	pGraphics->QuadsEnd();
+
+	pGraphics->TextureSet(Star);
+	pGraphics->QuadsBegin();
+	for(int i = 0; i < 9; ++i)
+	{
+		const float Seed = std::fmod(i * 0.611f, 1.0f);
+		const float Along = std::fmod(Seed + Time * 0.15f, 1.0f);
+		const float Twinkle = 0.5f + 0.5f * std::sin(Time * 6.0f + Seed * 40.0f);
+		const float Size = 7.0f + 6.0f * Twinkle;
+		pGraphics->QuadsSetRotation(Seed * 2.0f * pi + Time);
+		pGraphics->SetColor(Inner.WithAlpha(0.35f + 0.65f * Twinkle));
+		IGraphics::CQuadItem Spark(Beam.x + Beam.w * Along, MidY + (Seed - 0.5f) * 6.0f, Size, Size);
+		pGraphics->QuadsDraw(&Spark, 1);
+	}
+	pGraphics->QuadsEnd();
+	pGraphics->QuadsSetRotation(0);
+
+	pGraphics->TextureSet(Weapon);
+	pGraphics->QuadsBegin();
+	pGraphics->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+	IGraphics::CQuadItem GunQuad(Gun.x, Gun.y + Gun.h * 0.2f, Gun.h * 2.0f, Gun.h * 0.6f);
+	pGraphics->QuadsDrawTL(&GunQuad, 1);
+	pGraphics->QuadsEnd();
+}
+
 void CMenus::RenderSettingsLeviathanModels(CUIRect MainView)
 {
+	// The dressed-up beams live with the weapon models: same subject, the guns.
+	CUIRect Fancy;
+	MainView.HSplitBottom(120.0f, &MainView, &Fancy);
+	MainView.HSplitBottom(MARGIN_SMALL, &MainView, nullptr);
+	Ui()->DoLabel_AutoLineSize(Localize("Fancy weapons"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &Fancy, HEADLINE_HEIGHT);
+	Fancy.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL, nullptr, &Fancy);
+	CUIRect FancyLeft, FancyRight, Row;
+	Fancy.VSplitMid(&FancyLeft, &FancyRight, MARGIN_BETWEEN_VIEWS);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyWeapons, Localize("Dress up the laser weapons"), &g_Config.m_ClFancyWeapons, &FancyLeft, LINE_SIZE);
+	if(g_Config.m_ClFancyWeapons)
+	{
+		const float Time = Client()->LocalTime();
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyLaser, Localize("Crystal laser"), &g_Config.m_ClFancyLaser, &FancyLeft, LINE_SIZE);
+		FancyLeft.HSplitTop(LINE_SIZE, &Row, &FancyLeft);
+		if(g_Config.m_ClFancyLaser)
+			DrawFancyBeamPreview(Graphics(), Row, GameClient()->m_GameSkin.m_SpriteWeaponLaser, GameClient()->m_GameSkin.m_aSpriteStars[0],
+				ColorRGBA(0.35f, 0.6f, 1.0f, 1.0f), ColorRGBA(0.85f, 0.95f, 1.0f, 1.0f), Time);
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyShotgun, Localize("Sandy shotgun"), &g_Config.m_ClFancyShotgun, &FancyRight, LINE_SIZE);
+		FancyRight.HSplitTop(LINE_SIZE, &Row, &FancyRight);
+		if(g_Config.m_ClFancyShotgun)
+			DrawFancyBeamPreview(Graphics(), Row, GameClient()->m_GameSkin.m_SpriteWeaponShotgun, GameClient()->m_GameSkin.m_aSpriteStars[0],
+				ColorRGBA(0.75f, 0.55f, 0.2f, 1.0f), ColorRGBA(1.0f, 0.9f, 0.55f, 1.0f), Time);
+	}
+
 	struct SGroup
 	{
 		const char *m_pLabel;

@@ -264,6 +264,7 @@ void CItems::RenderLaser(const CLaserData *pCurrent, bool IsPredicted)
 		ColorOut = g_Config.m_ClLaserShotgunOutlineColor;
 		ColorIn = g_Config.m_ClLaserShotgunInnerColor;
 		break;
+	// The fancy colors are decided in RenderLaser itself, which sees the type.
 	case LASERTYPE_DOOR:
 		ColorOut = g_Config.m_ClLaserDoorOutlineColor;
 		ColorIn = g_Config.m_ClLaserDoorInnerColor;
@@ -355,6 +356,23 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 		a = std::clamp(a, 0.0f, 1.0f);
 		float Ia = 1 - a;
 
+		// The dressed-up weapons override the picked colors: crystal for the
+		// rifle, sand for the shotgun. Deliberately after the color settings
+		// rather than woven into them, so switching the dress-up off returns
+		// exactly the colors the player had.
+		const bool FancyRifle = g_Config.m_ClFancyWeapons && g_Config.m_ClFancyLaser && Type == LASERTYPE_RIFLE;
+		const bool FancyShotgun = g_Config.m_ClFancyWeapons && g_Config.m_ClFancyShotgun && Type == LASERTYPE_SHOTGUN;
+		if(FancyRifle)
+		{
+			OuterColor = ColorRGBA(0.35f, 0.6f, 1.0f, OuterColor.a);
+			InnerColor = ColorRGBA(0.85f, 0.95f, 1.0f, InnerColor.a);
+		}
+		else if(FancyShotgun)
+		{
+			OuterColor = ColorRGBA(0.75f, 0.55f, 0.2f, OuterColor.a);
+			InnerColor = ColorRGBA(1.0f, 0.9f, 0.55f, InnerColor.a);
+		}
+
 		Graphics()->TextureClear();
 		Graphics()->QuadsBegin();
 
@@ -379,6 +397,33 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 		Graphics()->QuadsDrawFreeform(&Freeform, 1);
 
 		Graphics()->QuadsEnd();
+
+		// Sparks along the beam. Stateless on purpose: each spark is a hash of
+		// the beam and its index, twinkling on the clock, so the same beam
+		// carries the same sparks from frame to frame and nothing is stored.
+		if(FancyRifle || FancyShotgun)
+		{
+			const float Time = Client()->LocalTime();
+			const int NumSparks = std::clamp((int)(Len / 40.0f), 2, 24);
+			Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteStars[0]);
+			Graphics()->QuadsBegin();
+			for(int i = 0; i < NumSparks; ++i)
+			{
+				// A cheap hash, stable per beam and spark.
+				const float Seed = std::fmod((From.x + From.y) * 0.037f + i * 0.611f, 1.0f);
+				const float Along = std::fmod(Seed + Time * 0.15f, 1.0f);
+				const float Side = (std::fmod(Seed * 7.3f, 1.0f) - 0.5f) * 10.0f * Ia;
+				const float Twinkle = 0.5f + 0.5f * std::sin(Time * 6.0f + Seed * 40.0f);
+				const vec2 Spark = From + Dir * (Len * Along) + vec2(Dir.y, -Dir.x) * Side;
+				const float Size = (5.0f + 5.0f * Twinkle) * Ia;
+				Graphics()->QuadsSetRotation(Seed * 2.0f * pi + Time);
+				Graphics()->SetColor(InnerColor.WithAlpha(InnerColor.a * (0.35f + 0.65f * Twinkle)));
+				IGraphics::CQuadItem QuadItem(Spark.x, Spark.y, Size, Size);
+				Graphics()->QuadsDraw(&QuadItem, 1);
+			}
+			Graphics()->QuadsEnd();
+			Graphics()->QuadsSetRotation(0);
+		}
 	}
 
 	// render head
