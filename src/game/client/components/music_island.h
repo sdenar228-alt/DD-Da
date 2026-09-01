@@ -1,13 +1,13 @@
 #ifndef GAME_CLIENT_COMPONENTS_MUSIC_ISLAND_H
 #define GAME_CLIENT_COMPONENTS_MUSIC_ISLAND_H
 
+#include "custom_music.h"
+
 #include <engine/console.h>
 #include <engine/graphics.h>
 
 #include <game/client/component.h>
 #include <game/client/ui_rect.h>
-
-#include "custom_music_win.h"
 
 #include <string>
 
@@ -24,10 +24,10 @@ public:
 	void OnRender() override;
 
 private:
-	CWindowsMusic m_Music;
+	CSystemMusic m_Music;
 	bool Update();
 	// Starts the worker if it is not running yet and queues the command for it.
-	void SendCommand(CWindowsMusic::ECommand Command);
+	void SendCommand(CSystemMusic::ECommand Command);
 
 	// The measured width of the two lines, kept until the track or the size moves.
 	uint64_t m_MeasuredRevision = (uint64_t)-1;
@@ -37,7 +37,7 @@ private:
 
 	IGraphics::CTextureHandle m_ArtworkTexture;
 
-	CWindowsMusic::CTrack m_Track;
+	CSystemMusic::CTrack m_Track;
 	uint64_t m_ShownRevision = 0;
 	// 0 hidden, 1 fully out. Eased so it slides in and out.
 	float m_Visible = 0.0f;

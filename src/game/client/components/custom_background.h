@@ -12,8 +12,9 @@
 #include <vector>
 
 // Draws a user supplied image or video behind everything else, both in game and
-// in the menus. Videos and non-PNG images are decoded with FFmpeg, which is
-// already linked for the video recorder.
+// in the menus. Videos and non-PNG images go to the codecs that ship with the
+// system first, and fall back to FFmpeg, which is already linked for the video
+// recorder.
 class CCustomBackground : public CComponent
 {
 public:
@@ -34,11 +35,10 @@ private:
 	// gameclient.h, which every component includes.
 	class CMedia;
 	std::unique_ptr<CMedia> m_pMedia;
-#if defined(CONF_FAMILY_WINDOWS)
-	// The codecs that ship with Windows, tried before FFmpeg.
-	std::unique_ptr<class CWindowsMedia> m_pWindowsMedia;
-	bool m_UsingWindowsMedia = false;
-#endif
+	// The codecs that ship with the system, tried before FFmpeg. Present on
+	// every platform; the ones without such codecs refuse to open anything.
+	std::unique_ptr<class CSystemMedia> m_pSystemMedia;
+	bool m_UsingSystemMedia = false;
 
 	// Reused between video frames, a fresh one per frame was megabytes of
 	// allocation and zero fill at the video's frame rate.

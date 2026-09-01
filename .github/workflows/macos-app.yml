@@ -1,0 +1,133 @@
+# Builds the macOS app and packages it as a .dmg. Nothing in it is signed or
+# notarized, so macOS quarantines the image after a download and refuses to open
+# what is inside it until the flag is taken off again:
+#
+#   xattr -dr com.apple.quarantine /Applications/Leviathan.app
+#
+# Run it by hand from the Actions tab, or let it run on a push to a branch whose
+# name starts with "mac".
+name: macOS app
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mac**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Names the executable, the .app around it and the icon both of them use.
+  APP_NAME: Leviathan
+
+jobs:
+  build:
+    runs-on: macos-26
+    env:
+      CARGO_HTTP_MULTIPLEXING: false
+    steps:
+    - uses: actions/checkout@v5
+
+    # ddnet-libs is neither committed to this repository nor a submodule of it,
+    # so checkout cannot bring it along: without it CMake finds no Discord SDK,
+    # and the dylibs that go inside the app bundle are missing when it is put
+    # together.
+    - name: Fetch ddnet-libs
+      run: git clone --depth 1 https://github.com/ddnet/ddnet-libs ddnet-libs
+
+    - name: Prepare macOS
+      run: |
+        brew update
+        # MoltenVK is not needed: the Vulkan backend is off on macOS.
+        #
+        # ninja and pkg-config are the ones that have to be here. The three
+        # libraries are kept because PREFER_BUNDLED_LIBS below only reorders the
+        # search: ddnet-libs wins for everything it carries, and these cover
+        # whatever a future dependency needs that it does not.
+        brew install ffmpeg ninja pkg-config sdl2
+        brew upgrade freetype
+        # dmgbuild is what the package_dmg target calls, and CMake only creates
+        # that target at all when it finds the command while configuring.
+        # dmgbuild in turn needs pyobjc to badge the volume with the app's icon.
+        python3 -m pip install --break-system-packages dmgbuild pyobjc-framework-Quartz
+        # Where that puts the command depends on the runner image, so ask Python
+        # for both places it can be rather than naming a version that will rot.
+        python3 -c 'import sysconfig; print(sysconfig.get_path("scripts"))' >> "$GITHUB_PATH"
+        python3 -c 'import os, site; print(os.path.join(site.USER_BASE, "bin"))' >> "$GITHUB_PATH"
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2.9.2
+      with:
+          cache-bin: false # WORKAROUND(https://github.com/Swatinem/rust-cache/issues/341)
+          workspaces: ./
+
+    # PREFER_BUNDLED_LIBS is what makes the image runnable off this machine.
+    # Without it CMake resolves freetype, png and the opus/ogg that brew's ffmpeg
+    # drags in to /opt/homebrew, because ddnet-libs is only reached through PATHS,
+    # which is the last place find_library looks. Those carry absolute
+    # /opt/homebrew install names, darwin_strip_rpath.py only deletes rpaths and
+    # never rewrites install names, and the copies the packaging step puts in
+    # Contents/Frameworks end up referenced by nothing. The runner has Homebrew,
+    # so the smoke test below would pass and the .dmg would still fail to launch
+    # on anybody else's Mac.
+    - name: Configure
+      run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPREFER_BUNDLED_LIBS=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
+
+    - name: Build client
+      run: cmake --build build --target game-client
+
+    # A runner has no window server, so the packaged client is only ever linked
+    # here, never started, and a second build without graphics is the one that
+    # runs. HEADLESS_CLIENT replaces the graphics backend and nothing else, so
+    # this is a real client reaching a real shutdown.
+    #
+    # Be clear about what it is worth: a missing framework already fails the link
+    # in "Build client" above and a broken Objective-C++ file already fails its
+    # compile, so this does not catch those. What it catches is the client not
+    # getting through startup and shutdown at all. The two ported components are
+    # given something to do below rather than sitting idle, since neither starts
+    # by itself: the decoder only opens a file when one is configured, and the now
+    # playing worker only starts when the island asks it to.
+    - name: Build headless client for the smoke test
+      run: |
+        cmake -S . -B build-headless -G Ninja -DCMAKE_BUILD_TYPE=Release -DPREFER_BUNDLED_LIBS=ON -DHEADLESS_CLIENT=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
+        cmake --build build-headless --target game-client
+
+    # The client runs its arguments as console commands, so `quit` leaves again
+    # as soon as it is up, having saved its config on the way out; that line is
+    # what is checked for, the same assertion the iOS job makes. The timeout is
+    # there because a client that fails to start can sit waiting rather than
+    # returning.
+    - name: Smoke test the client
+      timeout-minutes: 10
+      working-directory: build-headless
+      run: |
+        ./"$APP_NAME" "cl_music_island 1" "cl_custom_background 1" quit > client.log 2>&1 || true
+        cat client.log
+        grep -q "config: saved to settings_ddnet.cfg" client.log
+
+    # The packaging target is used as it stands: it only calls codesign when
+    # MACOS_CODESIGN is on, which is not the default, so everything it does here
+    # runs without a certificate. It assembles ${APP_NAME}.app around the binary
+    # with the Info.plist, the icon, the data folder and the frameworks, and
+    # wraps that in the disk image.
+    - name: Package
+      run: |
+        cmake --build build --target package_dmg
+        mkdir artifacts
+        # CPack names the image after the project, which upstream calls DDNet,
+        # while the app inside it is ${APP_NAME}.app. Renamed here rather than by
+        # changing CPACK_PACKAGE_NAME, which also names the Windows zip, the Linux
+        # tarball and the install directories on every platform. Somebody handed
+        # this image should be able to tell what is in it from its name.
+        DMG="$(ls build/*-macos.dmg)"
+        mv "$DMG" "artifacts/${APP_NAME}-$(basename "$DMG" | cut -d- -f2-)"
+        ls -lh artifacts
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v6
+      with:
+        name: leviathan-macos-dmg
+        path: artifacts

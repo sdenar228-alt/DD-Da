@@ -11,8 +11,8 @@
 
 #include <engine/client.h>
 #include <engine/client/enums.h>
-#include <engine/image.h>
 #include <engine/console.h>
+#include <engine/image.h>
 #include <engine/shared/config.h>
 #include <engine/shared/snapshot.h>
 
@@ -40,7 +40,6 @@
 #include "components/countryflags.h"
 #include "components/custom_background.h"
 #include "components/custom_sounds.h"
-#include "components/music_island.h"
 #include "components/damageind.h"
 #include "components/debughud.h"
 #include "components/effects.h"
@@ -60,6 +59,7 @@
 #include "components/menu_background.h"
 #include "components/menus.h"
 #include "components/motd.h"
+#include "components/music_island.h"
 #include "components/nameplates.h"
 #include "components/particles.h"
 #include "components/players.h"
@@ -71,9 +71,9 @@
 #include "components/spectator.h"
 #include "components/statboard.h"
 #include "components/tile_colors.h"
-#include "components/unfreeze.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
+#include "components/unfreeze.h"
 #include "components/voting.h"
 
 #include <memory>

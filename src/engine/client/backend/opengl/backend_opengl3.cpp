@@ -96,7 +96,13 @@ bool CCommandProcessorFragment_OpenGL3_3::InitCustomProgram(CGLSLPrimitiveExProg
 	pProgram->CreateProgram();
 	pProgram->AddShader(&VertexShader);
 	pProgram->AddShader(&FragmentShader);
-	pProgram->LinkProgram();
+	// This is a file the player is invited to edit, so a shader that does not
+	// link is the expected way for it to be wrong rather than an exceptional
+	// one, and the linker's own message has already been logged. Binding it
+	// anyway would raise GL_INVALID_OPERATION and, worse, leave the backend
+	// believing the program it never managed to bind is the one in use.
+	if(!pProgram->LinkProgram())
+		return false;
 
 	UseProgram(pProgram);
 
@@ -580,13 +586,14 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Shutdown(const SCommand_Shutdown *
 	m_pPrimitiveExProgramTextured->DeleteProgram();
 	m_pPrimitiveExProgramRotationless->DeleteProgram();
 	m_pPrimitiveExProgramTexturedRotationless->DeleteProgram();
-	if(m_CustomShaderAvailable)
-	{
-		m_pCustomProgram->DeleteProgram();
-		m_pCustomProgramTextured->DeleteProgram();
-		m_pCustomProgramRotationless->DeleteProgram();
-		m_pCustomProgramTexturedRotationless->DeleteProgram();
-	}
+	// Not guarded by m_CustomShaderAvailable: the four are set up in turn and
+	// the first failure abandons the rest, so a run that ended up without a
+	// custom shader can still have linked two or three of them. DeleteProgram
+	// does nothing to a program that never linked, so this covers both.
+	m_pCustomProgram->DeleteProgram();
+	m_pCustomProgramTextured->DeleteProgram();
+	m_pCustomProgramRotationless->DeleteProgram();
+	m_pCustomProgramTexturedRotationless->DeleteProgram();
 	m_pSpriteProgramMultiple->DeleteProgram();
 
 	// clean up everything
@@ -817,6 +824,16 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Texture_Create(const CCommandBuffe
 void CCommandProcessorFragment_OpenGL3_3::Cmd_TextTexture_Update(const CCommandBuffer::SCommand_TextTexture_Update *pCommand)
 {
 	TextureUpdate(pCommand->m_Slot, pCommand->m_X, pCommand->m_Y, pCommand->m_Width, pCommand->m_Height, GL_RED, pCommand->m_pData);
+}
+
+// TextureUpdate is not virtual, it is hidden, so the inherited command handler
+// would reach the OpenGL 1.x one instead of the version above. The two only
+// differ in a resize for hardware without non-power-of-two textures, which 3.3
+// always has, so it makes no difference today; it would the moment either of
+// them changes. This is the path every video background frame takes.
+void CCommandProcessorFragment_OpenGL3_3::Cmd_Texture_Update(const CCommandBuffer::SCommand_Texture_Update *pCommand)
+{
+	TextureUpdate(pCommand->m_Slot, pCommand->m_X, pCommand->m_Y, pCommand->m_Width, pCommand->m_Height, GL_RGBA, pCommand->m_pData);
 }
 
 void CCommandProcessorFragment_OpenGL3_3::Cmd_TextTextures_Destroy(const CCommandBuffer::SCommand_TextTextures_Destroy *pCommand)

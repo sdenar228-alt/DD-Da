@@ -1,15 +1,20 @@
-// The Media Foundation source reader was added in Windows 7, while the build
-// targets Vista. Raise it for this file only; the DLLs are delay loaded, so a
-// system without Media Foundation (the Windows N editions) still starts and
-// simply reports that it cannot decode the file.
+// The Media Foundation source reader was added in Windows 7 and the
+// MF_MT_VIDEO_ROTATION attribute in Windows 8, while the build targets Vista.
+// Raise it for this file only; the DLLs are delay loaded, so a system without
+// Media Foundation (the Windows N editions) still starts and simply reports
+// that it cannot decode the file. Nothing here calls a function newer than the
+// source reader: the attribute is only a GUID, and asking an older system for
+// one it does not know fails and leaves the frame the way it was stored.
 #if defined(_WIN32)
 #undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0601
+#define _WIN32_WINNT 0x0602
+#undef WINVER
+#define WINVER 0x0602
 #undef NTDDI_VERSION
-#define NTDDI_VERSION 0x06010000
+#define NTDDI_VERSION 0x06020000
 #endif
 
-#include "custom_media_win.h"
+#include "custom_media.h"
 
 #include <cstring>
 
@@ -42,6 +47,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <vector>
 
 namespace {
 // Videos are scaled down to at most this size, every frame is a full texture
@@ -70,7 +76,7 @@ bool IsDelayLoadFailure(DWORD ExceptionCode)
 #endif
 } // namespace
 
-class CWindowsMedia::CImpl
+class CSystemMedia::CImpl
 {
 public:
 	~CImpl() { Close(); }
@@ -96,6 +102,13 @@ private:
 	// Media Foundation hands out bottom-up RGB32 unless the stride says so.
 	bool m_Flipped = false;
 	int m_Stride = 0;
+	// The size the reader hands out, which is the one the file stores. The same
+	// as m_Width and m_Height until the frame is turned a quarter of the way
+	// round.
+	int m_SourceWidth = 0;
+	int m_SourceHeight = 0;
+	// How far clockwise the frame has to be turned to stand the way it was shot.
+	int m_Rotation = 0;
 	double m_Duration = 0.0;
 	// How long one frame is shown, taken from the frame rate of the file.
 	double m_FrameInterval = 1.0 / 30.0;
@@ -108,7 +121,7 @@ private:
 	void SeekToStart();
 };
 
-bool CWindowsMedia::CImpl::OpenImage(const char *pAbsolutePath)
+bool CSystemMedia::CImpl::OpenImage(const char *pAbsolutePath)
 {
 	Close();
 
@@ -170,7 +183,7 @@ bool CWindowsMedia::CImpl::OpenImage(const char *pAbsolutePath)
 	return Success;
 }
 
-bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
+bool CSystemMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 {
 	Close();
 
@@ -221,17 +234,35 @@ bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 	// up on the same screen. The reader has its video processor enabled, so it
 	// does the scaling itself while decoding.
 	UINT32 NativeWidth = 0, NativeHeight = 0;
+	UINT32 Rotation = 0;
 	IMFMediaType *pNative = nullptr;
 	if(SUCCEEDED(m_pReader->GetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, &pNative)) && pNative != nullptr)
 	{
 		MFGetAttributeSize(pNative, MF_MT_FRAME_SIZE, &NativeWidth, &NativeHeight);
+		// Video shot on a phone is stored the way the sensor read it, and the
+		// mp4 source reads the tkhd matrix that says which way up it goes. The
+		// attribute is how far the content has already been turned counter-
+		// clockwise, so turning it that far clockwise puts it back up. Absent on
+		// a file that was never turned, which leaves it at zero.
+		if(FAILED(pNative->GetUINT32(MF_MT_VIDEO_ROTATION, &Rotation)))
+			Rotation = 0;
 		SafeRelease(pNative);
 	}
-	if(NativeWidth > 0 && NativeHeight > 0 &&
-		((int)NativeWidth > MAX_VIDEO_WIDTH || (int)NativeHeight > MAX_VIDEO_HEIGHT))
+	// Nothing but whole quarter turns can be done in the copy out, and nothing
+	// else is ever in there.
+	m_Rotation = Rotation == 90 || Rotation == 180 || Rotation == 270 ? (int)Rotation : 0;
+	const bool Swapped = m_Rotation == 90 || m_Rotation == 270;
+
+	// The limit is about how much of the screen a frame ends up covering, so it
+	// is measured on the picture the way it will be seen, after the turn.
+	const UINT32 DisplayWidth = Swapped ? NativeHeight : NativeWidth;
+	const UINT32 DisplayHeight = Swapped ? NativeWidth : NativeHeight;
+	if(DisplayWidth > 0 && DisplayHeight > 0 &&
+		((int)DisplayWidth > MAX_VIDEO_WIDTH || (int)DisplayHeight > MAX_VIDEO_HEIGHT))
 	{
-		const double Scale = std::min((double)MAX_VIDEO_WIDTH / NativeWidth, (double)MAX_VIDEO_HEIGHT / NativeHeight);
-		// Even numbers, because that is what the video processor wants.
+		const double Scale = std::min((double)MAX_VIDEO_WIDTH / DisplayWidth, (double)MAX_VIDEO_HEIGHT / DisplayHeight);
+		// Asked for in the orientation the file stores, because that is what the
+		// video processor works in. Even numbers, because that is what it wants.
 		const UINT32 WantedWidth = std::max<UINT32>(2, ((UINT32)(NativeWidth * Scale) / 2) * 2);
 		const UINT32 WantedHeight = std::max<UINT32>(2, ((UINT32)(NativeHeight * Scale) / 2) * 2);
 		MFSetAttributeSize(pWanted, MF_MT_FRAME_SIZE, WantedWidth, WantedHeight);
@@ -285,8 +316,10 @@ bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 
 	m_Flipped = Stride < 0;
 	m_Stride = Stride < 0 ? -Stride : Stride;
-	m_Width = (int)Width;
-	m_Height = (int)Height;
+	m_SourceWidth = (int)Width;
+	m_SourceHeight = (int)Height;
+	m_Width = Swapped ? m_SourceHeight : m_SourceWidth;
+	m_Height = Swapped ? m_SourceWidth : m_SourceHeight;
 
 	// Duration comes back in 100 nanosecond units.
 	PROPVARIANT DurationVar;
@@ -311,7 +344,7 @@ bool CWindowsMedia::CImpl::OpenVideoImpl(const char *pAbsolutePath)
 // The work is in OpenVideoImpl because a frame with an __except must not own
 // anything that needs unwinding, and the delay load exception is raised before
 // any Media Foundation call gets the chance to return a failed result.
-bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
+bool CSystemMedia::CImpl::OpenVideo(const char *pAbsolutePath)
 {
 	__try
 	{
@@ -325,13 +358,13 @@ bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
 	}
 }
 #else
-bool CWindowsMedia::CImpl::OpenVideo(const char *pAbsolutePath)
+bool CSystemMedia::CImpl::OpenVideo(const char *pAbsolutePath)
 {
 	return OpenVideoImpl(pAbsolutePath);
 }
 #endif
 
-void CWindowsMedia::CImpl::Close()
+void CSystemMedia::CImpl::Close()
 {
 	SafeRelease(m_pReader);
 	if(m_MfStarted)
@@ -345,6 +378,9 @@ void CWindowsMedia::CImpl::Close()
 	m_IsStill = false;
 	m_Width = 0;
 	m_Height = 0;
+	m_SourceWidth = 0;
+	m_SourceHeight = 0;
+	m_Rotation = 0;
 	m_Flipped = false;
 	m_Stride = 0;
 	m_Duration = 0.0;
@@ -353,7 +389,7 @@ void CWindowsMedia::CImpl::Close()
 	// m_MaxDuration is a setting, not file state, so it survives Close().
 }
 
-void CWindowsMedia::CImpl::SeekToStart()
+void CSystemMedia::CImpl::SeekToStart()
 {
 	PROPVARIANT Position;
 	PropVariantInit(&Position);
@@ -363,7 +399,7 @@ void CWindowsMedia::CImpl::SeekToStart()
 	PropVariantClear(&Position);
 }
 
-bool CWindowsMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
+bool CSystemMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
 {
 	if(!m_IsOpen)
 		return false;
@@ -438,8 +474,7 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
 		return false;
 	}
 
-	const size_t RowSize = (size_t)m_Width * 4;
-	const size_t Needed = RowSize * m_Height;
+	const size_t Needed = (size_t)m_Width * m_Height * 4;
 	if(pRgba == nullptr || Size < Needed)
 	{
 		pBuffer->Unlock();
@@ -447,22 +482,55 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
 		SafeRelease(pSample);
 		return false;
 	}
-	for(int y = 0; y < m_Height; ++y)
+
+	// Where the pixel in the top left corner of the stored frame belongs, and
+	// how far along the next one in a row and the first one of the next row are
+	// from it. The turn the file asks for costs nothing more than these three
+	// numbers, because every pixel is being written one by one anyway.
+	int Base, RowStep, PixelStep;
+	switch(m_Rotation)
 	{
-		const int SourceRow = m_Flipped ? m_Height - 1 - y : y;
+	case 90:
+		Base = m_SourceHeight - 1;
+		RowStep = -1;
+		PixelStep = m_Width;
+		break;
+	case 180:
+		Base = (m_SourceHeight - 1) * m_Width + m_SourceWidth - 1;
+		RowStep = -m_Width;
+		PixelStep = -1;
+		break;
+	case 270:
+		Base = (m_SourceWidth - 1) * m_Width;
+		RowStep = 1;
+		PixelStep = -m_Width;
+		break;
+	default:
+		Base = 0;
+		RowStep = m_Width;
+		PixelStep = 1;
+		break;
+	}
+
+	for(int y = 0; y < m_SourceHeight; ++y)
+	{
+		// Undoing the bottom-up layout here rather than in the turn keeps `y` the
+		// row the picture is seen with, which is what the three numbers above are
+		// worked out for.
+		const int SourceRow = m_Flipped ? m_SourceHeight - 1 - y : y;
 		if((size_t)(SourceRow + 1) * m_Stride > CurrentLength)
 			continue;
 		const BYTE *pSrc = pData + (size_t)SourceRow * m_Stride;
-		uint8_t *pDst = pRgba + (size_t)y * RowSize;
+		int Target = Base + y * RowStep;
 		// Media Foundation RGB32 is stored as BGRX. A whole pixel at a time
 		// rather than four bytes: this loop runs over every pixel of every frame,
 		// and byte-wise it was one of the more expensive things in the client.
-		for(int x = 0; x < m_Width; ++x)
+		for(int x = 0; x < m_SourceWidth; ++x, Target += PixelStep)
 		{
 			uint32_t Pixel;
 			std::memcpy(&Pixel, pSrc + (size_t)x * 4, sizeof(Pixel));
 			Pixel = 0xFF000000u | ((Pixel & 0x00FF0000u) >> 16) | (Pixel & 0x0000FF00u) | ((Pixel & 0x000000FFu) << 16);
-			std::memcpy(pDst + (size_t)x * 4, &Pixel, sizeof(Pixel));
+			std::memcpy(pRgba + (size_t)Target * 4, &Pixel, sizeof(Pixel));
 		}
 	}
 
@@ -473,21 +541,21 @@ bool CWindowsMedia::CImpl::NextFrame(double Time, uint8_t *pRgba, size_t Size)
 	return true;
 }
 
-CWindowsMedia::CWindowsMedia() :
+CSystemMedia::CSystemMedia() :
 	m_pImpl(std::make_unique<CImpl>())
 {
 }
 
-CWindowsMedia::~CWindowsMedia() = default;
+CSystemMedia::~CSystemMedia() = default;
 
-bool CWindowsMedia::OpenImage(const char *pAbsolutePath) { return m_pImpl->OpenImage(pAbsolutePath); }
-bool CWindowsMedia::OpenVideo(const char *pAbsolutePath) { return m_pImpl->OpenVideo(pAbsolutePath); }
-void CWindowsMedia::Close() { m_pImpl->Close(); }
-bool CWindowsMedia::IsOpen() const { return m_pImpl->m_IsOpen; }
-bool CWindowsMedia::IsStill() const { return m_pImpl->m_IsStill; }
-int CWindowsMedia::Width() const { return m_pImpl->m_Width; }
-int CWindowsMedia::Height() const { return m_pImpl->m_Height; }
-void CWindowsMedia::SetMaxDuration(double Seconds) { m_pImpl->m_MaxDuration = Seconds > 0.0 ? Seconds : 0.0; }
-bool CWindowsMedia::NextFrame(double Time, uint8_t *pRgba, size_t Size) { return m_pImpl->NextFrame(Time, pRgba, Size); }
+bool CSystemMedia::OpenImage(const char *pAbsolutePath) { return m_pImpl->OpenImage(pAbsolutePath); }
+bool CSystemMedia::OpenVideo(const char *pAbsolutePath) { return m_pImpl->OpenVideo(pAbsolutePath); }
+void CSystemMedia::Close() { m_pImpl->Close(); }
+bool CSystemMedia::IsOpen() const { return m_pImpl->m_IsOpen; }
+bool CSystemMedia::IsStill() const { return m_pImpl->m_IsStill; }
+int CSystemMedia::Width() const { return m_pImpl->m_Width; }
+int CSystemMedia::Height() const { return m_pImpl->m_Height; }
+void CSystemMedia::SetMaxDuration(double Seconds) { m_pImpl->m_MaxDuration = Seconds > 0.0 ? Seconds : 0.0; }
+bool CSystemMedia::NextFrame(double Time, uint8_t *pRgba, size_t Size) { return m_pImpl->NextFrame(Time, pRgba, Size); }
 
 #endif

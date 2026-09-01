@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<!--
+			The music island asks the running player what it is playing, and on the
+			systems where the media remote refuses to answer it does so with an
+			Apple Event. A signed build runs under the hardened runtime, which
+			blocks those outright unless the entitlement below says otherwise, and
+			it does so before the user is ever asked, so without this the island is
+			simply empty on a signed copy while it works on an unsigned one.
+		-->
+		<key>com.apple.security.automation.apple-events</key>
+		<true/>
+	</dict>
+</plist>

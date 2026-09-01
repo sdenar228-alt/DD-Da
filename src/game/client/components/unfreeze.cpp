@@ -1,15 +1,15 @@
 #include "unfreeze.h"
 
+#include <base/io.h>
 #include <base/log.h>
 #include <base/math.h>
+#include <base/str.h>
 #include <base/time.h>
 #include <base/vmath.h>
 
-#include <base/io.h>
-
 #include <engine/graphics.h>
-#include <engine/storage.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <game/client/gameclient.h>
@@ -20,8 +20,8 @@
 #include <game/mapitems.h>
 
 #include <algorithm>
-#include <cstdarg>
 #include <cmath>
+#include <cstdarg>
 #include <limits>
 
 namespace {
@@ -45,6 +45,10 @@ constexpr int MIN_SAVED_TILE = 2;
 // Entities further away than this are dropped from the simulation. They cannot
 // reach the tee inside the horizon, and ticking them is what the search costs.
 constexpr float SIMULATE_RADIUS = 1600.0f;
+// A bounce ladder can be no coarser than this. Nothing real comes near it; it is
+// only there so that a server sending a nonsense laser_bounce_delay cannot
+// overflow the arithmetic downstream. See LaserBounceTicks.
+constexpr int MAX_BOUNCE_TICKS = 1024;
 } // namespace
 
 void CUnfreeze::OnConsoleInit()
@@ -206,10 +210,6 @@ bool CUnfreeze::HoldsLaser() const
 	return pSnap != nullptr && pSnap->m_Weapon == WEAPON_LASER;
 }
 
-// Whether the player owns the laser, when that can be known. A DDNet server
-// puts the whole inventory in the extended character object, and the core reads
-// it; without one, only the weapon in hand is ever known and asking is the only
-// way to find out.
 float CUnfreeze::StepAt(int Tick) const
 {
 	const CFlightStep *pStep = FlightAt(Tick);
@@ -224,6 +224,10 @@ float CUnfreeze::FastestInWindow() const
 	return Fastest;
 }
 
+// Whether the player owns the laser, when that can be known. A DDNet server
+// puts the whole inventory in the extended character object, and the core reads
+// it; without one, only the weapon in hand is ever known and asking is the only
+// way to find out.
 bool CUnfreeze::OwnsLaser() const
 {
 	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
@@ -247,6 +251,34 @@ const CTuningParams *CUnfreeze::ReachTuning(vec2 FirePos) const
 	if(!pWorld->m_WorldConfig.m_UseTuneZones || pChar == nullptr)
 		return LaserTuning(FirePos);
 	return pWorld->GetTuning(pChar->GetOverriddenTuneZone());
+}
+
+// How long one bounce takes, in ticks, in the zone the shot is fired from.
+//
+// A bounce happens once the delay has been exceeded, not once it is reached,
+// which turns the default 150 ms into 8 ticks rather than 7.
+//
+// There is exactly one of these per search, sampled once at the muzzle, and
+// everything downstream is handed that same value. It has to be one value: the
+// fire delays are enumerated on this ladder and the trace then walks it, so the
+// two disagreeing means candidates are tried at ticks the beam never bounces on.
+// They used to disagree. The trace read the tune zone and the enumeration read
+// the global tuning, so on any map that tunes laser_bounce_delay in a zone the
+// module searched a ladder it was not shooting on, and silently found nothing.
+//
+// The lower bound is load-bearing: UsefulDelays takes a remainder by this, so a
+// server tuning the delay to zero or below would divide by zero. The old upper
+// bound of 16 is gone -- it bounded nothing that is not bounded anyway (the
+// horizon by cl_unfreeze_horizon, the delay ladder by MAX_DELAYS), and on a zone
+// tuned past about 300 ms it would have quietly reintroduced this very
+// disagreement between the ladder searched and the ladder shot. What is left is
+// a cap far past the longest flight the module ever looks at, where every value
+// behaves alike, so it can only keep the arithmetic in range and never change an
+// answer.
+int CUnfreeze::LaserBounceTicks(vec2 FirePos) const
+{
+	const int64_t Ticks = (int64_t)Client()->GameTickSpeed() * (int)LaserTuning(FirePos)->m_LaserBounceDelay / 1000 + 1;
+	return (int)std::clamp<int64_t>(Ticks, 1, MAX_BOUNCE_TICKS);
 }
 
 int CUnfreeze::BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const
@@ -660,7 +692,7 @@ int CUnfreeze::UsefulDelays(int PredTick, int BounceTicks, int MinDelay, int Max
 	return Count;
 }
 
-bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline)
+bool CUnfreeze::Search(int FireTick, vec2 FirePos, int BounceTicks, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline)
 {
 	if(!SelfHitPossible())
 		return false;
@@ -672,9 +704,9 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 	if(TunedBounces < 1)
 		return false;
 
-	// A bounce happens once the delay has been exceeded, not once it is reached,
-	// which turns the default 150 ms into 8 ticks rather than 7.
-	const int BounceTicks = std::max(1, (int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1);
+	// The bounce ladder is not derived here. It was sampled once at the muzzle,
+	// before the flight was predicted, and the delay this shot is being tried at
+	// was enumerated on it, so deriving it again could only disagree.
 	const int MaxBounces = BounceBudget(FireTick, BounceTicks, TunedBounces);
 	if(MaxBounces < 1)
 		return false;
@@ -836,8 +868,14 @@ bool CUnfreeze::Search(int FireTick, vec2 FirePos, CCandidate &Best, float &Best
 // chosen is traced again. That is a single Evaluate rather than a whole sweep.
 bool CUnfreeze::StillHolds(int LocalId, int PredTick)
 {
-	const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
-	const int BounceTicks = std::clamp((int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1, 1, 16);
+	// Sampled where the tee is now, which is the muzzle the search that made this
+	// plan sampled at, and before the prediction because the horizon below is
+	// measured in bounces. A character that is not there is one Predict would
+	// fail on anyway.
+	const CCharacter *pSelf = GameClient()->m_PredictedWorld.GetCharacterById(LocalId);
+	if(pSelf == nullptr)
+		return false;
+	const int BounceTicks = LaserBounceTicks(pSelf->Core()->m_Pos);
 	const int Reach = std::clamp(g_Config.m_ClUnfreezeBounces, 4, 40) * BounceTicks + 4;
 	const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
 	if(!Predict(LocalId, PredTick, Horizon))
@@ -1000,8 +1038,12 @@ void CUnfreeze::OnRender()
 		const int64_t Deadline = Started + (int64_t)std::clamp(g_Config.m_ClUnfreezeBudget, 1, 20) * time_freq() / 1000;
 
 		// Simulating further than the shot can ever reach is wasted work.
-		const CTuningParams *pTuning = &GameClient()->m_aTuning[g_Config.m_ClDummy];
-		const int BounceTicks = std::clamp((int)(Client()->GameTickSpeed() * (int)pTuning->m_LaserBounceDelay / 1000) + 1, 1, 16);
+		//
+		// The muzzle is where the tee is now. It has to be sampled before the
+		// flight is predicted, because the horizon that prediction runs to is
+		// measured in bounces, and this one value is then what the delays are
+		// enumerated on and what every Search below traces with.
+		const int BounceTicks = LaserBounceTicks(pPredicted->Core()->m_Pos);
 		const int Reach = std::clamp(g_Config.m_ClUnfreezeBounces, 4, 40) * BounceTicks + 4;
 		const int Horizon = std::min(g_Config.m_ClUnfreezeHorizon, Reach);
 
@@ -1060,7 +1102,7 @@ void CUnfreeze::OnRender()
 				const int Delay = aSwept[i];
 				const CFlightStep *pAt = Delay > 0 ? FlightAt(PredTick + Delay) : nullptr;
 				const vec2 FirePos = Delay > 0 ? pAt->m_Pos : pPredicted->Core()->m_Pos;
-				Search(PredTick + 1 + Delay, FirePos, Best, BestScore, vBestPath, Started + Slice * (i + 1));
+				Search(PredTick + 1 + Delay, FirePos, BounceTicks, Best, BestScore, vBestPath, Started + Slice * (i + 1));
 			}
 
 			if(Best.m_Hits)
@@ -1092,7 +1134,12 @@ void CUnfreeze::OnRender()
 	// already on its way has arrived and the weapon has reloaded.
 	if(g_Config.m_ClUnfreeze == 2 && m_HasSolution && !m_WantShot)
 	{
-		const int FireDelay = (int)(GameClient()->m_aTuning[g_Config.m_ClDummy].GetWeaponFireDelay(WEAPON_LASER) * Client()->GameTickSpeed());
+		// From the zone the tee is standing in, which is where the game sets the
+		// reload timer from. Read globally this used to think the weapon had
+		// cooled down when it had not, or wait for a cooldown that was already
+		// over, on any map that tunes laser_fire_delay in a zone.
+		const float Cooldown = ReachTuning(pPredicted->Core()->m_Pos)->GetWeaponFireDelay(WEAPON_LASER);
+		const int FireDelay = (int)(Cooldown * Client()->GameTickSpeed());
 		const bool Cooled = m_LastShotTick < 0 || PredTick - m_LastShotTick >= FireDelay;
 		const bool Landed = PredTick >= m_ShotLandsTick;
 		if(Cooled && Landed)

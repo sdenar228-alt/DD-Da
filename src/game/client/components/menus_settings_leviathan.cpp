@@ -1,4 +1,4 @@
-/* Settings page for the client specific features. */
+﻿/* Settings page for the client specific features. */
 #include "menus.h"
 
 #include <base/str.h>
@@ -22,6 +22,7 @@
 #include <game/localization.h>
 
 #include <algorithm>
+#include <iterator>
 
 enum
 {
@@ -173,7 +174,13 @@ void CMenus::RenderSettingsLeviathanTees(CUIRect MainView)
 	{
 		g_Config.m_ClCustomTeeShader ^= 1;
 	}
+#if defined(CONF_PLATFORM_MACOS)
+	// macOS starts on OpenGL 3.3 already, so telling a Mac player to set it is
+	// telling them to restart for nothing.
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTeeShader, &Button, Localize("Edit shader/tee.frag. The OpenGL 3.3 backend it needs is what this client already starts on."));
+#else
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomTeeShader, &Button, Localize("Edit shader/tee.frag. Needs the OpenGL 3.3 backend: set gfx_backend OpenGL, gfx_gl_major 3, gfx_gl_minor 3 and restart."));
+#endif
 	if(g_Config.m_ClCustomTeeShader)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomTeeShaderOwn, Localize("Apply it to your own tee"), &g_Config.m_ClCustomTeeShaderOwn, &LeftView, LINE_SIZE);
@@ -322,10 +329,23 @@ struct SScanData
 	const char *m_pExtension;
 };
 
+// A folder given a custom icon in the Finder holds a file called "Icon" with a
+// trailing carriage return, which is not something anybody meant to put there.
+// Nothing the client reads has a control character in its name.
+bool IsSystemJunk(const char *pName)
+{
+	for(const char *pCur = pName; *pCur != '\0'; ++pCur)
+	{
+		if((unsigned char)*pCur < 0x20)
+			return true;
+	}
+	return false;
+}
+
 int ScanFolderCallback(const char *pName, int IsDir, int DirType, void *pUser)
 {
 	auto *pData = static_cast<SScanData *>(pUser);
-	if(IsDir || pName[0] == '.')
+	if(IsDir || pName[0] == '.' || IsSystemJunk(pName))
 		return 0;
 	if(pData->m_pExtension != nullptr)
 	{
@@ -376,7 +396,10 @@ void CMenus::RefreshSoundPackList()
 	// A sound pack is a folder, not a file.
 	m_vSoundPackNames.clear();
 	Storage()->ListDirectory(IStorage::TYPE_ALL, "sounds", [](const char *pName, int IsDir, int DirType, void *pUser) -> int {
-		if(!IsDir || pName[0] == '.')
+		// Unzipping an archive that was made on a Mac leaves a __MACOSX folder
+		// beside the real one, which is not a sound pack and must not be offered
+		// as one.
+		if(!IsDir || pName[0] == '.' || str_comp(pName, "__MACOSX") == 0)
 			return 0;
 		static_cast<std::vector<std::string> *>(pUser)->emplace_back(pName);
 		return 0;
@@ -629,7 +652,13 @@ void CMenus::RenderSettingsLeviathanMisc(CUIRect MainView)
 	{
 		g_Config.m_ClMusicIsland ^= 1;
 	}
+#if defined(CONF_PLATFORM_MACOS)
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads what the system says is playing. From macOS 15.4 on, only Spotify and Music can be read, and the first time you are asked to allow it."));
+#elif defined(CONF_FAMILY_WINDOWS)
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
+#else
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("This system publishes nothing the client can read, so the island stays hidden here."));
+#endif
 	if(g_Config.m_ClMusicIsland)
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandIngame, Localize("Show it while playing"), &g_Config.m_ClMusicIslandIngame, &RightView, LINE_SIZE);
@@ -675,7 +704,7 @@ void CMenus::RenderSettingsLeviathanMisc(CUIRect MainView)
 	{
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "°/s");
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "В°/s");
 
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
@@ -723,6 +752,13 @@ void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
+	// The menu's own moving background, which is a map rather than a picture, and
+	// belongs next to the picture settings rather than three pages away under the
+	// general options where nobody looks for it.
+	CUIRect Themes;
+	LeftView.HSplitBottom(150.0f, &LeftView, &Themes);
+	LeftView.HSplitBottom(MARGIN_SMALL, &LeftView, nullptr);
+
 	Ui()->DoLabel_AutoLineSize(Localize("Custom background"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
@@ -758,7 +794,16 @@ void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 	TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
 	SLabelProperties HintProps;
 	HintProps.m_MaxWidth = Hint.w;
+	// Which formats work is decided by the codecs the system ships with, so the
+	// two lists genuinely differ: avi and wmv are Media Foundation's, heic and
+	// mov are what macOS brings.
+#if defined(CONF_PLATFORM_MACOS)
+	Ui()->DoLabel(&Hint, Localize("Pictures (png, jpg, bmp, webp, heic) and videos (mp4, mov, m4v) all work."), 11.0f, TEXTALIGN_TL, HintProps);
+#elif defined(CONF_FAMILY_WINDOWS)
 	Ui()->DoLabel(&Hint, Localize("Pictures (png, jpg, bmp, webp) and videos (mp4, avi, wmv) all work."), 11.0f, TEXTALIGN_TL, HintProps);
+#else
+	Ui()->DoLabel(&Hint, Localize("Pictures (png) work. Anything else needs an FFmpeg build with decoders beside the client."), 11.0f, TEXTALIGN_TL, HintProps);
+#endif
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 	// File list
@@ -833,6 +878,13 @@ void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 	{
 		RefreshBackgroundList();
 	}
+	// Underneath everything: the theme the menu map is picked from. The list is
+	// the game's own, so a theme chosen here is the one chosen in the general
+	// settings, not a second setting that says the same thing.
+	Ui()->DoLabel_AutoLineSize(Localize("Menu background"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &Themes, HEADLINE_HEIGHT);
+	Themes.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL, nullptr, &Themes);
+	RenderThemeSelection(Themes);
+
 }
 
 void CMenus::RenderSettingsLeviathanSounds(CUIRect MainView)
