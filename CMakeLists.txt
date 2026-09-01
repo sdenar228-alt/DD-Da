@@ -1663,6 +1663,9 @@ set(EXPECTED_DATA
   gui_cursor.png
   gui_icons.png
   gui_logo.png
+  hats/crown.png
+  hats/halo.png
+  hats/horns.png
   hud.png
   languages/README.txt
   languages/arabic.txt

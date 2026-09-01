@@ -140,6 +140,15 @@ positions are sampled every frame from the same smoothed spot the tee itself is
 drawn at, so the ribbon stays smooth at any frame rate, and a teleport cuts it
 rather than streaking it across the map.
 
+## Hats
+
+A hat on your own tee's head: a crown, horns or a halo ship with the client, and
+any png dropped into the `hats` folder of the config directory stands in the
+same list. Picked at the bottom of the Tees page, with a size and a height. The
+hat follows the body through its animation but stays upright, hats being hats,
+and it is client side only: nobody else sees it, the same as every other
+decoration here.
+
 ## Focus mode
 
 One key that strips the screen down to the game. What goes is picked by

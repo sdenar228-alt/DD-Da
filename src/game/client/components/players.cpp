@@ -979,6 +979,28 @@ inline bool CPlayers::IsPlayerInfoAvailable(int ClientId) const
 
 // Loads `cl_custom_avatar_file` and masks it into a circle, so that it looks
 // like a chat style profile picture instead of a square photo.
+// Loads the chosen hat, from the client's own hats or from a file the player
+// dropped into the hats folder of the config directory: the storage search
+// order covers both without caring which.
+void CPlayers::UpdateHat()
+{
+	if(str_comp(m_aHatName, g_Config.m_ClHatFile) == 0)
+		return;
+	str_copy(m_aHatName, g_Config.m_ClHatFile);
+
+	if(m_HatTexture.IsValid())
+		Graphics()->UnloadTexture(&m_HatTexture);
+
+	if(m_aHatName[0] == 0)
+		return;
+
+	char aPath[IO_MAX_PATH_LENGTH];
+	str_format(aPath, sizeof(aPath), "hats/%s.png", m_aHatName);
+	m_HatTexture = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL);
+	if(m_HatTexture.IsNullTexture())
+		m_HatTexture.Invalidate();
+}
+
 void CPlayers::UpdateAvatar()
 {
 	if(str_comp(m_aAvatarName, g_Config.m_ClCustomAvatarFile) == 0)
@@ -1042,6 +1064,8 @@ void CPlayers::OnRender()
 
 	if(g_Config.m_ClCustomAvatar)
 		UpdateAvatar();
+	if(g_Config.m_ClHat)
+		UpdateHat();
 
 	RenderTools()->SetCustomShaderTime(Client()->GlobalTime());
 
@@ -1058,6 +1082,13 @@ void CPlayers::OnRender()
 			const bool Own = i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1];
 			if(Own ? g_Config.m_ClCustomAvatarOwn : g_Config.m_ClCustomAvatarOthers)
 				aRenderInfo[i].m_AvatarTexture = m_AvatarTexture;
+		}
+
+		// The hat is the player's own, so it goes on their own tees only.
+		if(g_Config.m_ClHat && m_HatTexture.IsValid() &&
+			(i == GameClient()->m_aLocalIds[0] || i == GameClient()->m_aLocalIds[1]))
+		{
+			aRenderInfo[i].m_HatTexture = m_HatTexture;
 		}
 
 		if(g_Config.m_ClCustomOutline)

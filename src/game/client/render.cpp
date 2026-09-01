@@ -269,6 +269,25 @@ void CRenderTools::RenderTee(const CAnimState *pAnim, const CTeeRenderInfo *pInf
 	if(UseCustomShader)
 		Graphics()->SetCustomShader(false);
 
+	// The hat, over whichever generation of skin was drawn. It follows the body
+	// through its animation but stays upright: hats sit on heads, they do not
+	// tumble with them.
+	if(pInfo->m_HatTexture.IsValid())
+	{
+		const float AnimScale = pInfo->m_Size / 64.0f;
+		const vec2 BodyPos = Pos + vec2(pAnim->GetBody()->m_X, pAnim->GetBody()->m_Y) * AnimScale;
+		const float Width = pInfo->m_Size * 1.1f * (g_Config.m_ClHatSize / 100.0f);
+		const float Height = Width / 2.0f;
+		const float Lift = pInfo->m_Size * 0.52f + Height * 0.35f + (float)g_Config.m_ClHatOffset;
+		Graphics()->TextureSet(pInfo->m_HatTexture);
+		Graphics()->QuadsBegin();
+		Graphics()->QuadsSetRotation(0);
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+		IGraphics::CQuadItem QuadItem(BodyPos.x - Width / 2.0f, BodyPos.y - Lift - Height / 2.0f, Width, Height);
+		Graphics()->QuadsDrawTL(&QuadItem, 1);
+		Graphics()->QuadsEnd();
+	}
+
 	Graphics()->SetColor(1.f, 1.f, 1.f, 1.f);
 	Graphics()->QuadsSetRotation(0);
 }
