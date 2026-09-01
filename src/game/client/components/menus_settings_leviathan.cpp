@@ -1464,12 +1464,6 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 	static CLineInput s_AfkReplyInput(g_Config.m_ClAutoReplyAfkMsg, sizeof(g_Config.m_ClAutoReplyAfkMsg));
 	Ui()->DoEditBox(&s_AfkReplyInput, &Button, 12.0f);
 
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-	if(DoButton_CheckBox(&g_Config.m_ClClientBadge, Localize("Show the client name under the timer"), g_Config.m_ClClientBadge, &Button))
-	{
-		g_Config.m_ClClientBadge ^= 1;
-	}
 
 	// ***** Music island ***** //
 	Ui()->DoLabel_AutoLineSize(Localize("Music island"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
@@ -1517,6 +1511,14 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 			g_Config.m_ClMusicIslandY = DefaultConfig::ClMusicIslandY;
 		}
 	}
+
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClClientBadge, Localize("Wear the client name at the top"), g_Config.m_ClClientBadge, &Button))
+	{
+		g_Config.m_ClClientBadge ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClClientBadge, &Button, Localize("A plate with the client logo and name, above the game timer."));
 
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
