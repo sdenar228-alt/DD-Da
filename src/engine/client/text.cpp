@@ -1855,8 +1855,21 @@ public:
 						// because a full sweep passes through every color and the
 						// choice stops being visible at all.
 						const float Sway = std::sin(2.0f * pi * (CharX * 0.004f + Phase));
-						const float Hue = std::fmod(m_GradientBase.h + m_GradientSpread * 0.5f * Sway + 1.0f, 1.0f);
-						const ColorRGBA Painted = color_cast<ColorRGBA>(ColorHSLA(Hue, m_GradientBase.s, m_GradientBase.l));
+						ColorHSLA Shade;
+						if(m_GradientBase.s < 0.05f)
+						{
+							// A grey has no hue to travel along, so the lightness
+							// travels instead: black comes out shimmering from
+							// dark to light rather than sitting there being black.
+							const float Light = std::clamp(m_GradientBase.l + m_GradientSpread * 0.5f * Sway, 0.0f, 1.0f);
+							Shade = ColorHSLA(0.0f, 0.0f, Light);
+						}
+						else
+						{
+							const float Hue = std::fmod(m_GradientBase.h + m_GradientSpread * 0.5f * Sway + 1.0f, 1.0f);
+							Shade = ColorHSLA(Hue, m_GradientBase.s, m_GradientBase.l);
+						}
+						const ColorRGBA Painted = color_cast<ColorRGBA>(Shade);
 						// The alpha stays the caller's: text that was fading out
 						// has to keep fading out.
 						Color = ColorRGBA(Painted.r, Painted.g, Painted.b, Color.a);
