@@ -3341,3 +3341,42 @@ The hue the gradient is built around. How far it strays from it is the spread be
 
 None of the way is one flat color. All of the way is the whole rainbow, and then the color above stops mattering.
 == Ноль — один ровный цвет. Сто — вся радуга, и тогда цвет выше уже ни на что не влияет.
+
+[Important alert message]
+Tap to dismiss…
+== Нажми, чтобы убрать…
+
+Initializing layers
+== Подготовка слоёв
+
+[Direct touch input]
+Relative aim
+== Относительный прицел
+
+[Predefined touch button behaviors]
+Joystick Relative Aim
+== Джойстик: относительный прицел
+
+Virtual joystick which only aims and moves the mouse pointer relatively.
+== Виртуальный джойстик, который только целится и двигает курсор относительно.
+
+Credits
+== Авторы
+
+[AntiPing: predict other players]
+Off
+== Выкл.
+
+[AntiPing: predict other players]
+All
+== Всех
+
+[AntiPing: predict other players]
+Interact
+== Взаимодействующих
+
+Always predict frozen players
+== Всегда предсказывать замороженных игроков
+
+No country flags match your filter criteria
+== Ни один флаг страны не подходит под фильтр
