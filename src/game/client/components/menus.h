@@ -610,6 +610,9 @@ protected:
 	std::vector<std::string> m_vCrosshairNames;
 	std::vector<std::string> m_vBackgroundNames;
 	bool m_CrosshairListLoaded = false;
+	bool m_HatListLoaded = false;
+	std::vector<std::string> m_vHatNames;
+	void RefreshHatList();
 	bool m_BackgroundListLoaded = false;
 
 	// found in menus_settings_ddnet.cpp

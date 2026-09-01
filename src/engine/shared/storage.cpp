@@ -87,6 +87,7 @@ public:
 				"crosshairs",
 				"downloadedmaps",
 				"downloadedskins",
+				"hats",
 				"mapres",
 				"maps",
 				"maps/auto",

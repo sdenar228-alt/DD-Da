@@ -145,6 +145,12 @@ MACRO_CONFIG_INT(Cl3dParticlesGlow, cl_3d_particles_glow, 1, 0, 1, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(Cl3dParticlesGlowAlpha, cl_3d_particles_glow_alpha, 35, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the glow in percent")
 MACRO_CONFIG_INT(Cl3dParticlesGlowOffset, cl_3d_particles_glow_offset, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow reaches around the lines")
 
+// A hat on the tee's head.
+MACRO_CONFIG_INT(ClHat, cl_hat, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Wear a hat")
+MACRO_CONFIG_STR(ClHatFile, cl_hat_file, 64, "crown", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which hat, a png from the 'hats' folder")
+MACRO_CONFIG_INT(ClHatSize, cl_hat_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the hat in percent")
+MACRO_CONFIG_INT(ClHatOffset, cl_hat_offset, 0, -30, 30, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much higher the hat sits")
+
 // Fancy weapons: dressed-up beams for the rifle and the shotgun.
 MACRO_CONFIG_INT(ClFancyWeapons, cl_fancy_weapons, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dress up the laser weapons: recolored beams with sparks along them")
 MACRO_CONFIG_INT(ClFancyLaser, cl_fancy_laser, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crystal laser: an icy blue beam with sparks")

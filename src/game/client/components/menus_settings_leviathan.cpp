@@ -122,6 +122,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 		s_LastTab = s_CurTab;
 		m_BackgroundListLoaded = false;
 		m_CrosshairListLoaded = false;
+		m_HatListLoaded = false;
 		m_AvatarListLoaded = false;
 		m_SoundPackListLoaded = false;
 		m_GameAssetListLoaded = false;
@@ -147,6 +148,54 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 
 void CMenus::RenderSettingsLeviathanTees(CUIRect MainView)
 {
+	// The hat strip along the bottom: what to wear on the left, the wardrobe on
+	// the right. The built-in hats and anything dropped into the hats folder of
+	// the config directory stand in the same list.
+	CUIRect HatStrip;
+	MainView.HSplitBottom(110.0f, &MainView, &HatStrip);
+	MainView.HSplitBottom(MARGIN_SMALL, &MainView, nullptr);
+	{
+		CUIRect HatLeft, HatRight, HatButton;
+		Ui()->DoLabel_AutoLineSize(Localize("Hat"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &HatStrip, HEADLINE_HEIGHT);
+		HatStrip.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL, nullptr, &HatStrip);
+		HatStrip.VSplitMid(&HatLeft, &HatRight, MARGIN_BETWEEN_VIEWS);
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClHat, Localize("Wear a hat"), &g_Config.m_ClHat, &HatLeft, LINE_SIZE);
+		if(g_Config.m_ClHat)
+		{
+			HatLeft.HSplitTop(LINE_SIZE, &HatButton, &HatLeft);
+			Ui()->DoScrollbarOption(&g_Config.m_ClHatSize, &g_Config.m_ClHatSize, &HatButton, Localize("Size"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+			HatLeft.HSplitTop(LINE_SIZE, &HatButton, &HatLeft);
+			Ui()->DoScrollbarOption(&g_Config.m_ClHatOffset, &g_Config.m_ClHatOffset, &HatButton, Localize("Height"), -30, 30, &CUi::ms_LinearScrollbarScale);
+
+			if(!m_HatListLoaded)
+				RefreshHatList();
+			int Selected = -1;
+			for(size_t i = 0; i < m_vHatNames.size(); ++i)
+			{
+				if(str_comp(m_vHatNames[i].c_str(), g_Config.m_ClHatFile) == 0)
+				{
+					Selected = (int)i;
+					break;
+				}
+			}
+			static CListBox s_HatListBox;
+			s_HatListBox.DoStart(20.0f, m_vHatNames.size(), 1, 3, Selected, &HatRight);
+			for(size_t i = 0; i < m_vHatNames.size(); ++i)
+			{
+				const CListboxItem Item = s_HatListBox.DoNextItem(&m_vHatNames[i], Selected == (int)i);
+				if(!Item.m_Visible)
+					continue;
+				CUIRect Label = Item.m_Rect;
+				Label.VMargin(MARGIN_SMALL, &Label);
+				Ui()->DoLabel(&Label, m_vHatNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+			}
+			const int NewSelected = s_HatListBox.DoEnd();
+			if(NewSelected != Selected && NewSelected >= 0)
+				str_copy(g_Config.m_ClHatFile, m_vHatNames[NewSelected].c_str(), sizeof(g_Config.m_ClHatFile));
+		}
+	}
+
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
@@ -378,6 +427,12 @@ void ScanFolder(IStorage *pStorage, const char *pFolder, const char *pExtension,
 	vNames.erase(std::unique(vNames.begin(), vNames.end()), vNames.end());
 }
 } // namespace
+
+void CMenus::RefreshHatList()
+{
+	ScanFolder(Storage(), "hats", ".png", m_vHatNames);
+	m_HatListLoaded = true;
+}
 
 void CMenus::RefreshCrosshairList()
 {

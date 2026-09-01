@@ -39,10 +39,13 @@ class CPlayers : public CComponent
 	// Round avatar picture that can replace the tee body, see `cl_custom_avatar`.
 	IGraphics::CTextureHandle m_AvatarTexture;
 	char m_aAvatarName[128] = {};
+	IGraphics::CTextureHandle m_HatTexture;
+	char m_aHatName[128] = {};
 
 public:
 	// Reloads the avatar when `cl_custom_avatar_file` changed.
 	void UpdateAvatar();
+	void UpdateHat();
 	IGraphics::CTextureHandle AvatarTexture() const { return m_AvatarTexture; }
 
 private:
