@@ -1519,6 +1519,11 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 		g_Config.m_ClClientBadge ^= 1;
 	}
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClClientBadge, &Button, Localize("A plate with the client logo and name, above the game timer."));
+	if(g_Config.m_ClClientBadge)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClClientBadgeClock, Localize("With the clock beside it"), &g_Config.m_ClClientBadgeClock, &RightView, LINE_SIZE);
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClClientBadgeClock, &RightView, Localize("The time on this computer, not the round timer."));
+	}
 
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);

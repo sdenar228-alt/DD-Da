@@ -160,7 +160,9 @@ turn the client into one. A whisper is answered by whisper, a public line
 publicly.
 
 The client wears its name at the top of the screen on the same page: a plate
-with the logo and the word Leviathan, with the game timer moved down under it.
+with the logo, the word Leviathan and the computer's own clock beside it, with
+the game timer moved down under it. The clock is the system time, not the round
+timer under it, and can be turned off on its own.
 The logo is loaded when the HUD starts rather than on first use, because loading
 a texture in the middle of a frame stalls the render pipeline, which is a black
 screen rather than a slow one.

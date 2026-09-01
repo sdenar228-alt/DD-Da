@@ -3308,3 +3308,9 @@ Wear the client name at the top
 
 A plate with the client logo and name, above the game timer.
 == Плашка с логотипом и названием клиента над игровым таймером.
+
+With the clock beside it
+== С часами рядом
+
+The time on this computer, not the round timer.
+== Время этого компьютера, а не таймер забега.
