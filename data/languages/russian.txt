@@ -3167,3 +3167,48 @@ Focus mode on
 
 Focus mode off
 == Режим концентрации выключен
+
+Edit shader/tee.frag. The OpenGL 3.3 backend it needs is what this client already starts on.
+== Редактируй shader/tee.frag. Нужный ему бэкенд OpenGL 3.3 — тот, на котором этот клиент и так запускается.
+
+Reads what the system says is playing. From macOS 15.4 on, only Spotify and Music can be read, and the first time you are asked to allow it.
+== Читает то, что система считает играющим. Начиная с macOS 15.4 читаются только Spotify и Музыка, и в первый раз система спросит разрешение.
+
+This system publishes nothing the client can read, so the island stays hidden here.
+== Эта система не публикует ничего, что клиент мог бы прочитать, поэтому островок здесь не показывается.
+
+Pictures (png, jpg, bmp, webp, heic) and videos (mp4, mov, m4v) all work.
+== Работают и картинки (png, jpg, bmp, webp, heic), и видео (mp4, mov, m4v).
+
+Pictures (png) work. Anything else needs an FFmpeg build with decoders beside the client.
+== Работают картинки (png). Для остального рядом с клиентом нужна сборка FFmpeg с декодерами.
+
+Menu color
+== Цвет меню
+
+Menu background
+== Фон меню
+
+At war with
+== В войне с
+
+Declare war
+== Объявить войну
+
+Nobody yet
+== Пока никого
+
+Show the dot by their name in game
+== Показывать кружок у имени в игре
+
+Green for a friend, red for war, nothing for everybody else. Say !war <name> in the chat to declare war without coming here.
+== Зелёный у друга, красный у врага, у остальных ничего. Напиши !war <ник> в чат, чтобы объявить войну, не заходя сюда.
+
+Say !war <name> to mark somebody, !unwar <name> to take it off
+== Напиши !war <ник>, чтобы пометить, и !unwar <ник>, чтобы снять метку
+
+No longer at war with '%s'
+== Война с '%s' окончена
+
+At war with '%s'
+== Ты в войне с '%s'
