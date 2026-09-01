@@ -171,12 +171,22 @@ float CHud::RenderClientBadge()
 	constexpr float Height = 11.0f;
 	constexpr float Padding = 3.0f;
 	constexpr float LogoSize = 8.0f;
+	constexpr float Gap = 4.0f;
 
-	// The name never changes, so its width is worth measuring once.
+	// The name never changes, so its width is worth measuring once. The clock
+	// does change, but it is measured against a fixed pattern rather than against
+	// itself, or the plate would breathe every time a digit got narrower.
 	static float s_NameWidth = TextRender()->TextWidth(FontSize, pName, -1, -1.0f);
+	static float s_ClockWidth = TextRender()->TextWidth(FontSize, "00:00", -1, -1.0f);
+
+	// The clock off the computer itself, not the server and not the round.
+	char aClock[8] = "";
+	const bool WithClock = g_Config.m_ClClientBadgeClock != 0;
+	if(WithClock)
+		str_timestamp_format(aClock, sizeof(aClock), "%H:%M");
 
 	const bool WithLogo = m_BadgeLogo.IsValid();
-	const float Width = Padding * 2.0f + s_NameWidth + (WithLogo ? LogoSize + Padding : 0.0f);
+	const float Width = Padding * 2.0f + s_NameWidth + (WithLogo ? LogoSize + Padding : 0.0f) + (WithClock ? Gap + s_ClockWidth : 0.0f);
 	const float Left = m_Width / 2.0f - Width / 2.0f;
 
 	Graphics()->DrawRect(Left, 1.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, Height / 2.0f);
@@ -193,8 +203,18 @@ float CHud::RenderClientBadge()
 		TextLeft += LogoSize + Padding;
 	}
 
+	const float TextTop = 1.0f + (Height - FontSize) / 2.0f - 1.0f;
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-	TextRender()->Text(TextLeft, 1.0f + (Height - FontSize) / 2.0f - 1.0f, FontSize, pName, -1.0f);
+	TextRender()->Text(TextLeft, TextTop, FontSize, pName, -1.0f);
+
+	if(WithClock)
+	{
+		// Dimmer than the name: the plate says whose client this is first, and
+		// what time it is second.
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.65f);
+		TextRender()->Text(TextLeft + s_NameWidth + Gap, TextTop, FontSize, aClock, -1.0f);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	}
 
 	return Height;
 }

@@ -154,7 +154,8 @@ MACRO_CONFIG_INT(ClAutoReplyMuted, cl_auto_reply_muted, 0, 0, 1, CFGFLAG_CLIENT 
 MACRO_CONFIG_STR(ClAutoReplyMutedMsg, cl_auto_reply_muted_msg, 128, "I have muted you", CFGFLAG_CLIENT | CFGFLAG_SAVE, "What the answer says")
 MACRO_CONFIG_INT(ClAutoReplyAfk, cl_auto_reply_afk, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Answer when somebody addresses you while the game is not focused")
 MACRO_CONFIG_STR(ClAutoReplyAfkMsg, cl_auto_reply_afk_msg, 128, "I am not tabbed in", CFGFLAG_CLIENT | CFGFLAG_SAVE, "What the answer says")
-MACRO_CONFIG_INT(ClClientBadge, cl_client_badge, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the client's name under the game timer")
+MACRO_CONFIG_INT(ClClientBadge, cl_client_badge, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Wear the client name and logo on a plate above the game timer")
+MACRO_CONFIG_INT(ClClientBadgeClock, cl_client_badge_clock, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Put the computer's own clock on the plate beside the name")
 
 // A hat on the tee's head.
 MACRO_CONFIG_INT(ClHat, cl_hat, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Wear a hat")
