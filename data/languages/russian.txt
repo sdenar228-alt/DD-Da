@@ -3212,3 +3212,15 @@ No longer at war with '%s'
 
 At war with '%s'
 == Ты в войне с '%s'
+
+Fancy weapons
+== Эффектное оружие
+
+Dress up the laser weapons
+== Включить эффектное оружие
+
+Crystal laser
+== Кристальный лазер
+
+Sandy shotgun
+== Песочный дробовик
