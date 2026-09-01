@@ -1,4 +1,4 @@
-﻿/* Settings page for the client specific features. */
+/* Settings page for the client specific features. */
 #include "menus.h"
 
 #include <base/str.h>
@@ -28,17 +28,15 @@
 enum
 {
 	LEVIATHAN_TAB_TEES = 0,
-	LEVIATHAN_TAB_HOOK,
-	LEVIATHAN_TAB_CROSSHAIR,
+	LEVIATHAN_TAB_VISUALS,
 	LEVIATHAN_TAB_TILES,
 	LEVIATHAN_TAB_BACKGROUND,
+	LEVIATHAN_TAB_EFFECTS,
 	LEVIATHAN_TAB_SOUNDS,
 	LEVIATHAN_TAB_MODELS,
 	LEVIATHAN_TAB_UNFREEZE,
-	LEVIATHAN_TAB_TRAIL,
-	LEVIATHAN_TAB_PARTICLES3D,
 	LEVIATHAN_TAB_FRIENDS,
-	LEVIATHAN_TAB_MISC,
+	LEVIATHAN_TAB_INTERFACE,
 	NUMBER_OF_LEVIATHAN_TABS,
 };
 
@@ -81,7 +79,6 @@ void CMenus::DoLeviathanColorLine(CButtonContainer *pResetId, const void *pOpaci
 
 void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 {
-	static int s_CurTab = LEVIATHAN_TAB_TEES;
 
 	CUIRect TabBar, Button;
 	MainView.HSplitTop(20.0f, &TabBar, &MainView);
@@ -89,25 +86,23 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 	static CButtonContainer s_aPageTabs[NUMBER_OF_LEVIATHAN_TABS] = {};
 	const char *apTabNames[NUMBER_OF_LEVIATHAN_TABS] = {
 		Localize("Tees"),
-		Localize("Hook"),
-		Localize("Crosshair"),
+		Localize("Aiming"),
 		Localize("Tiles"),
 		Localize("Background"),
+		Localize("Effects"),
 		Localize("Sounds"),
 		Localize("Models"),
 		Localize("Unfreeze"),
-		Localize("Trail"),
-		Localize("3D"),
 		Localize("Friends"),
-		Localize("Misc")};
+		Localize("Interface")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_LEVIATHAN_TABS; ++Tab)
 	{
 		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
 		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == NUMBER_OF_LEVIATHAN_TABS - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
-		if(DoButton_MenuTab(&s_aPageTabs[Tab], apTabNames[Tab], s_CurTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+		if(DoButton_MenuTab(&s_aPageTabs[Tab], apTabNames[Tab], g_Config.m_UiLeviathanPage == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
 		{
-			s_CurTab = Tab;
+			g_Config.m_UiLeviathanPage = Tab;
 		}
 	}
 
@@ -117,9 +112,9 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 	// it is opened. The lists used to be built once, which made a freshly added
 	// file impossible to pick.
 	static int s_LastTab = -1;
-	if(s_CurTab != s_LastTab)
+	if(g_Config.m_UiLeviathanPage != s_LastTab)
 	{
-		s_LastTab = s_CurTab;
+		s_LastTab = g_Config.m_UiLeviathanPage;
 		m_BackgroundListLoaded = false;
 		m_CrosshairListLoaded = false;
 		m_HatListLoaded = false;
@@ -128,20 +123,18 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 		m_GameAssetListLoaded = false;
 	}
 
-	switch(s_CurTab)
+	switch(g_Config.m_UiLeviathanPage)
 	{
 	case LEVIATHAN_TAB_TEES: RenderSettingsLeviathanTees(MainView); break;
-	case LEVIATHAN_TAB_HOOK: RenderSettingsLeviathanHook(MainView); break;
-	case LEVIATHAN_TAB_CROSSHAIR: RenderSettingsLeviathanCrosshair(MainView); break;
+	case LEVIATHAN_TAB_VISUALS: RenderSettingsLeviathanVisuals(MainView); break;
 	case LEVIATHAN_TAB_TILES: RenderSettingsLeviathanTiles(MainView); break;
 	case LEVIATHAN_TAB_BACKGROUND: RenderSettingsLeviathanBackground(MainView); break;
+	case LEVIATHAN_TAB_EFFECTS: RenderSettingsLeviathanEffects(MainView); break;
 	case LEVIATHAN_TAB_SOUNDS: RenderSettingsLeviathanSounds(MainView); break;
 	case LEVIATHAN_TAB_MODELS: RenderSettingsLeviathanModels(MainView); break;
 	case LEVIATHAN_TAB_UNFREEZE: RenderSettingsLeviathanUnfreeze(MainView); break;
-	case LEVIATHAN_TAB_TRAIL: RenderSettingsLeviathanTrail(MainView); break;
-	case LEVIATHAN_TAB_PARTICLES3D: RenderSettingsLeviathanParticles3d(MainView); break;
 	case LEVIATHAN_TAB_FRIENDS: RenderSettingsLeviathanFriends(MainView); break;
-	case LEVIATHAN_TAB_MISC: RenderSettingsLeviathanMisc(MainView); break;
+	case LEVIATHAN_TAB_INTERFACE: RenderSettingsLeviathanInterface(MainView); break;
 	default: break;
 	}
 }
@@ -343,39 +336,6 @@ void CMenus::RenderSettingsLeviathanTees(CUIRect MainView)
 }
 
 
-void CMenus::RenderSettingsLeviathanHook(CUIRect MainView)
-{
-	CUIRect LeftView, RightView;
-	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
-
-	Ui()->DoLabel_AutoLineSize(Localize("Hook color"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-
-	static std::vector<CButtonContainer> s_vHookModeButtons(4);
-	DoLine_RadioMenu(LeftView, Localize("Recolor the hook of"),
-		s_vHookModeButtons,
-		{Localize("Nobody"), Localize("Everyone"), Localize("Yourself"), Localize("Other players")},
-		{0, 1, 2, 3},
-		g_Config.m_ClCustomHookColor);
-
-	if(g_Config.m_ClCustomHookColor != 0)
-	{
-		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomHookColorHead, Localize("Also recolor the hook head"), &g_Config.m_ClCustomHookColorHead, &LeftView, LINE_SIZE);
-
-		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-		static CButtonContainer s_HookColor;
-		static int s_HookOpacity;
-		DoLeviathanColorLine(&s_HookColor, &s_HookOpacity, &LeftView, Localize("Hook chain color"),
-			&g_Config.m_ClCustomHookColorValue, DefaultConfig::ClCustomHookColorValue);
-
-		CUIRect Button;
-		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClCustomHookColorBrightness, &g_Config.m_ClCustomHookColorBrightness, &Button, Localize("Brightness"), 20, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
-		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomHookColorBrightness, &Button, Localize("The hook art is very dark, so the recolored hook is drawn from a brightened copy. Lower this to tone it down."));
-	}
-}
-
 namespace {
 struct SScanData
 {
@@ -470,111 +430,6 @@ void CMenus::RefreshSoundPackList()
 	std::sort(m_vSoundPackNames.begin(), m_vSoundPackNames.end());
 	m_vSoundPackNames.erase(std::unique(m_vSoundPackNames.begin(), m_vSoundPackNames.end()), m_vSoundPackNames.end());
 	m_SoundPackListLoaded = true;
-}
-
-void CMenus::RenderSettingsLeviathanCrosshair(CUIRect MainView)
-{
-	CUIRect LeftView, RightView, Button;
-	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
-
-	Ui()->DoLabel_AutoLineSize(Localize("Custom crosshair"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-	if(DoButton_CheckBox(&g_Config.m_ClCustomCrosshair, Localize("Use a custom crosshair image"), g_Config.m_ClCustomCrosshair, &Button))
-	{
-		g_Config.m_ClCustomCrosshair ^= 1;
-	}
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomCrosshair, &Button, Localize("Takes precedence over the crosshair of the selected asset pack"));
-
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-	Ui()->DoScrollbarOption(&g_Config.m_ClCustomCrosshairSize, &g_Config.m_ClCustomCrosshairSize, &Button, Localize("Size"), 8, 256);
-
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-	static CButtonContainer s_CrosshairColor;
-	static int s_CrosshairOpacity;
-	DoLeviathanColorLine(&s_CrosshairColor, &s_CrosshairOpacity, &LeftView, Localize("Tint color"),
-		&g_Config.m_ClCustomCrosshairColor, DefaultConfig::ClCustomCrosshairColor);
-
-	// Image list
-	Ui()->DoLabel_AutoLineSize(Localize("Image"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
-	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-
-	if(!m_CrosshairListLoaded)
-		RefreshCrosshairList();
-
-	CUIRect RefreshButton;
-	RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
-	RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
-
-	if(m_vCrosshairNames.empty())
-	{
-		CUIRect Hint;
-		RightView.HSplitTop(40.0f, &Hint, &RightView);
-		TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
-		SLabelProperties Props;
-		Props.m_MaxWidth = Hint.w;
-		Ui()->DoLabel(&Hint, Localize("Put .png files into the 'crosshairs' folder of your config directory."), 12.0f, TEXTALIGN_TL, Props);
-		TextRender()->TextColor(TextRender()->DefaultTextColor());
-	}
-	else
-	{
-		// Entry 0 is "None", the rest are the found files.
-		int Selected = 0;
-		for(size_t i = 0; i < m_vCrosshairNames.size(); ++i)
-		{
-			if(str_comp(m_vCrosshairNames[i].c_str(), g_Config.m_ClCustomCrosshairFile) == 0)
-			{
-				Selected = (int)i + 1;
-				break;
-			}
-		}
-		// The configured file no longer exists, otherwise the list would show it
-		// as selected while the config still points at it.
-
-		static CListBox s_ListBox;
-		s_ListBox.DoStart(20.0f, m_vCrosshairNames.size() + 1, 1, 3, Selected, &RightView);
-
-		{
-			static int s_NoneId;
-			const CListboxItem Item = s_ListBox.DoNextItem(&s_NoneId, Selected == 0);
-			if(Item.m_Visible)
-			{
-				CUIRect Label = Item.m_Rect;
-				Label.VMargin(MARGIN_SMALL, &Label);
-				Ui()->DoLabel(&Label, Localize("No image"), 14.0f, TEXTALIGN_ML);
-			}
-		}
-
-		for(size_t i = 0; i < m_vCrosshairNames.size(); ++i)
-		{
-			const CListboxItem Item = s_ListBox.DoNextItem(&m_vCrosshairNames[i], Selected == (int)i + 1);
-			if(!Item.m_Visible)
-				continue;
-			CUIRect Label = Item.m_Rect;
-			Label.VMargin(MARGIN_SMALL, &Label);
-			Ui()->DoLabel(&Label, m_vCrosshairNames[i].c_str(), 14.0f, TEXTALIGN_ML);
-		}
-
-		const int NewSelected = s_ListBox.DoEnd();
-		if(NewSelected != Selected)
-		{
-			if(NewSelected == 0)
-				g_Config.m_ClCustomCrosshairFile[0] = '\0';
-			else
-				str_copy(g_Config.m_ClCustomCrosshairFile, m_vCrosshairNames[NewSelected - 1].c_str());
-		}
-	}
-
-	static CButtonContainer s_RefreshButton;
-	if(DoButton_Menu(&s_RefreshButton, Localize("Refresh"), 0, &RefreshButton))
-	{
-		RefreshCrosshairList();
-		// Also drop the cached texture, so that a replaced image or one that
-		// failed to load earlier is picked up again.
-		GameClient()->m_Hud.InvalidateCustomCrosshair();
-	}
 }
 
 void CMenus::RenderSettingsLeviathanTiles(CUIRect MainView)
@@ -697,86 +552,6 @@ void CMenus::RenderSettingsLeviathanUnfreeze(CUIRect MainView)
 		static int s_UnfreezeColorOpacity;
 		DoLeviathanColorLine(&s_UnfreezeColorReset, &s_UnfreezeColorOpacity, &RightView,
 			Localize("Color"), &g_Config.m_ClUnfreezeColor, DefaultConfig::ClUnfreezeColor);
-	}
-}
-
-void CMenus::RenderSettingsLeviathanMisc(CUIRect MainView)
-{
-	CUIRect LeftView, RightView, Button;
-	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
-
-	// ***** Music island ***** //
-	Ui()->DoLabel_AutoLineSize(Localize("Music island"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
-	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-
-	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-	if(DoButton_CheckBox(&g_Config.m_ClMusicIsland, Localize("Show the playing track at the top"), g_Config.m_ClMusicIsland, &Button))
-	{
-		g_Config.m_ClMusicIsland ^= 1;
-	}
-#if defined(CONF_PLATFORM_MACOS)
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads what the system says is playing. From macOS 15.4 on, only Spotify and Music can be read, and the first time you are asked to allow it."));
-#elif defined(CONF_FAMILY_WINDOWS)
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
-#else
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("This system publishes nothing the client can read, so the island stays hidden here."));
-#endif
-	if(g_Config.m_ClMusicIsland)
-	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandIngame, Localize("Show it while playing"), &g_Config.m_ClMusicIslandIngame, &RightView, LINE_SIZE);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandMenu, Localize("Show it in the menus"), &g_Config.m_ClMusicIslandMenu, &RightView, LINE_SIZE);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandWhenPaused, Localize("Keep it visible when paused"), &g_Config.m_ClMusicIslandWhenPaused, &RightView, LINE_SIZE);
-
-		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandSize, &g_Config.m_ClMusicIslandSize, &Button, Localize("Size"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
-		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandOpacity, &g_Config.m_ClMusicIslandOpacity, &Button, Localize("Opacity"), 10, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
-
-		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-		Ui()->DoLabel_AutoLineSize(Localize("Position"), 13.0f, TEXTALIGN_ML, &RightView, LINE_SIZE);
-		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandX, &g_Config.m_ClMusicIslandX, &Button, Localize("Left to right"), 0, 1000);
-		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandY, &g_Config.m_ClMusicIslandY, &Button, Localize("Top to bottom"), 0, 1000);
-		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIslandY, &Button, Localize("The island is drawn in the menus too, so you can see it move while dragging these."));
-
-		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-		Button.VSplitLeft(Button.w / 2.0f, &Button, nullptr);
-		static CButtonContainer s_ResetIslandPos;
-		if(DoButton_Menu(&s_ResetIslandPos, Localize("Reset position"), 0, &Button))
-		{
-			g_Config.m_ClMusicIslandX = DefaultConfig::ClMusicIslandX;
-			g_Config.m_ClMusicIslandY = DefaultConfig::ClMusicIslandY;
-		}
-	}
-
-	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-	if(DoButton_CheckBox(&g_Config.m_ClCustomSpin, Localize("Spin for other players"), g_Config.m_ClCustomSpin, &Button))
-	{
-		g_Config.m_ClCustomSpin ^= 1;
-	}
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpin, &Button, Localize("Only the aim direction sent to the server rotates. Your own crosshair and view stay where you aim."));
-
-	if(g_Config.m_ClCustomSpin)
-	{
-		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "Р’В°/s");
-
-		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		if(DoButton_CheckBox(&g_Config.m_ClCustomSpinPauseOnAction, Localize("Stop spinning while hooking or shooting"), g_Config.m_ClCustomSpinPauseOnAction, &Button))
-		{
-			g_Config.m_ClCustomSpinPauseOnAction ^= 1;
-		}
-		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpinPauseOnAction, &Button, Localize("Keep this on, otherwise your hook and your shots fly into a random direction."));
-
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpinDummy, Localize("Spin the dummy as well"), &g_Config.m_ClCustomSpinDummy, &LeftView, LINE_SIZE);
 	}
 }
 
@@ -1142,30 +917,6 @@ static void DrawFancyBeamPreview(IGraphics *pGraphics, const CUIRect &Rect, IGra
 
 void CMenus::RenderSettingsLeviathanModels(CUIRect MainView)
 {
-	// The dressed-up beams live with the weapon models: same subject, the guns.
-	CUIRect Fancy;
-	MainView.HSplitBottom(120.0f, &MainView, &Fancy);
-	MainView.HSplitBottom(MARGIN_SMALL, &MainView, nullptr);
-	Ui()->DoLabel_AutoLineSize(Localize("Fancy weapons"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &Fancy, HEADLINE_HEIGHT);
-	Fancy.HSplitTop(HEADLINE_HEIGHT + MARGIN_SMALL, nullptr, &Fancy);
-	CUIRect FancyLeft, FancyRight, Row;
-	Fancy.VSplitMid(&FancyLeft, &FancyRight, MARGIN_BETWEEN_VIEWS);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyWeapons, Localize("Dress up the laser weapons"), &g_Config.m_ClFancyWeapons, &FancyLeft, LINE_SIZE);
-	if(g_Config.m_ClFancyWeapons)
-	{
-		const float Time = Client()->LocalTime();
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyLaser, Localize("Crystal laser"), &g_Config.m_ClFancyLaser, &FancyLeft, LINE_SIZE);
-		FancyLeft.HSplitTop(LINE_SIZE, &Row, &FancyLeft);
-		if(g_Config.m_ClFancyLaser)
-			DrawFancyBeamPreview(Graphics(), Row, GameClient()->m_GameSkin.m_SpriteWeaponLaser, GameClient()->m_GameSkin.m_aSpriteStars[0],
-				ColorRGBA(0.35f, 0.6f, 1.0f, 1.0f), ColorRGBA(0.85f, 0.95f, 1.0f, 1.0f), Time);
-
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyShotgun, Localize("Sandy shotgun"), &g_Config.m_ClFancyShotgun, &FancyRight, LINE_SIZE);
-		FancyRight.HSplitTop(LINE_SIZE, &Row, &FancyRight);
-		if(g_Config.m_ClFancyShotgun)
-			DrawFancyBeamPreview(Graphics(), Row, GameClient()->m_GameSkin.m_SpriteWeaponShotgun, GameClient()->m_GameSkin.m_aSpriteStars[0],
-				ColorRGBA(0.75f, 0.55f, 0.2f, 1.0f), ColorRGBA(1.0f, 0.9f, 0.55f, 1.0f), Time);
-	}
 
 	struct SGroup
 	{
@@ -1404,41 +1155,141 @@ static CBindSlot FocusModeBind(CBinds *pBinds)
 	return EMPTY_BIND_SLOT;
 }
 
-void CMenus::RenderSettingsLeviathanTrail(CUIRect MainView)
+void CMenus::RenderSettingsLeviathanVisuals(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
-	Ui()->DoLabel_AutoLineSize(Localize("Focus mode"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
-	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	Ui()->DoLabel_AutoLineSize(Localize("Custom crosshair"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusMode, Localize("Focus mode is on"), &g_Config.m_ClFocusMode, &RightView, LINE_SIZE);
-	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClFocusMode, &RightView, Localize("Strips the screen down to the game. What goes is picked below; the key flips it without coming here."));
-
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideNames, Localize("Hide the name plates"), &g_Config.m_ClFocusHideNames, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideEffects, Localize("Hide particles and damage stars"), &g_Config.m_ClFocusHideEffects, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideHud, Localize("Hide the HUD"), &g_Config.m_ClFocusHideHud, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideMusic, Localize("Hide the music island"), &g_Config.m_ClFocusHideMusic, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideExtra, Localize("Hide broadcasts and the kill feed"), &g_Config.m_ClFocusHideExtra, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideChat, Localize("Hide the chat"), &g_Config.m_ClFocusHideChat, &RightView, LINE_SIZE);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideScoreboard, Localize("Hide the scoreboard"), &g_Config.m_ClFocusHideScoreboard, &RightView, LINE_SIZE);
-
-	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
-	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
-	CUIRect KeyLabel, KeyReader;
-	Button.VSplitMid(&KeyLabel, &KeyReader, MARGIN_SMALL);
-	Ui()->DoLabel(&KeyLabel, Localize("Focus mode key"), 13.0f, TEXTALIGN_ML);
-	const CBindSlot CurrentBind = FocusModeBind(&GameClient()->m_Binds);
-	static CButtonContainer s_FocusKeyReader, s_FocusKeyClear;
-	const CKeyBinder::CKeyReaderResult KeyResult = GameClient()->m_KeyBinder.DoKeyReader(
-		&s_FocusKeyReader, &s_FocusKeyClear, &KeyReader, CurrentBind, false);
-	if(!KeyResult.m_Aborted && KeyResult.m_Bind != CurrentBind)
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomCrosshair, Localize("Use a custom crosshair image"), g_Config.m_ClCustomCrosshair, &Button))
 	{
-		if(CurrentBind.m_Key != KEY_UNKNOWN)
-			GameClient()->m_Binds.Bind(CurrentBind.m_Key, "", false, CurrentBind.m_ModifierMask);
-		if(KeyResult.m_Bind.m_Key != KEY_UNKNOWN)
-			GameClient()->m_Binds.Bind(KeyResult.m_Bind.m_Key, "toggle_focus_mode", false, KeyResult.m_Bind.m_ModifierMask);
+		g_Config.m_ClCustomCrosshair ^= 1;
 	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomCrosshair, &Button, Localize("Takes precedence over the crosshair of the selected asset pack"));
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_ClCustomCrosshairSize, &g_Config.m_ClCustomCrosshairSize, &Button, Localize("Size"), 8, 256);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	static CButtonContainer s_CrosshairColor;
+	static int s_CrosshairOpacity;
+	DoLeviathanColorLine(&s_CrosshairColor, &s_CrosshairOpacity, &LeftView, Localize("Tint color"),
+		&g_Config.m_ClCustomCrosshairColor, DefaultConfig::ClCustomCrosshairColor);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Hook color"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	static std::vector<CButtonContainer> s_vHookModeButtons(4);
+	DoLine_RadioMenu(LeftView, Localize("Recolor the hook of"),
+		s_vHookModeButtons,
+		{Localize("Nobody"), Localize("Everyone"), Localize("Yourself"), Localize("Other players")},
+		{0, 1, 2, 3},
+		g_Config.m_ClCustomHookColor);
+
+	if(g_Config.m_ClCustomHookColor != 0)
+	{
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomHookColorHead, Localize("Also recolor the hook head"), &g_Config.m_ClCustomHookColorHead, &LeftView, LINE_SIZE);
+
+		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+		static CButtonContainer s_HookColor;
+		static int s_HookOpacity;
+		DoLeviathanColorLine(&s_HookColor, &s_HookOpacity, &LeftView, Localize("Hook chain color"),
+			&g_Config.m_ClCustomHookColorValue, DefaultConfig::ClCustomHookColorValue);
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomHookColorBrightness, &g_Config.m_ClCustomHookColorBrightness, &Button, Localize("Brightness"), 20, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomHookColorBrightness, &Button, Localize("The hook art is very dark, so the recolored hook is drawn from a brightened copy. Lower this to tone it down."));
+	}
+	// Image list
+	Ui()->DoLabel_AutoLineSize(Localize("Image"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	if(!m_CrosshairListLoaded)
+		RefreshCrosshairList();
+
+	CUIRect RefreshButton;
+	RightView.HSplitBottom(20.0f, &RightView, &RefreshButton);
+	RightView.HSplitBottom(MARGIN_SMALL, &RightView, nullptr);
+
+	if(m_vCrosshairNames.empty())
+	{
+		CUIRect Hint;
+		RightView.HSplitTop(40.0f, &Hint, &RightView);
+		TextRender()->TextColor(0.7f, 0.7f, 0.7f, 1.0f);
+		SLabelProperties Props;
+		Props.m_MaxWidth = Hint.w;
+		Ui()->DoLabel(&Hint, Localize("Put .png files into the 'crosshairs' folder of your config directory."), 12.0f, TEXTALIGN_TL, Props);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+	}
+	else
+	{
+		// Entry 0 is "None", the rest are the found files.
+		int Selected = 0;
+		for(size_t i = 0; i < m_vCrosshairNames.size(); ++i)
+		{
+			if(str_comp(m_vCrosshairNames[i].c_str(), g_Config.m_ClCustomCrosshairFile) == 0)
+			{
+				Selected = (int)i + 1;
+				break;
+			}
+		}
+		// The configured file no longer exists, otherwise the list would show it
+		// as selected while the config still points at it.
+
+		static CListBox s_ListBox;
+		s_ListBox.DoStart(20.0f, m_vCrosshairNames.size() + 1, 1, 3, Selected, &RightView);
+
+		{
+			static int s_NoneId;
+			const CListboxItem Item = s_ListBox.DoNextItem(&s_NoneId, Selected == 0);
+			if(Item.m_Visible)
+			{
+				CUIRect Label = Item.m_Rect;
+				Label.VMargin(MARGIN_SMALL, &Label);
+				Ui()->DoLabel(&Label, Localize("No image"), 14.0f, TEXTALIGN_ML);
+			}
+		}
+
+		for(size_t i = 0; i < m_vCrosshairNames.size(); ++i)
+		{
+			const CListboxItem Item = s_ListBox.DoNextItem(&m_vCrosshairNames[i], Selected == (int)i + 1);
+			if(!Item.m_Visible)
+				continue;
+			CUIRect Label = Item.m_Rect;
+			Label.VMargin(MARGIN_SMALL, &Label);
+			Ui()->DoLabel(&Label, m_vCrosshairNames[i].c_str(), 14.0f, TEXTALIGN_ML);
+		}
+
+		const int NewSelected = s_ListBox.DoEnd();
+		if(NewSelected != Selected)
+		{
+			if(NewSelected == 0)
+				g_Config.m_ClCustomCrosshairFile[0] = '\0';
+			else
+				str_copy(g_Config.m_ClCustomCrosshairFile, m_vCrosshairNames[NewSelected - 1].c_str());
+		}
+	}
+
+	static CButtonContainer s_RefreshButton;
+	if(DoButton_Menu(&s_RefreshButton, Localize("Refresh"), 0, &RefreshButton))
+	{
+		RefreshCrosshairList();
+		// Also drop the cached texture, so that a replaced image or one that
+		// failed to load earlier is picked up again.
+		GameClient()->m_Hud.InvalidateCustomCrosshair();
+	}
+}
+
+void CMenus::RenderSettingsLeviathanEffects(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
 	Ui()->DoLabel_AutoLineSize(Localize("Tee trail"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
@@ -1473,36 +1324,55 @@ void CMenus::RenderSettingsLeviathanTrail(CUIRect MainView)
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
 		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailAlpha, &g_Config.m_ClTeeTrailAlpha, &Button, Localize("Opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 	}
-}
 
-void CMenus::RenderSettingsLeviathanParticles3d(CUIRect MainView)
-{
-	CUIRect LeftView, RightView, Button;
-	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
-
-	Ui()->DoLabel_AutoLineSize(Localize("3D particles"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Fancy weapons"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyWeapons, Localize("Dress up the laser weapons"), &g_Config.m_ClFancyWeapons, &LeftView, LINE_SIZE);
+	if(g_Config.m_ClFancyWeapons)
+	{
+		const float FancyTime = Client()->LocalTime();
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyLaser, Localize("Crystal laser"), &g_Config.m_ClFancyLaser, &LeftView, LINE_SIZE);
+		if(g_Config.m_ClFancyLaser)
+		{
+			LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+			DrawFancyBeamPreview(Graphics(), Button, GameClient()->m_GameSkin.m_SpriteWeaponLaser, GameClient()->m_GameSkin.m_aSpriteStars[0],
+				ColorRGBA(0.35f, 0.6f, 1.0f, 1.0f), ColorRGBA(0.85f, 0.95f, 1.0f, 1.0f), FancyTime);
+		}
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFancyShotgun, Localize("Sandy shotgun"), &g_Config.m_ClFancyShotgun, &LeftView, LINE_SIZE);
+		if(g_Config.m_ClFancyShotgun)
+		{
+			LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+			DrawFancyBeamPreview(Graphics(), Button, GameClient()->m_GameSkin.m_SpriteWeaponShotgun, GameClient()->m_GameSkin.m_aSpriteStars[0],
+				ColorRGBA(0.75f, 0.55f, 0.2f, 1.0f), ColorRGBA(1.0f, 0.9f, 0.55f, 1.0f), FancyTime);
+		}
+	}
 
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Cl3dParticles, Localize("Wireframe shapes behind the game"), &g_Config.m_Cl3dParticles, &LeftView, LINE_SIZE);
+	Ui()->DoLabel_AutoLineSize(Localize("3D particles"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Cl3dParticles, Localize("Wireframe shapes behind the game"), &g_Config.m_Cl3dParticles, &RightView, LINE_SIZE);
 	if(!g_Config.m_Cl3dParticles)
 		return;
 
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
 	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesCount, &g_Config.m_Cl3dParticlesCount, &Button, Localize("How many"), 1, 100, &CUi::ms_LinearScrollbarScale);
 
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 	static std::vector<CButtonContainer> s_vTypeButtons(6);
-	DoLine_RadioMenu(LeftView, Localize("Shape"),
+	DoLine_RadioMenu(RightView, Localize("Shape"),
 		s_vTypeButtons,
 		{Localize("Cube"), Localize("Heart"), Localize("Circle"), Localize("Hex"), Localize("Tri"), Localize("Mix")},
 		{0, 1, 2, 3, 4, 5}, g_Config.m_Cl3dParticlesType);
 
-	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
 	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesSize, &g_Config.m_Cl3dParticlesSize, &Button, Localize("Size"), 10, 150, &CUi::ms_LinearScrollbarScale);
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesDepth, &g_Config.m_Cl3dParticlesDepth, &Button, Localize("Thickness"), 0, 60, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
 	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesSpeed, &g_Config.m_Cl3dParticlesSpeed, &Button, Localize("Speed"), 0, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
-	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
 	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesAlpha, &g_Config.m_Cl3dParticlesAlpha, &Button, Localize("Opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 
 	Ui()->DoLabel_AutoLineSize(Localize("Color"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
@@ -1530,5 +1400,148 @@ void CMenus::RenderSettingsLeviathanParticles3d(CUIRect MainView)
 		Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesGlowAlpha, &g_Config.m_Cl3dParticlesGlowAlpha, &Button, Localize("Glow opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
 		Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesGlowOffset, &g_Config.m_Cl3dParticlesGlowOffset, &Button, Localize("Glow reach"), 1, 10, &CUi::ms_LinearScrollbarScale);
+	}
+}
+
+void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Focus mode"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusMode, Localize("Focus mode is on"), &g_Config.m_ClFocusMode, &LeftView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClFocusMode, &LeftView, Localize("Strips the screen down to the game. What goes is picked below; the key flips it without coming here."));
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideNames, Localize("Hide the name plates"), &g_Config.m_ClFocusHideNames, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideEffects, Localize("Hide particles and damage stars"), &g_Config.m_ClFocusHideEffects, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideHud, Localize("Hide the HUD"), &g_Config.m_ClFocusHideHud, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideMusic, Localize("Hide the music island"), &g_Config.m_ClFocusHideMusic, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideExtra, Localize("Hide broadcasts and the kill feed"), &g_Config.m_ClFocusHideExtra, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideChat, Localize("Hide the chat"), &g_Config.m_ClFocusHideChat, &LeftView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideScoreboard, Localize("Hide the scoreboard"), &g_Config.m_ClFocusHideScoreboard, &LeftView, LINE_SIZE);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	CUIRect KeyLabel, KeyReader;
+	Button.VSplitMid(&KeyLabel, &KeyReader, MARGIN_SMALL);
+	Ui()->DoLabel(&KeyLabel, Localize("Focus mode key"), 13.0f, TEXTALIGN_ML);
+	const CBindSlot CurrentBind = FocusModeBind(&GameClient()->m_Binds);
+	static CButtonContainer s_FocusKeyReader, s_FocusKeyClear;
+	const CKeyBinder::CKeyReaderResult KeyResult = GameClient()->m_KeyBinder.DoKeyReader(
+		&s_FocusKeyReader, &s_FocusKeyClear, &KeyReader, CurrentBind, false);
+	if(!KeyResult.m_Aborted && KeyResult.m_Bind != CurrentBind)
+	{
+		if(CurrentBind.m_Key != KEY_UNKNOWN)
+			GameClient()->m_Binds.Bind(CurrentBind.m_Key, "", false, CurrentBind.m_ModifierMask);
+		if(KeyResult.m_Bind.m_Key != KEY_UNKNOWN)
+			GameClient()->m_Binds.Bind(KeyResult.m_Bind.m_Key, "toggle_focus_mode", false, KeyResult.m_Bind.m_ModifierMask);
+	}
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	Ui()->DoLabel_AutoLineSize(Localize("Auto reply"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClAutoReplyMuted, Localize("Answer players you have muted"), g_Config.m_ClAutoReplyMuted, &Button))
+	{
+		g_Config.m_ClAutoReplyMuted ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClAutoReplyMuted, &Button, Localize("They cannot tell that you are not reading them, so the client says it for you. Once a minute per player, and only when they address you by name or whisper."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	static CLineInput s_MutedReplyInput(g_Config.m_ClAutoReplyMutedMsg, sizeof(g_Config.m_ClAutoReplyMutedMsg));
+	Ui()->DoEditBox(&s_MutedReplyInput, &Button, 12.0f);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClAutoReplyAfk, Localize("Answer while the game is not focused"), g_Config.m_ClAutoReplyAfk, &Button))
+	{
+		g_Config.m_ClAutoReplyAfk ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClAutoReplyAfk, &Button, Localize("Only while the window is in the background, so it stops answering the moment you come back."));
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	static CLineInput s_AfkReplyInput(g_Config.m_ClAutoReplyAfkMsg, sizeof(g_Config.m_ClAutoReplyAfkMsg));
+	Ui()->DoEditBox(&s_AfkReplyInput, &Button, 12.0f);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	if(DoButton_CheckBox(&g_Config.m_ClClientBadge, Localize("Show the client name under the timer"), g_Config.m_ClClientBadge, &Button))
+	{
+		g_Config.m_ClClientBadge ^= 1;
+	}
+
+	// ***** Music island ***** //
+	Ui()->DoLabel_AutoLineSize(Localize("Music island"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClMusicIsland, Localize("Show the playing track at the top"), g_Config.m_ClMusicIsland, &Button))
+	{
+		g_Config.m_ClMusicIsland ^= 1;
+	}
+#if defined(CONF_PLATFORM_MACOS)
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads what the system says is playing. From macOS 15.4 on, only Spotify and Music can be read, and the first time you are asked to allow it."));
+#elif defined(CONF_FAMILY_WINDOWS)
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("Reads the Windows media session, so it works with any player: Spotify, a browser, the system player."));
+#else
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIsland, &Button, Localize("This system publishes nothing the client can read, so the island stays hidden here."));
+#endif
+	if(g_Config.m_ClMusicIsland)
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandIngame, Localize("Show it while playing"), &g_Config.m_ClMusicIslandIngame, &RightView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandMenu, Localize("Show it in the menus"), &g_Config.m_ClMusicIslandMenu, &RightView, LINE_SIZE);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClMusicIslandWhenPaused, Localize("Keep it visible when paused"), &g_Config.m_ClMusicIslandWhenPaused, &RightView, LINE_SIZE);
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandSize, &g_Config.m_ClMusicIslandSize, &Button, Localize("Size"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandOpacity, &g_Config.m_ClMusicIslandOpacity, &Button, Localize("Opacity"), 10, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		Ui()->DoLabel_AutoLineSize(Localize("Position"), 13.0f, TEXTALIGN_ML, &RightView, LINE_SIZE);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandX, &g_Config.m_ClMusicIslandX, &Button, Localize("Left to right"), 0, 1000);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClMusicIslandY, &g_Config.m_ClMusicIslandY, &Button, Localize("Top to bottom"), 0, 1000);
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClMusicIslandY, &Button, Localize("The island is drawn in the menus too, so you can see it move while dragging these."));
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Button.VSplitLeft(Button.w / 2.0f, &Button, nullptr);
+		static CButtonContainer s_ResetIslandPos;
+		if(DoButton_Menu(&s_ResetIslandPos, Localize("Reset position"), 0, &Button))
+		{
+			g_Config.m_ClMusicIslandX = DefaultConfig::ClMusicIslandX;
+			g_Config.m_ClMusicIslandY = DefaultConfig::ClMusicIslandY;
+		}
+	}
+
+	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClCustomSpin, Localize("Spin for other players"), g_Config.m_ClCustomSpin, &Button))
+	{
+		g_Config.m_ClCustomSpin ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpin, &Button, Localize("Only the aim direction sent to the server rotates. Your own crosshair and view stay where you aim."));
+
+	if(g_Config.m_ClCustomSpin)
+	{
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "В°/s");
+
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		if(DoButton_CheckBox(&g_Config.m_ClCustomSpinPauseOnAction, Localize("Stop spinning while hooking or shooting"), g_Config.m_ClCustomSpinPauseOnAction, &Button))
+		{
+			g_Config.m_ClCustomSpinPauseOnAction ^= 1;
+		}
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClCustomSpinPauseOnAction, &Button, Localize("Keep this on, otherwise your hook and your shots fly into a random direction."));
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpinDummy, Localize("Spin the dummy as well"), &g_Config.m_ClCustomSpinDummy, &RightView, LINE_SIZE);
 	}
 }

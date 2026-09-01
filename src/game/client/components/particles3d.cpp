@@ -37,6 +37,8 @@ struct SWire
 	int m_NumPoints;
 	const int *m_pEdges; // pairs
 	int m_NumEdges;
+	// Extruded from a flat ring, so its thickness follows the setting.
+	bool m_Prism;
 };
 
 const vec3 gs_aCubePoints[] = {
@@ -44,28 +46,70 @@ const vec3 gs_aCubePoints[] = {
 	{-0.5f, -0.5f, 0.5f}, {0.5f, -0.5f, 0.5f}, {0.5f, 0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f}};
 const int gs_aCubeEdges[] = {0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7};
 
-// Flat rings are built once at start; the heart from its classic curve, the
-// rest as regular polygons.
-constexpr int HEART_POINTS = 24;
-constexpr int CIRCLE_POINTS = 20;
-vec3 gs_aHeartPoints[HEART_POINTS];
-int gs_aHeartEdges[HEART_POINTS * 2];
-vec3 gs_aCirclePoints[CIRCLE_POINTS];
-int gs_aCircleEdges[CIRCLE_POINTS * 2];
-vec3 gs_aHexPoints[6];
-int gs_aHexEdges[12];
-vec3 gs_aTriPoints[3];
-int gs_aTriEdges[6];
+// The flat shapes are not left flat. Seen edge on, a ring collapses into a
+// line, and a field of them reads as scribbles rather than as shapes. Each one
+// is extruded into a prism instead: the ring at either face, with struts
+// between them. The faces sit at z = -1 and 1 here and are scaled to the wanted
+// thickness at drawing time, so the slider moves them live.
+constexpr int HEART_RING = 24;
+constexpr int CIRCLE_RING = 20;
+constexpr int HEX_RING = 6;
+constexpr int TRI_RING = 3;
+
+// A strut every few points rather than at every point: twenty four struts
+// around a heart is a fence, not a heart.
+constexpr int HEART_STRIDE = 3;
+constexpr int CIRCLE_STRIDE = 4;
+constexpr int HEX_STRIDE = 1;
+constexpr int TRI_STRIDE = 1;
+
+constexpr int PrismPoints(int Ring) { return Ring * 2; }
+// Both rings, plus one strut per Stride points.
+constexpr int PrismEdges(int Ring, int Stride) { return Ring * 2 + (Ring + Stride - 1) / Stride; }
+
+vec3 gs_aHeartPoints[PrismPoints(HEART_RING)];
+int gs_aHeartEdges[PrismEdges(HEART_RING, HEART_STRIDE) * 2];
+vec3 gs_aCirclePoints[PrismPoints(CIRCLE_RING)];
+int gs_aCircleEdges[PrismEdges(CIRCLE_RING, CIRCLE_STRIDE) * 2];
+vec3 gs_aHexPoints[PrismPoints(HEX_RING)];
+int gs_aHexEdges[PrismEdges(HEX_RING, HEX_STRIDE) * 2];
+vec3 gs_aTriPoints[PrismPoints(TRI_RING)];
+int gs_aTriEdges[PrismEdges(TRI_RING, TRI_STRIDE) * 2];
 bool gs_WiresBuilt = false;
 
-void BuildRing(vec3 *pPoints, int *pEdges, int Num, float Phase)
+// What the widest shape needs, which is what the drawing buffers are sized to.
+constexpr int MAX_SHAPE_POINTS = PrismPoints(HEART_RING);
+constexpr int MAX_SHAPE_EDGES = PrismEdges(HEART_RING, HEART_STRIDE);
+
+void BuildRing(vec3 *pRing, int Num, float Phase)
 {
 	for(int i = 0; i < Num; ++i)
 	{
 		const float A = Phase + i * 2.0f * pi / Num;
-		pPoints[i] = vec3(std::cos(A) * 0.5f, std::sin(A) * 0.5f, 0.0f);
-		pEdges[i * 2] = i;
-		pEdges[i * 2 + 1] = (i + 1) % Num;
+		pRing[i] = vec3(std::cos(A) * 0.5f, std::sin(A) * 0.5f, 0.0f);
+	}
+}
+
+void BuildPrism(const vec3 *pRing, int Ring, int Stride, vec3 *pPoints, int *pEdges)
+{
+	for(int i = 0; i < Ring; ++i)
+	{
+		pPoints[i] = vec3(pRing[i].x, pRing[i].y, -1.0f);
+		pPoints[Ring + i] = vec3(pRing[i].x, pRing[i].y, 1.0f);
+	}
+	int Edge = 0;
+	const auto Add = [&](int A, int B) {
+		pEdges[Edge * 2] = A;
+		pEdges[Edge * 2 + 1] = B;
+		++Edge;
+	};
+	for(int i = 0; i < Ring; ++i)
+	{
+		const int Next = (i + 1) % Ring;
+		Add(i, Next);
+		Add(Ring + i, Ring + Next);
+		if(i % Stride == 0)
+			Add(i, Ring + i);
 	}
 }
 
@@ -74,27 +118,31 @@ void BuildWires()
 	if(gs_WiresBuilt)
 		return;
 	gs_WiresBuilt = true;
-	for(int i = 0; i < HEART_POINTS; ++i)
+
+	vec3 aRing[MAX_SHAPE_POINTS];
+	for(int i = 0; i < HEART_RING; ++i)
 	{
-		const float T = i * 2.0f * pi / HEART_POINTS;
-		gs_aHeartPoints[i] = vec3(
+		const float T = i * 2.0f * pi / HEART_RING;
+		aRing[i] = vec3(
 			16.0f * std::pow(std::sin(T), 3.0f) / 34.0f,
 			-(13.0f * std::cos(T) - 5.0f * std::cos(2.0f * T) - 2.0f * std::cos(3.0f * T) - std::cos(4.0f * T)) / 34.0f,
 			0.0f);
-		gs_aHeartEdges[i * 2] = i;
-		gs_aHeartEdges[i * 2 + 1] = (i + 1) % HEART_POINTS;
 	}
-	BuildRing(gs_aCirclePoints, gs_aCircleEdges, CIRCLE_POINTS, 0.0f);
-	BuildRing(gs_aHexPoints, gs_aHexEdges, 6, pi / 6.0f);
-	BuildRing(gs_aTriPoints, gs_aTriEdges, 3, pi / 2.0f);
+	BuildPrism(aRing, HEART_RING, HEART_STRIDE, gs_aHeartPoints, gs_aHeartEdges);
+	BuildRing(aRing, CIRCLE_RING, 0.0f);
+	BuildPrism(aRing, CIRCLE_RING, CIRCLE_STRIDE, gs_aCirclePoints, gs_aCircleEdges);
+	BuildRing(aRing, HEX_RING, pi / 6.0f);
+	BuildPrism(aRing, HEX_RING, HEX_STRIDE, gs_aHexPoints, gs_aHexEdges);
+	BuildRing(aRing, TRI_RING, pi / 2.0f);
+	BuildPrism(aRing, TRI_RING, TRI_STRIDE, gs_aTriPoints, gs_aTriEdges);
 }
 
 const SWire gs_aWires[] = {
-	{gs_aCubePoints, 8, gs_aCubeEdges, 12},
-	{gs_aHeartPoints, HEART_POINTS, gs_aHeartEdges, HEART_POINTS},
-	{gs_aCirclePoints, CIRCLE_POINTS, gs_aCircleEdges, CIRCLE_POINTS},
-	{gs_aHexPoints, 6, gs_aHexEdges, 6},
-	{gs_aTriPoints, 3, gs_aTriEdges, 3}};
+	{gs_aCubePoints, 8, gs_aCubeEdges, 12, false},
+	{gs_aHeartPoints, PrismPoints(HEART_RING), gs_aHeartEdges, PrismEdges(HEART_RING, HEART_STRIDE), true},
+	{gs_aCirclePoints, PrismPoints(CIRCLE_RING), gs_aCircleEdges, PrismEdges(CIRCLE_RING, CIRCLE_STRIDE), true},
+	{gs_aHexPoints, PrismPoints(HEX_RING), gs_aHexEdges, PrismEdges(HEX_RING, HEX_STRIDE), true},
+	{gs_aTriPoints, PrismPoints(TRI_RING), gs_aTriEdges, PrismEdges(TRI_RING, TRI_STRIDE), true}};
 constexpr int NUM_KINDS = (int)std::size(gs_aWires);
 
 vec3 Rotate3(vec3 Point, const vec3 &Angle)
@@ -138,25 +186,30 @@ void CParticles3d::DrawShape(const CShape &Shape, ColorRGBA Color, float SizeBas
 	const SWire &Wire = gs_aWires[Kind];
 	const float Size = SizeBase * Shape.m_Scale;
 
-	// Sized for the roundest shape there is; the heart has the most points.
-	static_assert(HEART_POINTS >= CIRCLE_POINTS && HEART_POINTS >= 8, "the projection buffer must fit every shape");
-	vec2 aProjected[HEART_POINTS];
+	// The extruded shapes carry their faces at plus and minus one, so this is
+	// where they are given their actual thickness.
+	const float Thickness = g_Config.m_Cl3dParticlesDepth / 100.0f;
+
+	static_assert(MAX_SHAPE_POINTS >= 8, "the projection buffer must fit the cube as well");
+	vec2 aProjected[MAX_SHAPE_POINTS];
 	for(int i = 0; i < Wire.m_NumPoints; ++i)
 	{
-		const vec3 Turned = Rotate3(Wire.m_pPoints[i], Shape.m_Angle);
+		vec3 Point = Wire.m_pPoints[i];
+		if(Wire.m_Prism)
+			Point.z *= Thickness;
+		const vec3 Turned = Rotate3(Point, Shape.m_Angle);
 		// A whiff of perspective, so a cube reads as a cube and not as a knot.
 		const float Depth = 1.0f / (1.0f + Turned.z * Size * 0.0016f);
 		aProjected[i] = Shape.m_Pos + Offset + vec2(Turned.x, Turned.y) * Size * Depth;
 	}
 
-	Graphics()->SetColor(Color.WithAlpha(Alpha));
+	// One call for a whole wireframe rather than one per edge: a heart is fifty
+	// six edges, and with the glow that is five wireframes for every shape.
+	IGraphics::CLineItem aLines[MAX_SHAPE_EDGES];
 	for(int i = 0; i < Wire.m_NumEdges; ++i)
-	{
-		const vec2 &From = aProjected[Wire.m_pEdges[i * 2]];
-		const vec2 &To = aProjected[Wire.m_pEdges[i * 2 + 1]];
-		IGraphics::CLineItem Line(From.x, From.y, To.x, To.y);
-		Graphics()->LinesDraw(&Line, 1);
-	}
+		aLines[i] = IGraphics::CLineItem(aProjected[Wire.m_pEdges[i * 2]], aProjected[Wire.m_pEdges[i * 2 + 1]]);
+	Graphics()->SetColor(Color.WithAlpha(Alpha));
+	Graphics()->LinesDraw(aLines, Wire.m_NumEdges);
 }
 
 void CParticles3d::OnRender()

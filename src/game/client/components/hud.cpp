@@ -193,6 +193,17 @@ void CHud::RenderGameTimer()
 		}
 		TextRender()->Text(Half - w / 2, 2, FontSize, aBuf, -1.0f);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+		// The client's name under the timer, quiet and small. Cached width, the
+		// name never changes.
+		if(g_Config.m_ClClientBadge)
+		{
+			constexpr float BadgeSize = 6.0f;
+			static float s_BadgeWidth = TextRender()->TextWidth(BadgeSize, "Leviathan", -1, -1.0f);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.6f);
+			TextRender()->Text(Half - s_BadgeWidth / 2, 2 + FontSize + 1.0f, BadgeSize, "Leviathan", -1.0f);
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		}
 	}
 }
 

@@ -141,6 +141,10 @@ void CChat::Reset()
 	m_pHistoryEntry = nullptr;
 	m_PendingChatCounter = 0;
 	m_LastChatSend = 0;
+	// Client ids are handed out again on the next server, and a stale clock
+	// here would swallow the first answer owed to whoever inherits one.
+	for(int64_t &LastReply : m_aLastAutoReply)
+		LastReply = 0;
 	m_CurrentLine = 0;
 	m_IsInputCensored = false;
 	m_EditingNewLine = true;
@@ -656,8 +660,61 @@ void CChat::StoreSave(const char *pText)
 	io_close(File);
 }
 
+// Answers a line that addresses the local player, in the two cases where the
+// player themselves will not: the sender is muted, or the window is not focused.
+// Quietly rate limited per sender, or a muted spammer would be answered in kind.
+void CChat::MaybeAutoReply(int ClientId, int Team, const char *pLine)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return;
+	if(ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1])
+		return;
+
+	// Only lines aimed at us: a whisper, or our name in the text. Answering the
+	// whole room would be something else entirely.
+	const bool Whispered = Team >= 2 && Team != TEAM_WHISPER_SEND;
+	bool Addressed = Whispered;
+	for(int LocalId : GameClient()->m_aLocalIds)
+	{
+		if(LocalId >= 0 && LineShouldHighlight(pLine, GameClient()->m_aClients[LocalId].m_aName))
+			Addressed = true;
+	}
+	if(!Addressed)
+		return;
+
+	const bool Muted = GameClient()->m_aClients[ClientId].m_ChatIgnore || GameClient()->m_aClients[ClientId].m_Foe;
+	const char *pReply = nullptr;
+	if(Muted && g_Config.m_ClAutoReplyMuted && g_Config.m_ClAutoReplyMutedMsg[0] != 0)
+		pReply = g_Config.m_ClAutoReplyMutedMsg;
+	else if(!Muted && g_Config.m_ClAutoReplyAfk && g_Config.m_ClAutoReplyAfkMsg[0] != 0 && !GameClient()->Kernel()->RequestInterface<IEngineGraphics>()->WindowActive())
+		pReply = g_Config.m_ClAutoReplyAfkMsg;
+	if(pReply == nullptr)
+		return;
+
+	const int64_t Now = time_get();
+	if(m_aLastAutoReply[ClientId] != 0 && Now - m_aLastAutoReply[ClientId] < time_freq() * 60)
+		return;
+	m_aLastAutoReply[ClientId] = Now;
+
+	if(Whispered)
+	{
+		char aBuf[512];
+		str_format(aBuf, sizeof(aBuf), "/w %s %s", GameClient()->m_aClients[ClientId].m_aName, pReply);
+		SendChat(0, aBuf);
+	}
+	else
+	{
+		SendChat(0, pReply);
+	}
+}
+
 void CChat::AddLine(int ClientId, int Team, const char *pLine)
 {
+	if(*pLine != 0 && ClientId >= 0)
+		MaybeAutoReply(ClientId, Team, pLine);
+
 	if(*pLine == 0 ||
 		(ClientId == SERVER_MSG && !g_Config.m_ClShowChatSystem) ||
 		(ClientId >= 0 && (GameClient()->m_aClients[ClientId].m_aName[0] == '\0' || // unknown client
