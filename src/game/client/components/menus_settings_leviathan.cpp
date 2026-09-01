@@ -14,6 +14,7 @@
 
 #include <game/client/animstate.h>
 #include <game/client/components/hud.h>
+#include <game/client/components/key_binder.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/tooltips.h>
 #include <game/client/gameclient.h>
@@ -1259,10 +1260,57 @@ void CMenus::RenderSettingsLeviathanFriends(CUIRect MainView)
 	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClRelationDots, &Bottom, Localize("Green for a friend, red for war, nothing for everybody else. Say !war <name> in the chat to declare war without coming here."));
 }
 
+// Where the key that flips focus mode currently lives, found by looking rather
+// than stored: the bind list is the truth, and a copy of it would drift.
+static CBindSlot FocusModeBind(CBinds *pBinds)
+{
+	for(int Modifier = 0; Modifier < KeyModifier::COMBINATION_COUNT; ++Modifier)
+	{
+		for(int Key = KEY_FIRST; Key < KEY_LAST; ++Key)
+		{
+			const char *pBind = pBinds->Get(Key, Modifier);
+			if(pBind != nullptr && str_comp(pBind, "toggle_focus_mode") == 0)
+				return CBindSlot(Key, Modifier);
+		}
+	}
+	return EMPTY_BIND_SLOT;
+}
+
 void CMenus::RenderSettingsLeviathanTrail(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("Focus mode"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusMode, Localize("Focus mode is on"), &g_Config.m_ClFocusMode, &RightView, LINE_SIZE);
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClFocusMode, &RightView, Localize("Strips the screen down to the game. What goes is picked below; the key flips it without coming here."));
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideNames, Localize("Hide the name plates"), &g_Config.m_ClFocusHideNames, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideEffects, Localize("Hide particles and damage stars"), &g_Config.m_ClFocusHideEffects, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideHud, Localize("Hide the HUD"), &g_Config.m_ClFocusHideHud, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideMusic, Localize("Hide the music island"), &g_Config.m_ClFocusHideMusic, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideExtra, Localize("Hide broadcasts and the kill feed"), &g_Config.m_ClFocusHideExtra, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideChat, Localize("Hide the chat"), &g_Config.m_ClFocusHideChat, &RightView, LINE_SIZE);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusHideScoreboard, Localize("Hide the scoreboard"), &g_Config.m_ClFocusHideScoreboard, &RightView, LINE_SIZE);
+
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	CUIRect KeyLabel, KeyReader;
+	Button.VSplitMid(&KeyLabel, &KeyReader, MARGIN_SMALL);
+	Ui()->DoLabel(&KeyLabel, Localize("Focus mode key"), 13.0f, TEXTALIGN_ML);
+	const CBindSlot CurrentBind = FocusModeBind(&GameClient()->m_Binds);
+	static CButtonContainer s_FocusKeyReader, s_FocusKeyClear;
+	const CKeyBinder::CKeyReaderResult KeyResult = GameClient()->m_KeyBinder.DoKeyReader(
+		&s_FocusKeyReader, &s_FocusKeyClear, &KeyReader, CurrentBind, false);
+	if(!KeyResult.m_Aborted && KeyResult.m_Bind != CurrentBind)
+	{
+		if(CurrentBind.m_Key != KEY_UNKNOWN)
+			GameClient()->m_Binds.Bind(CurrentBind.m_Key, "", false, CurrentBind.m_ModifierMask);
+		if(KeyResult.m_Bind.m_Key != KEY_UNKNOWN)
+			GameClient()->m_Binds.Bind(KeyResult.m_Bind.m_Key, "toggle_focus_mode", false, KeyResult.m_Bind.m_ModifierMask);
+	}
 
 	Ui()->DoLabel_AutoLineSize(Localize("Tee trail"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);

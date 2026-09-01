@@ -903,6 +903,10 @@ void CNamePlates::ResetNamePlates()
 
 void CNamePlates::OnRender()
 {
+	// Focus mode: the names go.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideNames)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 

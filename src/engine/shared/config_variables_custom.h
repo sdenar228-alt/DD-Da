@@ -121,6 +121,17 @@ MACRO_CONFIG_COL(ClUnfreezeColor, cl_unfreeze_color, 0xFF55DDFF, CFGFLAG_CLIENT 
 
 // Discord rich presence
 MACRO_CONFIG_STR(ClDiscordAppId, cl_discord_app_id, 24, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord application id the rich presence runs under, empty uses DDNet's")
+// Focus mode: one key strips the screen down to the game, and the checkboxes
+// say which parts go.
+MACRO_CONFIG_INT(ClFocusMode, cl_focus_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode: hide the parts of the interface picked below")
+MACRO_CONFIG_INT(ClFocusHideNames, cl_focus_hide_names, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the name plates")
+MACRO_CONFIG_INT(ClFocusHideEffects, cl_focus_hide_effects, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides particles and damage stars")
+MACRO_CONFIG_INT(ClFocusHideHud, cl_focus_hide_hud, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the HUD")
+MACRO_CONFIG_INT(ClFocusHideMusic, cl_focus_hide_music, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the music island")
+MACRO_CONFIG_INT(ClFocusHideExtra, cl_focus_hide_extra, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides broadcasts and the kill feed")
+MACRO_CONFIG_INT(ClFocusHideChat, cl_focus_hide_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the chat, except while you are typing")
+MACRO_CONFIG_INT(ClFocusHideScoreboard, cl_focus_hide_scoreboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the scoreboard")
+
 // Tee trail
 MACRO_CONFIG_INT(ClTeeTrail, cl_tee_trail, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw a ribbon behind tees, tracing where they have just been")
 MACRO_CONFIG_INT(ClTeeTrailOthers, cl_tee_trail_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind other tees too, not only your own")

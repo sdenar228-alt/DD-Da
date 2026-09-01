@@ -899,6 +899,10 @@ void CScoreboard::RenderRecordingNotification(float x)
 
 void CScoreboard::OnRender()
 {
+	// Focus mode: the scoreboard goes.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideScoreboard)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 

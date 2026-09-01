@@ -4,6 +4,7 @@
 
 #include <base/color.h>
 
+#include <engine/shared/config.h>
 #include <engine/demo.h>
 #include <engine/graphics.h>
 
@@ -33,6 +34,10 @@ void CDamageInd::Create(vec2 Pos, vec2 Dir, float Alpha)
 
 void CDamageInd::OnRender()
 {
+	// Focus mode: the damage stars go.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideEffects)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 

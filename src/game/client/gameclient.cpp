@@ -199,6 +199,7 @@ void CGameClient::OnConsoleInit()
 	}
 
 	// add basic console commands
+	Console()->Register("toggle_focus_mode", "", CFGFLAG_CLIENT, ConToggleFocusMode, this, "Turn focus mode on or off");
 	Console()->Register("team", "i[team-id]", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
 	Console()->Register("kill", "", CFGFLAG_CLIENT, ConKill, this, "Kill yourself to restart");
 	Console()->Register("ready_change", "", CFGFLAG_CLIENT, ConReadyChange7, this, "Change ready state (0.7 only)");
@@ -3352,6 +3353,13 @@ void CGameClient::SendReadyChange7() // NOLINT(readability-make-member-function-
 	}
 	protocol7::CNetMsg_Cl_ReadyChange Msg;
 	Client()->SendPackMsgActive(&Msg, MSGFLAG_VITAL, true);
+}
+
+void CGameClient::ConToggleFocusMode(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameClient *pSelf = (CGameClient *)pUserData;
+	g_Config.m_ClFocusMode ^= 1;
+	pSelf->m_Chat.Echo(g_Config.m_ClFocusMode ? Localize("Focus mode on") : Localize("Focus mode off"));
 }
 
 void CGameClient::ConTeam(IConsole::IResult *pResult, void *pUserData)

@@ -1735,6 +1735,10 @@ void CHud::OnNewSnapshot()
 
 void CHud::OnRender()
 {
+	// Focus mode: the whole HUD goes.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideHud)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
