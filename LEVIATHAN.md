@@ -153,8 +153,16 @@ on the tab it was left on, remembered in `ui_leviathan_page`.
 
 The letters take their color from a hue that walks along the line and with the
 clock, rather than all being painted one color. Separate switches for playing
-and for the menus, a speed, and a color that says where the gradient starts and
-how saturated and bright it runs.
+and for the menus, a speed, a color, a spread and a brightness.
+
+The color is the hue the gradient is built around, and the spread is how far it
+is allowed to stray from it: none of the way is one flat color, all of the way is
+the whole rainbow and the color stops mattering. The hue sways around the chosen
+one rather than running off around the wheel, which is what makes the choice
+visible; a full sweep passes through every color and looks the same whatever was
+picked. Brightness is its own slider rather than the picked color's lightness,
+so the picker changes the color and the slider changes the brightness, one thing
+each.
 
 It is applied where the text is colored, one glyph at a time, so it costs
 nothing beyond the arithmetic. Text drawn straight to the screen is rebuilt every

@@ -1546,7 +1546,13 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 		static CButtonContainer s_GradientColor;
 		DoLine_ColorPicker(&s_GradientColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, &LeftView,
 			Localize("Gradient color"), &g_Config.m_ClGradientTextColor, DefaultColor(0x00FFB4), false, nullptr, false);
-		GameClient()->m_Tooltips.DoToolTip(&s_GradientColor, &LeftView, Localize("Where the gradient starts. It walks the hue on from there, keeping this saturation and brightness."));
+		GameClient()->m_Tooltips.DoToolTip(&s_GradientColor, &LeftView, Localize("The hue the gradient is built around. How far it strays from it is the spread below."));
+
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClGradientTextSpread, &g_Config.m_ClGradientTextSpread, &Button, Localize("Spread"), 0, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClGradientTextSpread, &Button, Localize("None of the way is one flat color. All of the way is the whole rainbow, and then the color above stops mattering."));
+		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+		Ui()->DoScrollbarOption(&g_Config.m_ClGradientTextBrightness, &g_Config.m_ClGradientTextBrightness, &Button, Localize("Brightness"), 10, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 	}
 
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);

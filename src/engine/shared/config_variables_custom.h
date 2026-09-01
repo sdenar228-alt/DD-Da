@@ -151,7 +151,9 @@ MACRO_CONFIG_INT(Cl3dParticlesGlowOffset, cl_3d_particles_glow_offset, 2, 1, 10,
 MACRO_CONFIG_INT(ClGradientTextIngame, cl_gradient_text_ingame, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient text while playing")
 MACRO_CONFIG_INT(ClGradientTextMenu, cl_gradient_text_menu, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient text in the menus")
 MACRO_CONFIG_INT(ClGradientTextSpeed, cl_gradient_text_speed, 50, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast the gradient travels, in percent")
-MACRO_CONFIG_COL(ClGradientTextColor, cl_gradient_text_color, 0x00FFB4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Where the gradient starts, and how saturated and bright it runs")
+MACRO_CONFIG_COL(ClGradientTextColor, cl_gradient_text_color, 0x00FFB4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The hue the gradient is built around, and how saturated it runs")
+MACRO_CONFIG_INT(ClGradientTextSpread, cl_gradient_text_spread, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far around that hue the gradient travels, in percent, all the way being the whole wheel")
+MACRO_CONFIG_INT(ClGradientTextBrightness, cl_gradient_text_brightness, 60, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How bright the letters come out, in percent")
 
 // The settings page opens where it was left, the way the rest of the settings do.
 MACRO_CONFIG_INT(UiLeviathanPage, ui_leviathan_page, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which Leviathan settings tab was open last")

@@ -799,9 +799,14 @@ void CGameClient::UpdatePositions()
 // the clock, so the renderer needs none of its own.
 void CGameClient::UpdateTextGradient(bool Enabled)
 {
-	ColorHSLA Base = color_cast<ColorHSLA>(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClGradientTextColor)));
+	// The picked color says which hue to build around and how saturated to run.
+	// The brightness is its own slider rather than the color's own lightness,
+	// which is the difference between a control that does something and one that
+	// only ever seemed to change the brightness.
+	const ColorHSLA Picked = ColorHSLA(g_Config.m_ClGradientTextColor);
+	const ColorHSLA Base = ColorHSLA(Picked.h, Picked.s, g_Config.m_ClGradientTextBrightness / 100.0f);
 	const float Phase = Client()->LocalTime() * (g_Config.m_ClGradientTextSpeed / 100.0f) * 0.35f;
-	TextRender()->SetGradient(Enabled, Phase, Base);
+	TextRender()->SetGradient(Enabled, Phase, g_Config.m_ClGradientTextSpread / 100.0f, Base);
 }
 
 void CGameClient::OnRender()
