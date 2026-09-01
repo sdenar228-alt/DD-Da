@@ -137,6 +137,7 @@ MACRO_CONFIG_INT(Cl3dParticles, cl_3d_particles, 0, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(Cl3dParticlesCount, cl_3d_particles_count, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many of them")
 MACRO_CONFIG_INT(Cl3dParticlesType, cl_3d_particles_type, 0, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their shape: 0 cube, 1 heart, 2 circle, 3 hexagon, 4 triangle, 5 mixed")
 MACRO_CONFIG_INT(Cl3dParticlesSize, cl_3d_particles_size, 55, 10, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their size")
+MACRO_CONFIG_INT(Cl3dParticlesDepth, cl_3d_particles_depth, 16, 0, 60, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How thick the flat shapes are, in percent of their size")
 MACRO_CONFIG_INT(Cl3dParticlesSpeed, cl_3d_particles_speed, 75, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast they drift and tumble, in percent")
 MACRO_CONFIG_INT(Cl3dParticlesAlpha, cl_3d_particles_alpha, 100, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their opacity in percent")
 MACRO_CONFIG_INT(Cl3dParticlesColorMode, cl_3d_particles_color_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What colors them: 0 random per shape, 1 the picked color, 2 a rainbow")
@@ -144,6 +145,16 @@ MACRO_CONFIG_COL(Cl3dParticlesColor, cl_3d_particles_color, 0x00FF00, CFGFLAG_CL
 MACRO_CONFIG_INT(Cl3dParticlesGlow, cl_3d_particles_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A glow around the wireframes")
 MACRO_CONFIG_INT(Cl3dParticlesGlowAlpha, cl_3d_particles_glow_alpha, 35, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the glow in percent")
 MACRO_CONFIG_INT(Cl3dParticlesGlowOffset, cl_3d_particles_glow_offset, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow reaches around the lines")
+
+// The settings page opens where it was left, the way the rest of the settings do.
+MACRO_CONFIG_INT(UiLeviathanPage, ui_leviathan_page, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which Leviathan settings tab was open last")
+
+// Auto replies and the name badge.
+MACRO_CONFIG_INT(ClAutoReplyMuted, cl_auto_reply_muted, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Answer players you have muted when they address you")
+MACRO_CONFIG_STR(ClAutoReplyMutedMsg, cl_auto_reply_muted_msg, 128, "I have muted you", CFGFLAG_CLIENT | CFGFLAG_SAVE, "What the answer says")
+MACRO_CONFIG_INT(ClAutoReplyAfk, cl_auto_reply_afk, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Answer when somebody addresses you while the game is not focused")
+MACRO_CONFIG_STR(ClAutoReplyAfkMsg, cl_auto_reply_afk_msg, 128, "I am not tabbed in", CFGFLAG_CLIENT | CFGFLAG_SAVE, "What the answer says")
+MACRO_CONFIG_INT(ClClientBadge, cl_client_badge, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the client's name under the game timer")
 
 // A hat on the tee's head.
 MACRO_CONFIG_INT(ClHat, cl_hat, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Wear a hat")

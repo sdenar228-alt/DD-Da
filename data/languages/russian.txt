@@ -3272,3 +3272,33 @@ Hat
 
 Wear a hat
 == Носить головной убор
+
+Aiming
+== Прицел
+
+Effects
+== Эффекты
+
+Interface
+== Интерфейс
+
+Auto reply
+== Авто-ответ
+
+Answer players you have muted
+== Авто-ответ игрокам в мюте
+
+Answer while the game is not focused
+== Авто-ответ когда не в игре
+
+Show the client name under the timer
+== Показывать название клиента под таймером
+
+They cannot tell that you are not reading them, so the client says it for you. Once a minute per player, and only when they address you by name or whisper.
+== Они не знают, что ты их не читаешь, и клиент говорит это за тебя. Раз в минуту на игрока и только когда обращаются по нику или в личку.
+
+Only while the window is in the background, so it stops answering the moment you come back.
+== Только пока окно свёрнуто, так что ответы прекращаются в тот же момент, как ты вернулся.
+
+Circle
+== Круг

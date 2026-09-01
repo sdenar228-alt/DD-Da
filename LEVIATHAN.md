@@ -140,6 +140,28 @@ positions are sampled every frame from the same smoothed spot the tee itself is
 drawn at, so the ribbon stays smooth at any frame rate, and a teleport cuts it
 rather than streaking it across the map.
 
+## Settings
+
+Ten tabs, grouped by what they are about rather than by when they were written:
+Tees, Aiming, Tiles, Background, Effects, Sounds, Models, Unfreeze, Friends,
+Interface. Aiming holds the crosshair and the hook color, Effects holds the tee
+trail, the dressed-up weapons and the 3D particles, Interface holds focus mode,
+the music island, the auto replies and the name under the timer. The page opens
+on the tab it was left on, remembered in `ui_leviathan_page`.
+
+## Auto reply
+
+Two answers the client gives on your behalf, in the two cases where you will
+not: to a player you have muted, who cannot tell that you are not reading them,
+and to anybody who writes while the window is not focused. Both texts are yours
+to write. An answer only goes out when the line actually addresses you, by name
+or as a whisper, and at most once a minute per player, or a muted spammer would
+turn the client into one. A whisper is answered by whisper, a public line
+publicly.
+
+The client name under the game timer is the same page, and can be turned off
+there.
+
 ## Hats
 
 A hat on your own tee's head: a crown, horns or a halo ship with the client, and
@@ -172,7 +194,9 @@ uses.
 ## 3D particles
 
 Wireframe shapes drifting and tumbling behind the game: cubes, hearts, circles,
-hexagons, triangles, or a mix. Their tab sets how many, the size, the speed, the
+hexagons, triangles, or a mix. The flat ones are not left flat: each is extruded
+into a prism, so it keeps its shape when it turns edge on instead of collapsing
+into a line. Their tab sets how many, the size, the thickness, the speed, the
 opacity, the color, one random per shape, a picked one, or a rainbow, and a glow
 with its own opacity and reach. They live in a box the size of the view plus a
 margin and wrap around its edges, so the field never thins out. Decoration only:

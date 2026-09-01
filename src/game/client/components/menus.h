@@ -580,10 +580,9 @@ protected:
 	// found in menus_settings_leviathan.cpp
 	void RenderSettingsLeviathan(CUIRect MainView);
 	void RenderSettingsLeviathanTees(CUIRect MainView);
-	void RenderSettingsLeviathanHook(CUIRect MainView);
-	void RenderSettingsLeviathanCrosshair(CUIRect MainView);
+	void RenderSettingsLeviathanVisuals(CUIRect MainView);
 	void RenderSettingsLeviathanTiles(CUIRect MainView);
-	void RenderSettingsLeviathanMisc(CUIRect MainView);
+	void RenderSettingsLeviathanInterface(CUIRect MainView);
 	bool RenderCustomMenuBackground();
 	void RenderLeviathanTeePreview(const CUIRect *pRect);
 	// A color picker row followed by an opacity row, so that the alpha of a color
@@ -598,8 +597,7 @@ protected:
 	void RenderSettingsLeviathanSounds(CUIRect MainView);
 	void RenderSettingsLeviathanModels(CUIRect MainView);
 	void RenderSettingsLeviathanUnfreeze(CUIRect MainView);
-	void RenderSettingsLeviathanTrail(CUIRect MainView);
-	void RenderSettingsLeviathanParticles3d(CUIRect MainView);
+	void RenderSettingsLeviathanEffects(CUIRect MainView);
 	void RenderSettingsLeviathanFriends(CUIRect MainView);
 	std::vector<std::string> m_vGameAssetNames;
 	bool m_GameAssetListLoaded = false;

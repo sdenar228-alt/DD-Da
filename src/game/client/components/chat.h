@@ -175,6 +175,10 @@ public:
 	// Handles the !war and !unwar chat commands. True when the line was one of
 	// them and must not be sent on.
 	bool HandleWarCommand(const char *pLine);
+	// One auto reply per player per minute, or a muted spammer turns the client
+	// into a spammer of its own.
+	int64_t m_aLastAutoReply[MAX_CLIENTS] = {};
+	void MaybeAutoReply(int ClientId, int Team, const char *pLine);
 
 	void OnWindowResize() override;
 	void OnConsoleInit() override;
