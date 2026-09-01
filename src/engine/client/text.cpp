@@ -971,6 +971,7 @@ class CTextRender : public IEngineTextRender
 	// The gradient the client asked for, if any.
 	bool m_GradientEnabled = false;
 	float m_GradientPhase = 0.0f;
+	float m_GradientSpread = 0.4f;
 	ColorHSLA m_GradientBase = ColorHSLA(0.0f, 1.0f, 0.5f);
 	ColorRGBA m_OutlineColor;
 	ColorRGBA m_SelectionColor;
@@ -1401,10 +1402,11 @@ public:
 		m_Color.a = a;
 	}
 
-	void SetGradient(bool Enabled, float Phase, ColorHSLA Base) override
+	void SetGradient(bool Enabled, float Phase, float Spread, ColorHSLA Base) override
 	{
 		m_GradientEnabled = Enabled;
 		m_GradientPhase = Phase;
+		m_GradientSpread = Spread;
 		m_GradientBase = Base;
 	}
 
@@ -1847,7 +1849,13 @@ public:
 						// different moments looks like confetti rather than a
 						// gradient, so kept text holds still at the base hue.
 						const float Phase = TextContainer.m_SingleTimeUse ? m_GradientPhase : 0.0f;
-						const float Hue = std::fmod(m_GradientBase.h + CharX * 0.004f + Phase + 1.0f, 1.0f);
+						// The hue sways around the chosen one rather than running
+						// off around the wheel. Around, because a hue that wrapped
+						// would seam where it came back; and around the chosen one,
+						// because a full sweep passes through every color and the
+						// choice stops being visible at all.
+						const float Sway = std::sin(2.0f * pi * (CharX * 0.004f + Phase));
+						const float Hue = std::fmod(m_GradientBase.h + m_GradientSpread * 0.5f * Sway + 1.0f, 1.0f);
 						const ColorRGBA Painted = color_cast<ColorRGBA>(ColorHSLA(Hue, m_GradientBase.s, m_GradientBase.l));
 						// The alpha stays the caller's: text that was fading out
 						// has to keep fading out.

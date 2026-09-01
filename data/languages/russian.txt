@@ -3332,3 +3332,12 @@ Text kept in a list, like the chat lines already on screen, keeps the color it w
 
 Where the gradient starts. It walks the hue on from there, keeping this saturation and brightness.
 == Откуда начинается градиент. Дальше он ведёт оттенок сам, сохраняя эту насыщенность и яркость.
+
+Spread
+== Разброс
+
+The hue the gradient is built around. How far it strays from it is the spread below.
+== Оттенок, вокруг которого строится градиент. Насколько далеко он от него уходит — это разброс ниже.
+
+None of the way is one flat color. All of the way is the whole rainbow, and then the color above stops mattering.
+== Ноль — один ровный цвет. Сто — вся радуга, и тогда цвет выше уже ни на что не влияет.
