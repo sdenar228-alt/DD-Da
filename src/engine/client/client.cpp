@@ -5197,6 +5197,23 @@ int main(int argc, const char **argv)
 		pSteam->ClearConnectAddress();
 	}
 
+#if defined(CONF_PLATFORM_MACOS)
+	// An application started from the Finder has nowhere to print to, so on macOS
+	// a client that will not start leaves the person in front of it with nothing
+	// to report but the colour of the window. Unless a log file was asked for, one
+	// is written where it can actually be found without a terminal.
+	if(g_Config.m_Logfile[0] == 0)
+	{
+		char aDefaultLog[IO_MAX_PATH_LENGTH];
+		const char *pHome = getenv("HOME");
+		if(pHome != nullptr && pHome[0] != 0)
+			str_format(aDefaultLog, sizeof(aDefaultLog), "%s/Desktop/Leviathan.log", pHome);
+		else
+			str_copy(aDefaultLog, "Leviathan.log");
+		str_copy(g_Config.m_Logfile, aDefaultLog);
+	}
+#endif
+
 	if(g_Config.m_Logfile[0])
 	{
 		const int Mode = g_Config.m_Logappend ? IOFLAG_APPEND : IOFLAG_WRITE;
