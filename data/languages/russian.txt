@@ -3224,3 +3224,45 @@ Crystal laser
 
 Sandy shotgun
 == Песочный дробовик
+
+3D
+== 3D
+
+3D particles
+== 3D-частицы
+
+Wireframe shapes behind the game
+== Включить 3D-частицы
+
+How many
+== Количество частиц
+
+Cube
+== Куб
+
+Heart
+== Сердце
+
+Hex
+== Шест.
+
+Tri
+== Треуг.
+
+Mix
+== Микс
+
+Random
+== Рандом
+
+Particle color
+== Цвет частиц
+
+Glow
+== Свечение
+
+Glow opacity
+== Прозрачность свечения
+
+Glow reach
+== Смещение свечения

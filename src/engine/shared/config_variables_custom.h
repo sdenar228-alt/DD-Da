@@ -132,6 +132,19 @@ MACRO_CONFIG_INT(ClFocusHideExtra, cl_focus_hide_extra, 1, 0, 1, CFGFLAG_CLIENT 
 MACRO_CONFIG_INT(ClFocusHideChat, cl_focus_hide_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the chat, except while you are typing")
 MACRO_CONFIG_INT(ClFocusHideScoreboard, cl_focus_hide_scoreboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode hides the scoreboard")
 
+// 3D particles: wireframe shapes drifting behind the game.
+MACRO_CONFIG_INT(Cl3dParticles, cl_3d_particles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Wireframe shapes drifting and tumbling behind the game")
+MACRO_CONFIG_INT(Cl3dParticlesCount, cl_3d_particles_count, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many of them")
+MACRO_CONFIG_INT(Cl3dParticlesType, cl_3d_particles_type, 0, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their shape: 0 cube, 1 heart, 2 circle, 3 hexagon, 4 triangle, 5 mixed")
+MACRO_CONFIG_INT(Cl3dParticlesSize, cl_3d_particles_size, 55, 10, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their size")
+MACRO_CONFIG_INT(Cl3dParticlesSpeed, cl_3d_particles_speed, 75, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast they drift and tumble, in percent")
+MACRO_CONFIG_INT(Cl3dParticlesAlpha, cl_3d_particles_alpha, 100, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their opacity in percent")
+MACRO_CONFIG_INT(Cl3dParticlesColorMode, cl_3d_particles_color_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What colors them: 0 random per shape, 1 the picked color, 2 a rainbow")
+MACRO_CONFIG_COL(Cl3dParticlesColor, cl_3d_particles_color, 0x00FF00, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The picked color")
+MACRO_CONFIG_INT(Cl3dParticlesGlow, cl_3d_particles_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A glow around the wireframes")
+MACRO_CONFIG_INT(Cl3dParticlesGlowAlpha, cl_3d_particles_glow_alpha, 35, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the glow in percent")
+MACRO_CONFIG_INT(Cl3dParticlesGlowOffset, cl_3d_particles_glow_offset, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow reaches around the lines")
+
 // Fancy weapons: dressed-up beams for the rifle and the shotgun.
 MACRO_CONFIG_INT(ClFancyWeapons, cl_fancy_weapons, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dress up the laser weapons: recolored beams with sparks along them")
 MACRO_CONFIG_INT(ClFancyLaser, cl_fancy_laser, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crystal laser: an icy blue beam with sparks")

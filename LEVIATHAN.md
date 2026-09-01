@@ -130,6 +130,45 @@ browser, and the dot follows from that.
 
 `cl_relation_dots 0` turns the dots off and leaves the lists alone.
 
+## Tee trail
+
+A ribbon behind every tee, tracing where it has just been, drawn under the
+players. Its tab holds the width, the length in ticks, the opacity, whether it
+fades and narrows toward the end, and what colors it: a picked color, the tee's
+own color, a rainbow offset per player, or the speed, green through red. The
+positions are sampled every frame from the same smoothed spot the tee itself is
+drawn at, so the ribbon stays smooth at any frame rate, and a teleport cuts it
+rather than streaking it across the map.
+
+## Focus mode
+
+One key that strips the screen down to the game. What goes is picked by
+checkbox: the name plates, the particles and damage stars, the HUD, the music
+island, the broadcasts and the kill feed, the chat, the scoreboard. The chat
+never hides while it is being typed into. The key is bound from the same page
+through the game's own key reader, and the command behind it is
+`toggle_focus_mode`, so it can be bound from the console as well.
+
+## Fancy weapons
+
+Two costumes for the laser weapons, next to the weapon models in the settings:
+the crystal laser, an icy blue beam, and the sandy shotgun, a golden one, both
+with sparks strewn along the beam. The colors sit on top of the picked laser
+colors rather than replacing them, so switching the costume off returns exactly
+what was set before. The sparks are a hash of the beam and the clock: nothing is
+stored, and the same beam carries the same sparks from frame to frame. The
+switches preview themselves right in the settings with the same drawing the game
+uses.
+
+## 3D particles
+
+Wireframe shapes drifting and tumbling behind the game: cubes, hearts, circles,
+hexagons, triangles, or a mix. Their tab sets how many, the size, the speed, the
+opacity, the color, one random per shape, a picked one, or a rainbow, and a glow
+with its own opacity and reach. They live in a box the size of the view plus a
+margin and wrap around its edges, so the field never thins out. Decoration only:
+they draw over the map background and under everything that matters.
+
 ## Discord presence
 
 Built in, and on. While the client is running Discord shows what you are doing:

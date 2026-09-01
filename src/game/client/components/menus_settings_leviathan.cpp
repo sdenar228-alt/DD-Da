@@ -36,6 +36,7 @@ enum
 	LEVIATHAN_TAB_MODELS,
 	LEVIATHAN_TAB_UNFREEZE,
 	LEVIATHAN_TAB_TRAIL,
+	LEVIATHAN_TAB_PARTICLES3D,
 	LEVIATHAN_TAB_FRIENDS,
 	LEVIATHAN_TAB_MISC,
 	NUMBER_OF_LEVIATHAN_TABS,
@@ -96,6 +97,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 		Localize("Models"),
 		Localize("Unfreeze"),
 		Localize("Trail"),
+		Localize("3D"),
 		Localize("Friends"),
 		Localize("Misc")};
 
@@ -136,6 +138,7 @@ void CMenus::RenderSettingsLeviathan(CUIRect MainView)
 	case LEVIATHAN_TAB_MODELS: RenderSettingsLeviathanModels(MainView); break;
 	case LEVIATHAN_TAB_UNFREEZE: RenderSettingsLeviathanUnfreeze(MainView); break;
 	case LEVIATHAN_TAB_TRAIL: RenderSettingsLeviathanTrail(MainView); break;
+	case LEVIATHAN_TAB_PARTICLES3D: RenderSettingsLeviathanParticles3d(MainView); break;
 	case LEVIATHAN_TAB_FRIENDS: RenderSettingsLeviathanFriends(MainView); break;
 	case LEVIATHAN_TAB_MISC: RenderSettingsLeviathanMisc(MainView); break;
 	default: break;
@@ -1414,5 +1417,63 @@ void CMenus::RenderSettingsLeviathanTrail(CUIRect MainView)
 		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailLength, &g_Config.m_ClTeeTrailLength, &Button, Localize("Length"), 5, 150, &CUi::ms_LinearScrollbarScale, 0u, Localize(" ticks"));
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
 		Ui()->DoScrollbarOption(&g_Config.m_ClTeeTrailAlpha, &g_Config.m_ClTeeTrailAlpha, &Button, Localize("Opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	}
+}
+
+void CMenus::RenderSettingsLeviathanParticles3d(CUIRect MainView)
+{
+	CUIRect LeftView, RightView, Button;
+	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
+
+	Ui()->DoLabel_AutoLineSize(Localize("3D particles"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Cl3dParticles, Localize("Wireframe shapes behind the game"), &g_Config.m_Cl3dParticles, &LeftView, LINE_SIZE);
+	if(!g_Config.m_Cl3dParticles)
+		return;
+
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesCount, &g_Config.m_Cl3dParticlesCount, &Button, Localize("How many"), 1, 100, &CUi::ms_LinearScrollbarScale);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	static std::vector<CButtonContainer> s_vTypeButtons(6);
+	DoLine_RadioMenu(LeftView, Localize("Shape"),
+		s_vTypeButtons,
+		{Localize("Cube"), Localize("Heart"), Localize("Circle"), Localize("Hex"), Localize("Tri"), Localize("Mix")},
+		{0, 1, 2, 3, 4, 5}, g_Config.m_Cl3dParticlesType);
+
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesSize, &g_Config.m_Cl3dParticlesSize, &Button, Localize("Size"), 10, 150, &CUi::ms_LinearScrollbarScale);
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesSpeed, &g_Config.m_Cl3dParticlesSpeed, &Button, Localize("Speed"), 0, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
+	LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
+	Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesAlpha, &g_Config.m_Cl3dParticlesAlpha, &Button, Localize("Opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+	Ui()->DoLabel_AutoLineSize(Localize("Color"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+
+	static std::vector<CButtonContainer> s_vColorButtons(3);
+	DoLine_RadioMenu(RightView, Localize("Colored by"),
+		s_vColorButtons,
+		{Localize("Random"), Localize("Color"), Localize("Rainbow")},
+		{0, 1, 2}, g_Config.m_Cl3dParticlesColorMode);
+
+	if(g_Config.m_Cl3dParticlesColorMode == 1)
+	{
+		static CButtonContainer s_PickedColor;
+		RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+		DoLine_ColorPicker(&s_PickedColor, COLOR_PICKER_LINE_SIZE, COLOR_PICKER_LABEL_SIZE, 0.0f, &RightView,
+			Localize("Particle color"), &g_Config.m_Cl3dParticlesColor, DefaultColor(0x00FF00), false, nullptr, false);
+	}
+
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Cl3dParticlesGlow, Localize("Glow"), &g_Config.m_Cl3dParticlesGlow, &RightView, LINE_SIZE);
+	if(g_Config.m_Cl3dParticlesGlow)
+	{
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesGlowAlpha, &g_Config.m_Cl3dParticlesGlowAlpha, &Button, Localize("Glow opacity"), 5, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
+		RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+		Ui()->DoScrollbarOption(&g_Config.m_Cl3dParticlesGlowOffset, &g_Config.m_Cl3dParticlesGlowOffset, &Button, Localize("Glow reach"), 1, 10, &CUi::ms_LinearScrollbarScale);
 	}
 }
