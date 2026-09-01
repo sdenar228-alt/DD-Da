@@ -130,6 +130,12 @@ void CHud::OnInit()
 {
 	OnReset();
 
+	// Loaded here rather than on first use: a texture load in the middle of a
+	// frame stalls the render pipeline, which showed up as a black screen.
+	m_BadgeLogo = Graphics()->LoadTexture("leviathan_logo.png", IStorage::TYPE_ALL);
+	if(m_BadgeLogo.IsNullTexture())
+		m_BadgeLogo.Invalidate();
+
 	Graphics()->SetColor(1.0, 1.0, 1.0, 1.0);
 
 	m_HudQuadContainerIndex = Graphics()->CreateQuadContainer(false);
@@ -152,9 +158,51 @@ void CHud::OnInit()
 	Graphics()->QuadContainerUpload(m_HudQuadContainerIndex);
 }
 
+// The client wears its name at the top of the screen, on a plate with its own
+// logo, and the game timer sits under it. Returns how much room it took, which
+// is nothing at all when it is turned off.
+float CHud::RenderClientBadge()
+{
+	if(!g_Config.m_ClClientBadge)
+		return 0.0f;
+
+	const char *pName = "Leviathan";
+	constexpr float FontSize = 8.0f;
+	constexpr float Height = 11.0f;
+	constexpr float Padding = 3.0f;
+	constexpr float LogoSize = 8.0f;
+
+	// The name never changes, so its width is worth measuring once.
+	static float s_NameWidth = TextRender()->TextWidth(FontSize, pName, -1, -1.0f);
+
+	const bool WithLogo = m_BadgeLogo.IsValid();
+	const float Width = Padding * 2.0f + s_NameWidth + (WithLogo ? LogoSize + Padding : 0.0f);
+	const float Left = m_Width / 2.0f - Width / 2.0f;
+
+	Graphics()->DrawRect(Left, 1.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, Height / 2.0f);
+
+	float TextLeft = Left + Padding;
+	if(WithLogo)
+	{
+		Graphics()->TextureSet(m_BadgeLogo);
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+		IGraphics::CQuadItem Logo(TextLeft, 1.0f + (Height - LogoSize) / 2.0f, LogoSize, LogoSize);
+		Graphics()->QuadsDrawTL(&Logo, 1);
+		Graphics()->QuadsEnd();
+		TextLeft += LogoSize + Padding;
+	}
+
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	TextRender()->Text(TextLeft, 1.0f + (Height - FontSize) / 2.0f - 1.0f, FontSize, pName, -1.0f);
+
+	return Height;
+}
+
 void CHud::RenderGameTimer()
 {
 	float Half = m_Width / 2.0f;
+	const float BadgeHeight = RenderClientBadge();
 
 	if(!(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_SUDDENDEATH))
 	{
@@ -191,19 +239,9 @@ void CHud::RenderGameTimer()
 			float Alpha = Time <= 10 && (2 * time() / time_freq()) % 2 ? 0.5f : 1.0f;
 			TextRender()->TextColor(1.0f, 0.25f, 0.25f, Alpha);
 		}
-		TextRender()->Text(Half - w / 2, 2, FontSize, aBuf, -1.0f);
+		TextRender()->Text(Half - w / 2, 2 + BadgeHeight, FontSize, aBuf, -1.0f);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-		// The client's name under the timer, quiet and small. Cached width, the
-		// name never changes.
-		if(g_Config.m_ClClientBadge)
-		{
-			constexpr float BadgeSize = 6.0f;
-			static float s_BadgeWidth = TextRender()->TextWidth(BadgeSize, "Leviathan", -1, -1.0f);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.6f);
-			TextRender()->Text(Half - s_BadgeWidth / 2, 2 + FontSize + 1.0f, BadgeSize, "Leviathan", -1.0f);
-			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-		}
 	}
 }
 

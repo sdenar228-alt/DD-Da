@@ -159,8 +159,11 @@ or as a whisper, and at most once a minute per player, or a muted spammer would
 turn the client into one. A whisper is answered by whisper, a public line
 publicly.
 
-The client name under the game timer is the same page, and can be turned off
-there.
+The client wears its name at the top of the screen on the same page: a plate
+with the logo and the word Leviathan, with the game timer moved down under it.
+The logo is loaded when the HUD starts rather than on first use, because loading
+a texture in the middle of a frame stalls the render pipeline, which is a black
+screen rather than a slow one.
 
 ## Hats
 

@@ -77,6 +77,9 @@ public:
 	void InvalidateCustomCrosshair();
 
 private:
+	// The name plate the client wears at the top of the screen.
+	IGraphics::CTextureHandle m_BadgeLogo;
+	float RenderClientBadge();
 
 	void RenderTextInfo();
 	void RenderConnectionWarning();
