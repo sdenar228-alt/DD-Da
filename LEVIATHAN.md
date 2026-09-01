@@ -149,6 +149,22 @@ trail, the dressed-up weapons and the 3D particles, Interface holds focus mode,
 the music island, the auto replies and the name under the timer. The page opens
 on the tab it was left on, remembered in `ui_leviathan_page`.
 
+## Gradient text
+
+The letters take their color from a hue that walks along the line and with the
+clock, rather than all being painted one color. Separate switches for playing
+and for the menus, a speed, and a color that says where the gradient starts and
+how saturated and bright it runs.
+
+It is applied where the text is colored, one glyph at a time, so it costs
+nothing beyond the arithmetic. Text drawn straight to the screen is rebuilt every
+frame and so it travels; text kept in a container is colored once when the
+container is built, and holds the gradient it was given without moving along it.
+
+A note for anyone adding a color setting here: these configs are packed HSL, not
+RGB. 0xFF0000 is not red, it is hue 1.0 with no saturation and no lightness,
+which is black. This was learned the hard way.
+
 ## Auto reply
 
 Two answers the client gives on your behalf, in the two cases where you will

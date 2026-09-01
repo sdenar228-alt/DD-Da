@@ -795,8 +795,21 @@ void CGameClient::UpdatePositions()
 	UpdateRenderedCharacters();
 }
 
+// Hands the text renderer the gradient the player asked for. The phase carries
+// the clock, so the renderer needs none of its own.
+void CGameClient::UpdateTextGradient(bool Enabled)
+{
+	ColorHSLA Base = color_cast<ColorHSLA>(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClGradientTextColor)));
+	const float Phase = Client()->LocalTime() * (g_Config.m_ClGradientTextSpeed / 100.0f) * 0.35f;
+	TextRender()->SetGradient(Enabled, Phase, Base);
+}
+
 void CGameClient::OnRender()
 {
+	// The gradient is set once for the frame here and swapped by the menus for
+	// as long as they are drawing, so the two settings can differ.
+	UpdateTextGradient(g_Config.m_ClGradientTextIngame != 0);
+
 	const ColorRGBA ClearColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOverlayEntities ? g_Config.m_ClBackgroundEntitiesColor : g_Config.m_ClBackgroundColor));
 	Graphics()->Clear(ClearColor.r, ClearColor.g, ClearColor.b);
 

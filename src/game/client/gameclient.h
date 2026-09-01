@@ -629,6 +629,7 @@ public:
 	// hooks
 	void OnConnected() override;
 	void OnRender() override;
+	void UpdateTextGradient(bool Enabled);
 	void OnUpdate() override;
 	void OnDummyDisconnect() override;
 	virtual void OnRelease();

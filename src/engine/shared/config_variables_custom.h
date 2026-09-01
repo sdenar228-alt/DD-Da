@@ -141,10 +141,17 @@ MACRO_CONFIG_INT(Cl3dParticlesDepth, cl_3d_particles_depth, 16, 0, 60, CFGFLAG_C
 MACRO_CONFIG_INT(Cl3dParticlesSpeed, cl_3d_particles_speed, 75, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast they drift and tumble, in percent")
 MACRO_CONFIG_INT(Cl3dParticlesAlpha, cl_3d_particles_alpha, 100, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Their opacity in percent")
 MACRO_CONFIG_INT(Cl3dParticlesColorMode, cl_3d_particles_color_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What colors them: 0 random per shape, 1 the picked color, 2 a rainbow")
-MACRO_CONFIG_COL(Cl3dParticlesColor, cl_3d_particles_color, 0x00FF00, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The picked color")
+MACRO_CONFIG_COL(Cl3dParticlesColor, cl_3d_particles_color, 0x55FFB4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The picked color")
 MACRO_CONFIG_INT(Cl3dParticlesGlow, cl_3d_particles_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A glow around the wireframes")
 MACRO_CONFIG_INT(Cl3dParticlesGlowAlpha, cl_3d_particles_glow_alpha, 35, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the glow in percent")
 MACRO_CONFIG_INT(Cl3dParticlesGlowOffset, cl_3d_particles_glow_offset, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow reaches around the lines")
+
+// Gradient text: the letters take their color from a hue that walks along the
+// line and with the clock.
+MACRO_CONFIG_INT(ClGradientTextIngame, cl_gradient_text_ingame, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient text while playing")
+MACRO_CONFIG_INT(ClGradientTextMenu, cl_gradient_text_menu, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient text in the menus")
+MACRO_CONFIG_INT(ClGradientTextSpeed, cl_gradient_text_speed, 50, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast the gradient travels, in percent")
+MACRO_CONFIG_COL(ClGradientTextColor, cl_gradient_text_color, 0x00FFB4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Where the gradient starts, and how saturated and bright it runs")
 
 // The settings page opens where it was left, the way the rest of the settings do.
 MACRO_CONFIG_INT(UiLeviathanPage, ui_leviathan_page, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which Leviathan settings tab was open last")

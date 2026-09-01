@@ -231,6 +231,12 @@ public:
 	// old foolish interface
 	virtual void TextColor(float r, float g, float b, float a) = 0;
 	virtual void TextColor(ColorRGBA Color) = 0;
+
+	// Runs a gradient across the letters instead of painting them all one color.
+	// Phase carries the animation, so the clock stays with the caller. Only text
+	// drawn straight to the screen picks this up: text kept in a container has
+	// its colors baked into the buffer when the container is built.
+	virtual void SetGradient(bool Enabled, float Phase, ColorHSLA Base) = 0;
 	virtual void TextOutlineColor(float r, float g, float b, float a) = 0;
 	virtual void TextOutlineColor(ColorRGBA Color) = 0;
 	virtual void TextSelectionColor(float r, float g, float b, float a) = 0;
