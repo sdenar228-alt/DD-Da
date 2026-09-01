@@ -70,6 +70,7 @@
 #include "components/sounds.h"
 #include "components/spectator.h"
 #include "components/statboard.h"
+#include "components/tee_trail.h"
 #include "components/tile_colors.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
@@ -192,6 +193,7 @@ public:
 	CFreezeBars m_FreezeBars;
 	CItems m_Items;
 	CTileColors m_TileColors;
+	CTeeTrail m_TeeTrail;
 	CUnfreeze m_Unfreeze;
 	CMapImages m_MapImages;
 
@@ -264,6 +266,7 @@ private:
 
 	char m_aDDNetVersionStr[64];
 
+	static void ConToggleFocusMode(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
 	static void ConReadyChange7(IConsole::IResult *pResult, void *pUserData);

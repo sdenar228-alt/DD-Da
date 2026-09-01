@@ -60,6 +60,10 @@ void CMusicIsland::OnShutdown()
 
 void CMusicIsland::OnRender()
 {
+	// Focus mode: the island goes.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideMusic)
+		return;
+
 	if(!Update())
 	{
 		// A drag cannot outlive the island, it would jump to wherever the cursor

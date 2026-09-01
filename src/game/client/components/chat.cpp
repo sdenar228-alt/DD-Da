@@ -1152,6 +1152,10 @@ void CChat::OnPrepareLines(float y)
 
 void CChat::OnRender()
 {
+	// Focus mode: the chat goes, but never while it is being typed into.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideChat && m_Mode == MODE_NONE)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 

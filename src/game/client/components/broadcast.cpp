@@ -32,6 +32,10 @@ void CBroadcast::OnWindowResize()
 
 void CBroadcast::OnRender()
 {
+	// Focus mode: the broadcasts go.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideExtra)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 

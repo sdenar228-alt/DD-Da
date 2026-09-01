@@ -3101,3 +3101,69 @@ On this server a laser cannot hit the tee that fired it
 
 Telegram
 == Телеграм
+
+Trail
+== Трейл
+
+Tee trail
+== Трейл тии
+
+Draw a trail behind tees
+== Рисовать трейл за тии
+
+Other tees leave one too
+== Трейл и у других тии
+
+Fade it out toward the end
+== Затухание к концу
+
+Narrow it toward the end
+== Сужение к концу
+
+Colored by
+== Чем красить
+
+Rainbow
+== Радуга
+
+Trail color
+== Цвет трейла
+
+Focus mode
+== Режим концентрации
+
+Focus mode is on
+== Режим концентрации включён
+
+Strips the screen down to the game. What goes is picked below; the key flips it without coming here.
+== Убирает с экрана всё, кроме игры. Что именно — галочки ниже; клавиша переключает его без захода сюда.
+
+Hide the name plates
+== Скрыть имена игроков
+
+Hide particles and damage stars
+== Скрыть визуальные эффекты
+
+Hide the HUD
+== Скрыть HUD
+
+Hide the music island
+== Скрыть музыкальный островок
+
+Hide broadcasts and the kill feed
+== Скрыть лишний интерфейс
+
+Hide the chat
+== Скрыть чат
+
+Hide the scoreboard
+== Скрыть таблицу результатов
+
+Focus mode key
+== Клавиша режима концентрации
+
+Focus mode on
+== Режим концентрации включён
+
+Focus mode off
+== Режим концентрации выключен

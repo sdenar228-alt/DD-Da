@@ -6,6 +6,7 @@
 #include <base/math.h>
 #include <base/time.h>
 
+#include <engine/shared/config.h>
 #include <engine/demo.h>
 #include <engine/graphics.h>
 
@@ -191,6 +192,10 @@ bool CParticles::ParticleIsVisibleOnScreen(const vec2 &CurPos, float CurSize) co
 
 void CParticles::RenderGroup(int Group)
 {
+	// Focus mode: the particles go.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideEffects)
+		return;
+
 	IGraphics::CTextureHandle *aParticles = GameClient()->m_ParticlesSkin.m_aSpriteParticles;
 	int FirstParticleOffset = SPRITE_PART_SLICE;
 	int ParticleQuadContainerIndex = m_ParticleQuadContainerIndex;

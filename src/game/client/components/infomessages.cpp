@@ -443,6 +443,10 @@ void CInfoMessages::RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y)
 
 void CInfoMessages::OnRender()
 {
+	// Focus mode: the kill feed goes.
+	if(g_Config.m_ClFocusMode && g_Config.m_ClFocusHideExtra)
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
