@@ -806,15 +806,41 @@ if(TARGET_OS STREQUAL "windows")
   list(APPEND PLATFORM_LIBS ntdll.lib) # https://github.com/ddnet/ddnet/issues/6725
   list(APPEND PLATFORM_LIBS uuid.lib) # FOLDERID_RoamingAppData
 elseif(TARGET_OS STREQUAL "mac")
+  # The frameworks beside Cocoa and OpenGL are what the fork's own components
+  # need: AVFoundation with CoreMedia and CoreVideo decodes the video
+  # backgrounds, the way Media Foundation does on Windows, ImageIO and
+  # CoreGraphics read the picture formats the engine cannot and scale the album
+  # art, and Foundation carries NSWorkspace and NSAppleScript, which the music
+  # island uses to ask the running player what it is playing.
+  # tidy-alphabetical-start
+  find_library(AVFOUNDATION AVFoundation)
   find_library(CARBON Carbon)
   find_library(COCOA Cocoa)
+  find_library(COREGRAPHICS CoreGraphics)
+  find_library(COREMEDIA CoreMedia)
+  find_library(COREVIDEO CoreVideo)
+  find_library(FOUNDATION Foundation)
+  find_library(IMAGEIO ImageIO)
   find_library(OPENGL OpenGL)
   find_library(SECURITY Security)
+  # tidy-alphabetical-end
   set(PLATFORM_CLIENT
     src/macos/client.mm
     src/macos/notifications.mm
   )
-  set(PLATFORM_CLIENT_LIBS ${COCOA} ${OPENGL})
+  # Only the client links these; the server and the tools stay on PLATFORM_LIBS.
+  set(PLATFORM_CLIENT_LIBS
+    # tidy-alphabetical-start
+    ${AVFOUNDATION}
+    ${COCOA}
+    ${COREGRAPHICS}
+    ${COREMEDIA}
+    ${COREVIDEO}
+    ${FOUNDATION}
+    ${IMAGEIO}
+    ${OPENGL}
+    # tidy-alphabetical-end
+  )
   set(PLATFORM_LIBS ${CARBON} ${SECURITY})
 elseif(TARGET_OS STREQUAL "ios")
   # Frameworks required by SDL2, see its CMakeLists.txt.
@@ -1638,7 +1664,6 @@ set(EXPECTED_DATA
   gui_icons.png
   gui_logo.png
   hud.png
-  leviathan_logo.png
   languages/README.txt
   languages/arabic.txt
   languages/azerbaijani.txt
@@ -1680,6 +1705,7 @@ set(EXPECTED_DATA
   languages/traditional_chinese.txt
   languages/turkish.txt
   languages/ukrainian.txt
+  leviathan_logo.png
   mapres/basic_freeze.png
   mapres/bg_cloud1.png
   mapres/bg_cloud2.png
@@ -2643,10 +2669,12 @@ if(CLIENT)
     components/countryflags.h
     components/custom_background.cpp
     components/custom_background.h
+    components/custom_media.h
+    components/custom_media_null.cpp
     components/custom_media_win.cpp
-    components/custom_media_win.h
+    components/custom_music.h
+    components/custom_music_null.cpp
     components/custom_music_win.cpp
-    components/custom_music_win.h
     components/custom_sounds.cpp
     components/custom_sounds.h
     components/damageind.cpp
@@ -2698,13 +2726,11 @@ if(CLIENT)
     components/menus_settings_controls.cpp
     components/menus_settings_controls.h
     components/menus_settings_credits.cpp
-    components/menus_settings_leviathan.cpp
     components/menus_settings_ddnet.cpp
     components/menus_settings_general.cpp
     components/menus_settings_graphics.cpp
     components/menus_settings_language.cpp
-    components/music_island.cpp
-    components/music_island.h
+    components/menus_settings_leviathan.cpp
     components/menus_settings_player.cpp
     components/menus_settings_sound.cpp
     components/menus_settings_tee.cpp
@@ -2713,6 +2739,8 @@ if(CLIENT)
     components/menus_start.h
     components/motd.cpp
     components/motd.h
+    components/music_island.cpp
+    components/music_island.h
     components/nameplates.cpp
     components/nameplates.h
     components/particles.cpp
@@ -2735,12 +2763,12 @@ if(CLIENT)
     components/statboard.h
     components/tile_colors.cpp
     components/tile_colors.h
-    components/unfreeze.cpp
-    components/unfreeze.h
     components/tooltips.cpp
     components/tooltips.h
     components/touch_controls.cpp
     components/touch_controls.h
+    components/unfreeze.cpp
+    components/unfreeze.h
     components/voting.cpp
     components/voting.h
     gameclient.cpp
@@ -2791,6 +2819,20 @@ if(CLIENT)
     ui_scrollregion.h
     # tidy-alphabetical-end
   )
+  if(TARGET_OS STREQUAL "mac")
+    # The macOS halves of the two components above are Objective-C++, which
+    # neither MSVC nor GCC can compile, so they are only ever handed to the
+    # compiler here. They also cannot be listed with the rest: set_src compares
+    # its list against a glob of .c, .cpp and .h and would complain about a .mm
+    # being listed but not found. Like src/macos/*.mm they are compiled as C++
+    # (clang reads Objective-C++ from the extension) and therefore without ARC.
+    list(APPEND GAME_CLIENT
+      # tidy-alphabetical-start
+      ${PROJECT_SOURCE_DIR}/src/game/client/components/custom_media_mac.mm
+      ${PROJECT_SOURCE_DIR}/src/game/client/components/custom_music_mac.mm
+      # tidy-alphabetical-end
+    )
+  endif()
   set_src(GAME_EDITOR GLOB_RECURSE src/game/editor
     # tidy-alphabetical-start
     auto_map.cpp
@@ -2948,7 +2990,15 @@ if(CLIENT)
     set(VERSION_COMPANY "${CLIENT_EXECUTABLE} Team")
     configure_file("other/versioninfo/versioninfo.rc.in" "client.versioninfo.rc")
     configure_file("other/manifest/client.manifest.in" "client.manifest")
-    set(CLIENT_ICON "other/icons/DDNet.rc")
+    # Follow the client's name so a renamed build carries its own icon instead
+    # of DDNet's. Not every name brought in with -DCLIENT_EXECUTABLE= has one,
+    # and a source file that does not exist stops CMake outright, so fall back
+    # to DDNet's icon rather than to a broken configure.
+    if(EXISTS "${PROJECT_SOURCE_DIR}/other/icons/${CLIENT_EXECUTABLE}.rc")
+      set(CLIENT_ICON "other/icons/${CLIENT_EXECUTABLE}.rc")
+    else()
+      set(CLIENT_ICON "other/icons/DDNet.rc")
+    endif()
     set(CLIENT_VERSIONINFO "${CMAKE_CURRENT_BINARY_DIR}/client.versioninfo.rc")
     if(NOT MINGW)
       set(CLIENT_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/client.manifest")
@@ -3886,10 +3936,23 @@ if(CLIENT AND DMGBUILD_FOUND)
           COMMAND codesign --force --options runtime --timestamp --sign "${MACOS_APP_IDENTITY}" ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/MacOS/${SERVER_EXECUTABLE}
       )
     endif()
+    # Only the client itself carries entitlements. The hardened runtime that
+    # --options runtime turns on refuses to send Apple Events without the one in
+    # this file, which is what the music island falls back to when the system
+    # media remote will not answer. The tools and the dylibs above send none, so
+    # they are signed without it.
+    #
+    # Which is why the bundle below is sealed without --deep. That flag applies
+    # every option given with it to the nested code as well, --entitlements
+    # included, and --force replaces the signatures the passes above just made.
+    # So a --deep sign here would hand the map tools and the game server the
+    # Apple Events entitlement too, and undo the work of signing them separately.
+    # Everything inside has already been signed from the inside out.
+    set(CLIENT_ENTITLEMENTS "${PROJECT_SOURCE_DIR}/other/bundle/client/client.entitlements")
     list(APPEND CODESIGN_COMMANDS
-        COMMAND codesign --force --options runtime --timestamp --sign "${MACOS_APP_IDENTITY}" ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/MacOS/${CLIENT_EXECUTABLE}
+        COMMAND codesign --force --options runtime --timestamp --entitlements "${CLIENT_ENTITLEMENTS}" --sign "${MACOS_APP_IDENTITY}" ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/MacOS/${CLIENT_EXECUTABLE}
 
-        COMMAND codesign --force --options runtime --timestamp --deep --sign "${MACOS_APP_IDENTITY}" ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app
+        COMMAND codesign --force --options runtime --timestamp --entitlements "${CLIENT_ENTITLEMENTS}" --sign "${MACOS_APP_IDENTITY}" ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app
         # Verify signature
         COMMAND codesign --verify --deep --strict --verbose=2 "${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app"
     )
@@ -3977,6 +4040,7 @@ if(CLIENT AND DMGBUILD_FOUND)
       # tidy-alphabetical-start
       data
       other/bundle/client/PkgInfo
+      other/bundle/client/client.entitlements
       other/dmgsettings.py
       other/icons/${CLIENT_EXECUTABLE}.icns
       # tidy-alphabetical-end

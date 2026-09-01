@@ -6,17 +6,52 @@ the **Leviathan** tab of the settings, or from the console (F1) with the
 
 ## Building
 
+On Windows:
+
 ```
 build.bat
 ```
 
 It finds Visual Studio through vswhere, sets up the MSVC environment and builds
-with Ninja into `build\DDNet.exe`.
+with Ninja into `build\Leviathan.exe`.
 
-The Ninja generator is used on purpose: CMake copies the runtime DLLs and the
-`data` folder into the build directory root, so a multi-config generator like
-"Visual Studio" would put the executable into `build\Release\` where it finds
-neither and fails to start with missing DLL errors.
+On macOS:
+
+```
+chmod +x build.sh
+./build.sh
+```
+
+It checks for the command line tools, for CMake and Ninja and for `ddnet-libs`,
+and builds `build/Leviathan`. That is the bare binary, run from the build
+directory. The `.app` and the disk image around it are a separate step:
+
+```
+cmake --build build --target package_dmg
+```
+
+which needs `dmgbuild` on the path *while CMake configures*, or the target is
+never created at all. There is also a **macOS app** workflow that does all of
+this on a GitHub runner and leaves the image as its artifact, for when there is
+no Mac to hand. Nothing it produces is signed, so the copy that comes off it has
+to be let out of quarantine once:
+
+```
+xattr -dr com.apple.quarantine /Applications/Leviathan.app
+```
+
+`ddnet-libs` is neither committed here nor a submodule of this repository,
+whatever the leftover `.gitmodules` says, so `git submodule update --init` runs
+without error and fetches nothing. Clone it in by hand:
+
+```
+git clone --depth 1 https://github.com/ddnet/ddnet-libs
+```
+
+The Ninja generator is used on purpose: CMake copies the runtime libraries and
+the `data` folder into the build directory root, so a multi-config generator
+like "Visual Studio" or Xcode would put the executable into a configuration
+subdirectory where it finds neither and fails to start.
 
 ### The Telegram button
 
@@ -28,7 +63,11 @@ address that changes sends people somewhere else.
 ### Artwork
 
 The client's own icon lives in `other/icons/Leviathan.ico`, built with every size
-Windows asks for from 16 up to 256, and is compiled into the executable. The logo
+Windows asks for from 16 up to 256, and is compiled into the executable. macOS
+wants the same picture again as `other/icons/Leviathan.icns`, which carries 16
+through 512 and is copied into the app's `Contents/Resources` rather than
+compiled in; `CFBundleIconFile` in `other/bundle/client/Info.plist.in` is what
+points at it, by name and without the extension. The logo
 above the buttons in the start menu is `data/leviathan_logo.png`, loaded the first
 time that menu is drawn; if it is missing the menu falls back to the name in
 writing rather than leaving a hole. Replacing either is a matter of replacing the
@@ -52,11 +91,15 @@ after seven days and has to be signed again. A paid Apple developer account
 lasts a year and can hand the build over through TestFlight instead, with no
 cable and nothing installed on the phone but Apple's own app.
 
-Two features are missing there. The music island reads the Windows media
-session, which has no equivalent an app is allowed to read on iOS, and the
-background falls back to PNG only: the iOS build has no FFmpeg and no Media
-Foundation, so videos and jpg do not load. Everything else, the unfreeze module
-and the tee shader included, works the same.
+Two features are missing there, and both for the same reason: an iOS build gets
+neither of the system halves. The music island has nothing to read, since an app
+is not allowed at the now playing information other apps publish, and the
+background falls back to PNG only, since the only decoder left is the FFmpeg in
+`ddnet-libs`, which was compiled for encoding and has none. ImageIO and
+AVFoundation do exist on a phone, so the macOS decoder could be built for it, but
+it is not: `custom_media_mac.mm` and `custom_music_mac.mm` are added to the build
+only for macOS, and iOS takes the same do-nothing stubs as Linux. Everything
+else, the unfreeze module and the tee shader included, works the same.
 
 ## Friends and war
 
@@ -90,9 +133,13 @@ browser, and the dot follows from that.
 ## Discord presence
 
 Built in, and on. While the client is running Discord shows what you are doing:
-the server's name, the map, and how many people are on it, with an "Ask to join"
-button on servers that are publicly listed. On unlisted ones the party id is
-random so the address does not leak.
+the server's name, the map, and how many people are on it.
+
+There is no "Ask to join" button. That was the Game SDK's, and it went when the
+presence moved to the socket: the activity sent there carries no join secret, so
+Discord has nothing to offer anybody. Nothing about the server leaks either, for
+the same reason, and the party id is the fixed string `leviathan` rather than a
+random one.
 
 The name and the picture Discord puts next to it belong to whoever owns the
 Discord application, and by default that is DDNet's, so it says DDNet. To have it
@@ -107,18 +154,25 @@ is being built, because the application id is a setting and at construction time
 nothing has been read yet. Changing either setting therefore takes a restart.
 
 Under the presence there is a **Telegram** button. That is why the presence talks
-to Discord over its own socket on Windows rather than through the Game SDK the
-rest of DDNet uses: the SDK's activity has no field for buttons and never has.
-The socket takes the activity as JSON and accepts up to two of them, needs no
-library beside it, and saves shipping three and a half megabytes of DLL. The SDK
-remains as a fallback and is what every other platform uses.
+to Discord over its own socket rather than through the Game SDK the rest of DDNet
+uses: the SDK's activity has no field for buttons and never has. The socket takes
+the activity as JSON and accepts up to two of them, needs no library beside it,
+and saves shipping three and a half megabytes of DLL.
+
+Discord offers that socket as a named pipe on Windows and as a unix socket on
+macOS, and the protocol above the two is the same, so the button is there on both.
+The unix one is looked for in `$XDG_RUNTIME_DIR`, then `$TMPDIR`, `$TMP`, `$TEMP`
+and finally `/tmp`, numbered `discord-ipc-0` through `-9`; on macOS it is the
+per-user `$TMPDIR` that answers. The SDK remains as a fallback for the platforms
+neither transport covers.
 
 Discord does not show your own buttons back to you, so the only way to see one is
 from somebody else's client.
 
 ## Config folder
 
-New folders in `%APPDATA%\DDNet`:
+New folders in the config directory, which is `%APPDATA%\DDNet` on Windows and
+`~/Library/Application Support/DDNet` on macOS:
 
 | Folder | Contents |
 | --- | --- |
@@ -128,16 +182,28 @@ New folders in `%APPDATA%\DDNet`:
 | `sounds` | one folder per sound pack |
 | `shader` | overrides for the shaders in `data/shader` |
 
+A crosshair or an avatar is stored in the settings without its extension and
+read back with a lowercase `.png`. A background keeps its full filename, because
+the extension is what decides which decoder gets it. So on a case sensitive
+volume, which macOS can be formatted as but is not by default, a `CROSSHAIR.PNG`
+is listed and then fails to load with a line in the log, while a background of
+any spelling is fine. Lowercase extensions avoid it.
+
+Entries the Finder leaves behind are skipped rather than offered: a `__MACOSX`
+folder from an unzipped pack is rejected by name, and the `Icon` file a folder
+with a custom picture carries is rejected by the carriage return in its name,
+along with anything else holding a control character.
+
 ## Features
 
 ### Tees
 
-* **Outline** вЂ” a colored outline around every tee, with adjustable thickness.
+* **Outline** — a colored outline around every tee, with adjustable thickness.
   The outline sprites in a skin are pure black with only an alpha channel, so
   the client builds a white mask per skin to make the color show up.
-* **Picture instead of the tee** вЂ” a `.png` from `avatars`, masked into a circle
+* **Picture instead of the tee** — a `.png` from `avatars`, masked into a circle
   like a chat profile picture. Works for your own tee, for others, or both.
-* **Tee shader** вЂ” see below.
+* **Tee shader** — see below.
 
 All three apply to 0.6 tees. A 0.7 skin is drawn by a separate renderer that has
 no outline masks and no avatar or shader path, so on a 0.7 server the tees fall
@@ -168,13 +234,51 @@ transparent hides that tile type.
 
 An image or video behind everything, in game and in the menus.
 
-Supported on Windows without any extra download:
+Decoded by whatever the system already ships with, so nothing has to be
+downloaded on either platform:
 
-| Kind | Formats | Decoder |
+| Kind | Decoder | Plays |
 | --- | --- | --- |
-| Pictures | png | engine, all platforms |
-| Pictures | jpg, jpeg, bmp, webp, tif, gif | Windows Imaging Component |
-| Videos | mp4, mov, avi, wmv, m4v and whatever else the system plays | Media Foundation |
+| Pictures | the engine, everywhere | png |
+| Pictures | Windows Imaging Component | jpg, jpeg, bmp, webp, heic, tif, tiff |
+| Videos | Media Foundation | mp4, mov, avi, wmv, m4v, gif and whatever else the system has a codec for |
+| Pictures | ImageIO, macOS | jpg, jpeg, bmp, webp, heic, tif, tiff |
+| Videos | AVFoundation, macOS | mp4, mov, m4v, gif and whatever else the system has a codec for |
+
+The client itself keeps no list of formats. All it decides from the extension is
+picture or video, and then it hands the file to the system: `png` goes to the
+engine's own loader, the seven picture extensions above go straight to the still
+decoder, and **everything else, `gif` included, is offered to the video decoder
+first** and only tried as a picture if that refuses. A gif is handled that way
+because it can be animated, and an animated one played as a video is the point.
+
+So what actually plays is whatever the machine has a codec for, and the two
+systems do not have the same ones: `avi` and `wmv` are Media Foundation's and
+macOS opens neither, so a background that works on one machine can come up black
+on the other. The format hint in the settings says whichever list applies.
+
+Video shot on a phone is stored the way the camera sensor read it and carries a
+matrix saying which way up it goes. All three decoders read that matrix and turn
+the picture, so such a recording stands upright wherever it is played. Each one
+asks a different question to get there: AVFoundation is asked for the track's
+`preferredTransform`, Media Foundation for `MF_MT_VIDEO_ROTATION` on the source
+type, and FFmpeg for the stream's `DISPLAYMATRIX` side data. The three do not
+count the same way round, so each is converted to the one thing the copy out
+needs: how far clockwise the frame has to be turned to stand the way it was shot.
+
+The turn itself is free. Every frame is already copied out of the decoder pixel
+by pixel to be swizzled into RGBA, so a quarter turn is only a different pair of
+steps to walk the destination with, worked out once when the file is opened. The
+FFmpeg path is the one exception: its scaler can only write rows the way they are
+stored, so a turned frame is scaled into a buffer of its own and turned on the
+way into the caller's image. A file that is not turned still goes straight from
+the scaler into that image, as it always did.
+
+`Width()` and `Height()` report the size the picture is seen at, after the turn,
+so `cl_custom_background_fit` letterboxes a portrait recording the same way
+everywhere. The frame size limit below is measured on that same turned size, for
+the same reason, while the decoder is still asked to scale in the orientation it
+works in.
 
 Videos are played forward at their own frame rate and loop at the end. `cl_custom_background_video_length` cuts a longer file after that many seconds (10 by default, 0 plays all of it). Every
 frame is a full texture upload, so a small file is cheaper than a 4K one.
@@ -188,11 +292,13 @@ at their own size and say so in the log. A background that is fully opaque is
 also drawn with blending switched off, since a screen sized quad with nothing
 underneath it to mix with is worth frames on a weaker card.
 
-The FFmpeg shipped in `ddnet-libs` was compiled for **encoding only** and has no
-decoders at all, so it is not used for this. It stays as a fallback for other
-platforms; to make it work there, put a full FFmpeg build of the same major
-versions (`avcodec-61`, `avformat-61`, `avutil-59`, `swresample-5`,
-`swscale-8`) next to the executable.
+A file the system decoder will not take is handed to FFmpeg rather than given up
+on. That matters only where there is no system decoder at all, because the
+FFmpeg shipped in `ddnet-libs` was compiled for **encoding only** and has no
+decoders in it. To make that fallback do anything, put a full FFmpeg build of the
+same major versions (`avcodec-61`, `avformat-61`, `avutil-59`, `swresample-5`,
+`swscale-8`) beside the executable — inside `Contents/Frameworks` for the macOS
+app, since that is the only place its `@rpath` looks.
 
 The Media Foundation DLLs are delay loaded, so a Windows edition that ships
 without them (the N editions) still starts and only fails to decode.
@@ -200,12 +306,18 @@ without them (the N editions) still starts and only fails to decode.
 In game the map is drawn on top, so the background is only visible where the map
 is see-through, for example with the entities overlay.
 
+The menu's own moving background is a different thing: a small map, chosen by
+theme, that the game has always had. Its themes live in `data/themes` and the
+picker for them now sits at the bottom of the same settings page, rather than
+three pages away under the general options. It is the game's own list, so a theme
+chosen in one place is chosen in both.
+
 ### Sounds
 
 A sound pack is a folder inside `sounds` holding files named after the game
 sound sets, for example `hook_attach_ground.wav`, `hammer_hit.wav`,
 `gun_fire.wav`, `player_spawn.wav`. Supported formats are **wav**, **opus** and
-**wv** вЂ” plain WAV support was added to the engine for this, so files do not
+**wv** — plain WAV support was added to the engine for this, so files do not
 have to be converted first.
 
 Two sounds exist that vanilla DDNet does not have: `player_join` and
@@ -222,13 +334,42 @@ from the regular Assets page.
 ### Music island
 
 A rounded pill showing what is playing right now, the way a phone shows it:
-album art, title, artist and three bars that bounce while the track runs. It
-slides in when the music starts and slides out when it stops.
+album art, title, artist and the transport buttons. It slides in when the music
+starts and slides out when it stops.
 
-The track comes from the **Windows media session**, the same source as the
-volume flyout, so every player that reports to the system works: Spotify, a
-browser tab, the system player. Nothing has to be configured in the player
-itself. The query runs on its own thread and polls twice a second, so it costs
+Where the track comes from depends on the system, and this is the one feature
+whose reach genuinely differs between the two.
+
+On **Windows** it is the media session, the same source as the volume flyout, so
+every player that reports to the system works: Spotify, a browser tab, the system
+player. Nothing has to be configured in the player itself.
+
+On **macOS** there is no public equivalent, so two sources are tried in turn:
+
+* **MediaRemote**, the private framework the media keys and Control Centre go
+  through. It sees everything Windows does, browsers included, and it is the only
+  one that hands over the cover art. It is opened by path at runtime rather than
+  linked, so a system where it is missing or renamed still starts.
+* **AppleScript** to Spotify and Music, reached only when MediaRemote answers
+  nothing at all — never merely because nothing is playing, since addressing a
+  player is what raises the automation prompt. A player that is not already
+  running is never asked, so the client cannot start one by itself.
+
+macOS 15.4 put MediaRemote's now playing information behind an entitlement only
+Apple's own binaries carry, so from that release on the island sees Spotify and
+Music and nothing else. **Sending commands still works**, which is why reading
+and controlling are kept apart in the code: the buttons and the binds below keep
+driving whatever owns the session even where the display has fallen back.
+
+The first time the fallback talks to a player macOS asks whether to allow it, and
+the answer is remembered under Privacy & Security → Automation. Refusing leaves
+the island empty and breaks nothing else. A signed build additionally needs the
+`com.apple.security.automation.apple-events` entitlement, which
+`other/bundle/client/client.entitlements` carries — without it the hardened
+runtime refuses the events before the user is ever asked, which looks like the
+island being broken only on the signed copy.
+
+Either way the query runs on its own thread and polls twice a second, so it costs
 nothing on the render thread.
 
 The pill holds the album art, the title, the artist, previous / play-pause /
@@ -236,8 +377,8 @@ next buttons and a progress bar along the bottom. The buttons can be clicked
 wherever the mouse is a cursor, so in the menus; in game the mouse aims, and the
 console commands below cover that.
 
-There is no like button: the Windows media session exposes play, pause and
-track skipping, but nothing for favouriting, that lives inside each player.
+There is no like button: neither source exposes anything for favouriting, only
+play, pause and track skipping. Favouriting lives inside each player.
 
 A progress bar along the bottom shows how far the track has run. Players publish
 their position only now and then rather than continuously, so the reported value
@@ -253,6 +394,15 @@ bind pgdown music_next
 bind pause music_play_pause
 ```
 
+Those three keys are a poor fit for a Mac keyboard, which has no Pause key at all
+and needs Fn for PgUp and PgDn on a laptop. Anything else works just as well:
+
+```
+bind f1 music_prev
+bind f2 music_play_pause
+bind f3 music_next
+```
+
 `cl_music_island_x` and `cl_music_island_y` place it anywhere on the screen, in
 permille of the space it can move in, so the spot stays right at any resolution.
 The settings page has sliders for both and a reset button. In the menus the pill
@@ -266,7 +416,8 @@ window by the time the island draws, so an activation made there would be thrown
 away before the button was released. While the mouse is over the pill it claims
 the hover, so a menu button underneath cannot be pressed through it.
 
-This is Windows only. On other platforms the island simply never appears.
+On the platforms that publish nothing the client can read, the island simply
+never appears and the setting says so.
 
 ### Unfreeze shot
 
@@ -378,10 +529,22 @@ That is why the lowest it can be set to is four, and why the default is sixteen.
 The map's own tuning is followed rather than the stock physics. The flight runs
 in a copy of the predicted world, so tune zones, speedups and everything else
 the tiles do to a tee apply to it, and it starts from the tee's real velocity.
-The shot reads two tunings, the way the game does: how far it reaches comes from
-the zone the tee is standing in, while the bounce delay, the bounce count and
-the bounce cost come from the zone the shot is fired in, sampled once at the
-muzzle.
+The shot reads two tunings, the way the game does: how far it reaches and how
+soon the weapon has cooled down again come from the zone the tee is standing in,
+while the bounce count and the bounce cost come from the zone the shot is fired
+in.
+
+The bounce delay is the one value that cannot be read per candidate. It has to
+be known before the flight is predicted at all, because the horizon that
+prediction runs to is itself measured in bounces, so it is sampled once at the
+muzzle, from the zone the tee is standing in at the moment of the search. That
+one number is then handed to everything downstream. It has to be one number: the
+fire delays worth trying are enumerated on that bounce ladder and the trace then
+walks it, so the two disagreeing would mean candidate shots tried at ticks the
+beam never bounces on. They did disagree for a while. The trace read the tune
+zone and the enumeration read the global tuning, and on any map that tuned
+laser_bounce_delay in a zone the module searched a ladder it was not shooting on
+and quietly found nothing at all.
 
 Copies of the predicted world are cut loose from the original before they are
 ticked. Both entity links have to be cleared, not just the parent: the copy
@@ -474,17 +637,26 @@ Available uniforms:
 shipped `tee.frag` reproduces the default look and has commented out rainbow and
 pulse examples to start from.
 
-**This needs the OpenGL 3.3 backend.** The default backend on Windows is legacy
-OpenGL 1.1, which has no shader support at all. Set this once and restart:
+**This needs OpenGL 3.3.** On Windows the client is on OpenGL whatever
+`gfx_backend` says, because this build has no Vulkan backend compiled in, but
+`gfx_gl_major` and `gfx_gl_minor` default to 1.1, which has no shader support at
+all. Raising the two is what matters, and it takes a restart:
 
 ```
-gfx_backend OpenGL
 gfx_gl_major 3
 gfx_gl_minor 3
 ```
 
+**On macOS none of that is needed**: 3.3 is what the client already starts on
+there. So the shader is compiled at every launch on a Mac, which is worth knowing
+while editing it — a `tee.frag` that does not compile or does not link leaves the
+tees drawn normally and puts the compiler's or linker's own message in the log,
+rather than failing quietly.
+
 On Vulkan the setting is ignored and tees render normally, because Vulkan needs
-precompiled SPIR-V rather than GLSL source.
+precompiled SPIR-V rather than GLSL source. That only comes up on Linux: the
+Windows and macOS builds are configured without a Vulkan backend, and only
+`-DVULKAN=ON` puts one back.
 
 ## Steam
 
@@ -492,9 +664,10 @@ precompiled SPIR-V rather than GLSL source.
 never collide with a variable that upstream DDNet might add later. The official
 client stores config lines it does not know and writes them back out on save
 (`CConfigManager::StoreUnknownCommand`), so these settings survive a round trip
-through the Steam version untouched. Both clients share
-`%APPDATA%\DDNet\settings_ddnet.cfg`, so sensitivity, binds and the rest stay in
-sync automatically.
+through the Steam version untouched. Both clients share the same config file —
+`%APPDATA%\DDNet\settings_ddnet.cfg` on Windows,
+`~/Library/Application Support/DDNet/settings_ddnet.cfg` on macOS — so
+sensitivity, binds and the rest stay in sync automatically.
 
 The only upstream variable whose range changed is `ui_settings_page`, which now
 allows the extra tab index; the official client clamps it back to its own range
@@ -505,6 +678,32 @@ the process it launched itself under a given AppID, and no Steamworks call
 exists to add hours. The only way to have this build count towards DDNet is to
 put it where Steam launches DDNet from, i.e. replace `DDNet.exe` in
 `steamapps\common\DDraceNetwork`.
+
+On macOS Steam launches an app bundle rather than a bare executable, so the same
+trick takes three steps instead of one:
+
+```
+~/Library/Application Support/Steam/steamapps/common/DDraceNetwork/DDNet.app/Contents/MacOS/DDNet
+```
+
+1. The binary has to go in under the name `DDNet`, because that is what the
+   bundle's `CFBundleExecutable` names. Ours is called `Leviathan`.
+2. The bundle keeps its own `Contents/Resources/data`, which is DDNet's and has
+   no `shader/tee.vert`, `shader/tee.frag` or `leviathan_logo.png` in it. Without
+   them `cl_custom_tee_shader` does nothing and says so in the log, and the start
+   menu falls back to the name in writing. The log line is
+
+   ```
+   No usable shader/tee.vert and shader/tee.frag, the custom tee shader stays off
+   ```
+
+   which is also what a shader that fails to compile or link says, so it is not
+   by itself proof of a missing file. Copy the three files in, or put the two
+   shaders in `~/Library/Application Support/DDNet/shader/`, which takes
+   precedence over `data` anyway.
+3. Editing a bundle invalidates its signature, and on Apple Silicon an unsigned
+   binary will not run at all, so it has to be signed again afterwards:
+   `codesign --force --deep --sign - .../DDNet.app`.
 
 ## Antiping
 

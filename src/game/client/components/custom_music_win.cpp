@@ -6,7 +6,7 @@
 #define NTDDI_VERSION 0x0A000006
 #endif
 
-#include "custom_music_win.h"
+#include "custom_music.h"
 
 #if defined(CONF_FAMILY_WINDOWS)
 
@@ -54,7 +54,7 @@ std::string ToUtf8(const winrt::hstring &Str)
 }
 } // namespace
 
-class CWindowsMusic::CImpl
+class CSystemMusic::CImpl
 {
 public:
 	~CImpl() { Stop(); }
@@ -65,7 +65,7 @@ public:
 	mutable std::mutex m_Lock;
 	CTrack m_Track;
 	// Commands from the render thread, drained by the worker.
-	std::vector<CWindowsMusic::ECommand> m_vPending;
+	std::vector<CSystemMusic::ECommand> m_vPending;
 	std::vector<uint8_t> m_vArtwork;
 	int m_ArtworkWidth = 0;
 	int m_ArtworkHeight = 0;
@@ -82,14 +82,14 @@ private:
 	void ClearArtwork();
 };
 
-void CWindowsMusic::CImpl::Start()
+void CSystemMusic::CImpl::Start()
 {
 	if(m_Running.exchange(true))
 		return;
 	m_Thread = std::thread([this] { Run(); });
 }
 
-void CWindowsMusic::CImpl::Stop()
+void CSystemMusic::CImpl::Stop()
 {
 	if(!m_Running.exchange(false))
 		return;
@@ -97,7 +97,7 @@ void CWindowsMusic::CImpl::Stop()
 		m_Thread.join();
 }
 
-void CWindowsMusic::CImpl::ClearArtwork()
+void CSystemMusic::CImpl::ClearArtwork()
 {
 	const std::lock_guard<std::mutex> Guard(m_Lock);
 	m_vArtwork.clear();
@@ -106,7 +106,7 @@ void CWindowsMusic::CImpl::ClearArtwork()
 	m_ArtworkFresh = true;
 }
 
-bool CWindowsMusic::CImpl::ReadArtwork(const IRandomAccessStreamReference &Reference)
+bool CSystemMusic::CImpl::ReadArtwork(const IRandomAccessStreamReference &Reference)
 {
 	if(Reference == nullptr)
 		return false;
@@ -195,7 +195,7 @@ bool CWindowsMusic::CImpl::ReadArtwork(const IRandomAccessStreamReference &Refer
 	return Success;
 }
 
-void CWindowsMusic::CImpl::Run()
+void CSystemMusic::CImpl::Run()
 {
 	// The worker owns its own apartment, the render thread is left alone.
 	const HRESULT ComResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -226,20 +226,20 @@ void CWindowsMusic::CImpl::Run()
 				{
 					// Run whatever the island asked for before reading the state
 					// back, so the display reflects it right away.
-					std::vector<CWindowsMusic::ECommand> vCommands;
+					std::vector<CSystemMusic::ECommand> vCommands;
 					{
 						const std::lock_guard<std::mutex> Guard(m_Lock);
 						vCommands.swap(m_vPending);
 					}
-					for(const CWindowsMusic::ECommand Command : vCommands)
+					for(const CSystemMusic::ECommand Command : vCommands)
 					{
 						try
 						{
 							switch(Command)
 							{
-							case CWindowsMusic::ECommand::PLAY_PAUSE: Session.TryTogglePlayPauseAsync().get(); break;
-							case CWindowsMusic::ECommand::NEXT: Session.TrySkipNextAsync().get(); break;
-							case CWindowsMusic::ECommand::PREVIOUS: Session.TrySkipPreviousAsync().get(); break;
+							case CSystemMusic::ECommand::PLAY_PAUSE: Session.TryTogglePlayPauseAsync().get(); break;
+							case CSystemMusic::ECommand::NEXT: Session.TrySkipNextAsync().get(); break;
+							case CSystemMusic::ECommand::PREVIOUS: Session.TrySkipPreviousAsync().get(); break;
 							}
 						}
 						catch(...)
@@ -328,14 +328,14 @@ void CWindowsMusic::CImpl::Run()
 		CoUninitialize();
 }
 
-CWindowsMusic::CWindowsMusic() :
+CSystemMusic::CSystemMusic() :
 	m_pImpl(std::make_unique<CImpl>())
 {
 }
 
-CWindowsMusic::~CWindowsMusic() = default;
+CSystemMusic::~CSystemMusic() = default;
 
-void CWindowsMusic::SendCommand(ECommand Command)
+void CSystemMusic::SendCommand(ECommand Command)
 {
 	const std::lock_guard<std::mutex> Guard(m_pImpl->m_Lock);
 	// One of each is enough, a burst of clicks should not queue up.
@@ -343,16 +343,16 @@ void CWindowsMusic::SendCommand(ECommand Command)
 		m_pImpl->m_vPending.push_back(Command);
 }
 
-void CWindowsMusic::Start() { m_pImpl->Start(); }
-void CWindowsMusic::Stop() { m_pImpl->Stop(); }
+void CSystemMusic::Start() { m_pImpl->Start(); }
+void CSystemMusic::Stop() { m_pImpl->Stop(); }
 
-CWindowsMusic::CTrack CWindowsMusic::Track() const
+CSystemMusic::CTrack CSystemMusic::Track() const
 {
 	const std::lock_guard<std::mutex> Guard(m_pImpl->m_Lock);
 	return m_pImpl->m_Track;
 }
 
-bool CWindowsMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height)
+bool CSystemMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height)
 {
 	const std::lock_guard<std::mutex> Guard(m_pImpl->m_Lock);
 	if(!m_pImpl->m_ArtworkFresh)
@@ -362,27 +362,6 @@ bool CWindowsMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &He
 	Width = m_pImpl->m_ArtworkWidth;
 	Height = m_pImpl->m_ArtworkHeight;
 	return true;
-}
-
-#else
-
-// Not Windows: the pimpl still needs a complete type for the destructor.
-class CWindowsMusic::CImpl
-{
-};
-
-CWindowsMusic::CWindowsMusic() = default;
-CWindowsMusic::~CWindowsMusic() = default;
-void CWindowsMusic::Start() {}
-void CWindowsMusic::Stop() {}
-void CWindowsMusic::SendCommand(ECommand Command) { (void)Command; }
-CWindowsMusic::CTrack CWindowsMusic::Track() const { return CTrack(); }
-bool CWindowsMusic::TakeArtwork(std::vector<uint8_t> &vRgba, int &Width, int &Height)
-{
-	(void)vRgba;
-	(void)Width;
-	(void)Height;
-	return false;
 }
 
 #endif

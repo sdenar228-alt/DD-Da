@@ -12,6 +12,8 @@
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
 
+#include <utility>
+
 const char *const CCustomSounds::EXTRA_SOUND_NAMES[] = {
 	"player_join",
 	"player_leave",

@@ -23,7 +23,7 @@ void CMusicIsland::OnInit()
 
 // The binds control the player with the island turned off as well, and only the
 // worker executes the queue, so it has to be running before anything is queued.
-void CMusicIsland::SendCommand(CWindowsMusic::ECommand Command)
+void CMusicIsland::SendCommand(CSystemMusic::ECommand Command)
 {
 	m_Music.Start();
 	m_Music.SendCommand(Command);
@@ -31,17 +31,17 @@ void CMusicIsland::SendCommand(CWindowsMusic::ECommand Command)
 
 void CMusicIsland::ConMusicPlayPause(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CSystemMusic::ECommand::PLAY_PAUSE);
 }
 
 void CMusicIsland::ConMusicNext(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::NEXT);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CSystemMusic::ECommand::NEXT);
 }
 
 void CMusicIsland::ConMusicPrev(IConsole::IResult *pResult, void *pUserData)
 {
-	static_cast<CMusicIsland *>(pUserData)->SendCommand(CWindowsMusic::ECommand::PREVIOUS);
+	static_cast<CMusicIsland *>(pUserData)->SendCommand(CSystemMusic::ECommand::PREVIOUS);
 }
 
 void CMusicIsland::OnConsoleInit()
@@ -339,15 +339,15 @@ void CMusicIsland::Render(float Width, float Height)
 
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
 	if(DoIslandButton(Button, ICON_PREV, Alpha, Clickable))
-		m_Music.SendCommand(CWindowsMusic::ECommand::PREVIOUS);
+		m_Music.SendCommand(CSystemMusic::ECommand::PREVIOUS);
 	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
 	if(DoIslandButton(Button, m_Track.m_Playing ? ICON_PAUSE : ICON_PLAY, Alpha, Clickable))
-		m_Music.SendCommand(CWindowsMusic::ECommand::PLAY_PAUSE);
+		m_Music.SendCommand(CSystemMusic::ECommand::PLAY_PAUSE);
 	Rest.VSplitLeft(ButtonGap, nullptr, &Rest);
 	Rest.VSplitLeft(ButtonSize, &Button, &Rest);
 	if(DoIslandButton(Button, ICON_NEXT, Alpha, Clickable))
-		m_Music.SendCommand(CWindowsMusic::ECommand::NEXT);
+		m_Music.SendCommand(CSystemMusic::ECommand::NEXT);
 
 	if(Clickable)
 		DoDrag(Pill, Buttons, Width, Height, PillWidth, PillHeight, Margin);

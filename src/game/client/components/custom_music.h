@@ -1,5 +1,5 @@
-#ifndef GAME_CLIENT_COMPONENTS_CUSTOM_MUSIC_WIN_H
-#define GAME_CLIENT_COMPONENTS_CUSTOM_MUSIC_WIN_H
+#ifndef GAME_CLIENT_COMPONENTS_CUSTOM_MUSIC_H
+#define GAME_CLIENT_COMPONENTS_CUSTOM_MUSIC_H
 
 #include <base/detect.h>
 
@@ -8,18 +8,23 @@
 #include <string>
 #include <vector>
 
-// Reads what is currently playing from the Windows media session, the same
-// source that feeds the volume flyout. Every app that reports to the system
-// shows up there: Spotify, browsers, the Groove player and so on.
+// Reads what is currently playing from whatever the system publishes it in.
 //
-// The query runs on its own thread, because the WinRT calls block, and the
-// result is published as a snapshot. Like the video decoder this lives in its
-// own translation unit, the Windows headers clash with the engine ones.
-class CWindowsMusic
+// On Windows that is the media session, the same source that feeds the volume
+// flyout, so every app that reports to the system shows up: Spotify, browsers,
+// the system player. On macOS it is the Now Playing information the media keys
+// and Control Centre act on. Everywhere else nothing is published and the
+// island stays hidden.
+//
+// The query runs on its own thread, because the system calls block, and the
+// result is published as a snapshot. Like the video decoder each platform's
+// implementation lives in its own translation unit, whose system headers clash
+// with the engine ones.
+class CSystemMusic
 {
 public:
-	CWindowsMusic();
-	~CWindowsMusic();
+	CSystemMusic();
+	~CSystemMusic();
 
 	// Starts the worker. Safe to call more than once.
 	void Start();

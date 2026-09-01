@@ -5,10 +5,10 @@
 
 #include <engine/console.h>
 
+#include <generated/protocol.h>
+
 #include <game/client/component.h>
 #include <game/client/prediction/gameworld.h>
-
-#include <generated/protocol.h>
 
 #include <array>
 #include <utility>
@@ -198,7 +198,7 @@ private:
 	// Sweeps the angles for one fire tick and keeps the best plan found so far.
 	// Gives up at the deadline with whatever it has, so a heavy setting costs
 	// frames it was allowed to cost rather than however many it takes.
-	bool Search(int FireTick, vec2 FirePos, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline);
+	bool Search(int FireTick, vec2 FirePos, int BounceTicks, CCandidate &Best, float &BestScore, std::vector<CSegment> &vBestPath, int64_t Deadline);
 	// Which fire delays could put a bounce on a tick worth hitting. Bounces land
 	// every BounceTicks, so firing a tick later moves all of them by a tick, and
 	// only a couple of delays are ever worth tracing. Delays below MinDelay are
@@ -223,17 +223,23 @@ private:
 	// The bounce budget, capped by what the server allows and by the last tick
 	// that is still worth hitting.
 	int BounceBudget(int FireTick, int BounceTicks, int TunedBounces) const;
-	// The tuning the shot bounces by, and the one that decides how far it gets.
-	// The game reads them from two different tune zones.
+	// The tuning the shot bounces by, and the one that decides how far it gets
+	// and how soon the weapon has cooled down again. The game reads them from two
+	// different tune zones: the shot bounces by the zone it was fired in, the tee
+	// reaches and reloads by the zone it is standing in.
 	const CTuningParams *LaserTuning(vec2 FirePos) const;
 	const CTuningParams *ReachTuning(vec2 FirePos) const;
+	// How long a bounce takes there, in ticks. Sampled once at the muzzle and
+	// handed to everything that needs it, because the delays enumerated and the
+	// bounces traced have to sit on the same ladder.
+	int LaserBounceTicks(vec2 FirePos) const;
 	// False on servers where a laser can never touch the tee that fired it.
 	bool SelfHitPossible() const;
+	// How long the aim vector may be, the same clamp the player's cursor obeys.
+	float AimReach() const;
 	// Whether the laser is in hand. The predicted character is a round trip
 	// ahead, but it only believes in the weapons it has seen, so the snapshot has
 	// the last word when it disagrees.
-	// How long the aim vector may be, the same clamp the player's cursor obeys.
-	float AimReach() const;
 	bool HoldsLaser() const;
 	// Whether the player owns it at all, when the server says so.
 	bool OwnsLaser() const;
@@ -250,7 +256,7 @@ private:
 	// Says what the module just decided, into unfreeze.log in the config folder,
 	// while cl_unfreeze_debug is on. A module that refuses silently is a module
 	// nobody can tell apart from a broken one.
-	void Debug(const char *pFormat, ...) const;
+	[[gnu::format(printf, 2, 3)]] void Debug(const char *pFormat, ...) const;
 	mutable char m_aLastDebug[256] = {};
 	// The log holds one session. It used to be appended to for ever, which after
 	// an evening of playing is a file too large to do anything with.

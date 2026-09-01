@@ -85,6 +85,7 @@
 
 #include <chrono>
 #include <limits>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -4172,10 +4173,14 @@ void CGameClient::LoadBrightHookSprites(const CImageInfo &ImgInfo, const std::op
 // the loading code unchanged.
 void CGameClient::ApplyGameAssetOverrides(CImageInfo &ImgInfo)
 {
+	// The sprite ids are stored in a vector, not a std::initializer_list:
+	// an initializer_list member would only point at a temporary backing
+	// array whose lifetime ends with the declaration below, which would
+	// leave the copy loop further down reading freed memory.
 	struct SGroup
 	{
 		const char *m_pPack;
-		std::initializer_list<int> m_vSprites;
+		std::vector<int> m_vSprites;
 	};
 	const SGroup aGroups[] = {
 		{g_Config.m_ClCustomAssetHook, {SPRITE_HOOK_CHAIN, SPRITE_HOOK_HEAD}},

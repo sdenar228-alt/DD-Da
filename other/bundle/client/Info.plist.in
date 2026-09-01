@@ -8,6 +8,10 @@
 		<string>${CLIENT_EXECUTABLE}</string>
 		<key>CFBundleIconFile</key>
 		<string>${CLIENT_EXECUTABLE}</string>
+		<key>CFBundleName</key>
+		<string>${CLIENT_EXECUTABLE}</string>
+		<key>CFBundleDisplayName</key>
+		<string>${CLIENT_EXECUTABLE}</string>
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundlePackageType</key>
@@ -17,7 +21,7 @@
 		<key>CFBundleVersion</key>
 		<string>${PROJECT_VERSION}</string>
 		<key>CFBundleIdentifier</key>
-		<string>org.DDNetClient.app</string>
+		<string>com.leviathan.client</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -52,6 +56,8 @@
 				</array>
 			</dict>
 		</array>
+		<key>NSAppleEventsUsageDescription</key>
+		<string>${CLIENT_EXECUTABLE} asks Music, Spotify and other players what they are playing, so the track can be shown in the music island. It only reads the title, the artist and the artwork, and only sends play, pause and skip when you press those buttons.</string>
 		<key>NSHighResolutionCapable</key>
 		<true/>
 		<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>

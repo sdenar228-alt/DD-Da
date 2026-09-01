@@ -161,8 +161,9 @@ tags
 /build/
 /ddnet-libs/
 
-# our own build helper, not caught by the /build* rule above
+# our own build helpers, which the /build* rule above would swallow
 !/build.bat
+!/build.sh
 
 # Built artifacts handed out by hand, like the iOS app from the workflow.
 /dist/

@@ -1,6 +1,6 @@
 #include "custom_background.h"
 
-#include "custom_media_win.h"
+#include "custom_media.h"
 
 #include <base/io.h>
 #include <base/log.h>
@@ -15,12 +15,15 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <vector>
 
 #if defined(CONF_VIDEORECORDER)
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/display.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
@@ -71,6 +74,15 @@ private:
 
 	int m_Width = 0;
 	int m_Height = 0;
+	// The size the scaler writes, which is the one the file stores. The same as
+	// m_Width and m_Height until the frame is turned a quarter of the way round.
+	int m_ScaledWidth = 0;
+	int m_ScaledHeight = 0;
+	// How far clockwise the frame has to be turned to stand the way it was shot.
+	int m_Rotation = 0;
+	// Only used for a turned frame, which cannot be scaled straight into the
+	// caller's image. Kept between frames so it is allocated once.
+	std::vector<uint8_t> m_vRotateBuffer;
 	// Presentation time of the frame that is currently shown, in seconds.
 	double m_CurrentPts = -1.0;
 	bool m_Eof = false;
@@ -87,6 +99,56 @@ private:
 };
 
 #if defined(CONF_VIDEORECORDER)
+
+// Copies a picture into `pDst`, turning it clockwise by `Rotation` degrees on
+// the way. `pDst` holds the turned picture, whose width and height are the
+// other way round for a quarter turn either way. Both are tightly packed RGBA.
+static void RotateRgba(const uint8_t *pSrc, int SrcWidth, int SrcHeight, int Rotation, uint8_t *pDst)
+{
+	const int DstWidth = Rotation == 90 || Rotation == 270 ? SrcHeight : SrcWidth;
+	// Where the pixel in the top left corner of the stored frame belongs, and
+	// how far along the next one in a row and the first one of the next row are
+	// from it. The turn costs nothing more than these three numbers, because
+	// every pixel is being written one by one anyway.
+	int Base, RowStep, PixelStep;
+	switch(Rotation)
+	{
+	case 90:
+		Base = SrcHeight - 1;
+		RowStep = -1;
+		PixelStep = DstWidth;
+		break;
+	case 180:
+		Base = (SrcHeight - 1) * DstWidth + SrcWidth - 1;
+		RowStep = -DstWidth;
+		PixelStep = -1;
+		break;
+	case 270:
+		Base = (SrcWidth - 1) * DstWidth;
+		RowStep = 1;
+		PixelStep = -DstWidth;
+		break;
+	default:
+		Base = 0;
+		RowStep = DstWidth;
+		PixelStep = 1;
+		break;
+	}
+
+	for(int y = 0; y < SrcHeight; ++y)
+	{
+		const uint8_t *pRow = pSrc + (size_t)y * SrcWidth * 4;
+		int Target = Base + y * RowStep;
+		for(int x = 0; x < SrcWidth; ++x, Target += PixelStep)
+		{
+			// A whole pixel at a time rather than four bytes: this loop runs over
+			// every pixel of every frame.
+			uint32_t Pixel;
+			std::memcpy(&Pixel, pRow + (size_t)x * 4, sizeof(Pixel));
+			std::memcpy(pDst + (size_t)Target * 4, &Pixel, sizeof(Pixel));
+		}
+	}
+}
 
 bool CCustomBackground::CMedia::HasDecoders()
 {
@@ -195,16 +257,58 @@ bool CCustomBackground::CMedia::Open(const char *pPath, IOHANDLE File)
 		return false;
 	}
 
+	const AVStream *pStream = m_pFormatContext->streams[m_StreamIndex];
+
+	// Video shot on a phone is stored the way the sensor read it, with a matrix
+	// on the stream saying which way up it goes. av_display_rotation_get reports
+	// that turn counter-clockwise, while the copy out turns clockwise, so the
+	// sign is flipped here. Only whole quarter turns are worth taking apart;
+	// anything else in there is a mirror or a scale, and no camera writes one of
+	// those into a plain video file.
+	m_Rotation = 0;
+	const uint8_t *pMatrix = nullptr;
+	size_t MatrixSize = 0;
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61, 0, 0)
+	// FFmpeg 7 moved a stream's side data onto its codec parameters.
+	const AVPacketSideData *pSideData = av_packet_side_data_get(
+		pStream->codecpar->coded_side_data, pStream->codecpar->nb_coded_side_data,
+		AV_PKT_DATA_DISPLAYMATRIX);
+	if(pSideData != nullptr)
+	{
+		pMatrix = pSideData->data;
+		MatrixSize = pSideData->size;
+	}
+#else
+	pMatrix = av_stream_get_side_data(pStream, AV_PKT_DATA_DISPLAYMATRIX, &MatrixSize);
+#endif
+	if(pMatrix != nullptr && MatrixSize >= sizeof(int32_t) * 9)
+	{
+		const double Degrees = -av_display_rotation_get((const int32_t *)pMatrix);
+		// A singular matrix comes back as NaN, which no rounding would survive.
+		if(!std::isnan(Degrees))
+		{
+			const int Whole = (((int)std::lround(Degrees) % 360) + 360) % 360;
+			m_Rotation = ((Whole + 45) / 90 * 90) % 360;
+		}
+	}
+	const bool Swapped = m_Rotation == 90 || m_Rotation == 270;
+
 	// Keep the aspect ratio while staying inside the frame size limit.
 	const int SrcWidth = std::max(1, m_pCodecContext->width);
 	const int SrcHeight = std::max(1, m_pCodecContext->height);
-	const float Scale = std::min({1.0f, MAX_FRAME_WIDTH / (float)SrcWidth, MAX_FRAME_HEIGHT / (float)SrcHeight});
-	// Even dimensions keep the scaler on its fast paths.
-	m_Width = std::max(2, (int)(SrcWidth * Scale) & ~1);
-	m_Height = std::max(2, (int)(SrcHeight * Scale) & ~1);
+	// The limit is about how much of the screen a frame ends up covering, so it
+	// is measured on the picture the way it will be seen, after the turn.
+	const int DisplayWidth = Swapped ? SrcHeight : SrcWidth;
+	const int DisplayHeight = Swapped ? SrcWidth : SrcHeight;
+	const float Scale = std::min({1.0f, MAX_FRAME_WIDTH / (float)DisplayWidth, MAX_FRAME_HEIGHT / (float)DisplayHeight});
+	// Even dimensions keep the scaler on its fast paths. The scaler works in the
+	// orientation the file stores; the turn happens after it.
+	m_ScaledWidth = std::max(2, (int)(SrcWidth * Scale) & ~1);
+	m_ScaledHeight = std::max(2, (int)(SrcHeight * Scale) & ~1);
+	m_Width = Swapped ? m_ScaledHeight : m_ScaledWidth;
+	m_Height = Swapped ? m_ScaledWidth : m_ScaledHeight;
 
 	// A single picture (png, jpg, ...) shows up as a stream with one frame.
-	const AVStream *pStream = m_pFormatContext->streams[m_StreamIndex];
 	m_IsStill = pStream->nb_frames == 1 || m_pFormatContext->duration <= 0;
 
 	m_CurrentPts = -1.0;
@@ -242,6 +346,13 @@ void CCustomBackground::CMedia::Close()
 	m_CurrentPts = -1.0;
 	m_Eof = false;
 	m_IsStill = false;
+	m_Width = 0;
+	m_Height = 0;
+	m_ScaledWidth = 0;
+	m_ScaledHeight = 0;
+	m_Rotation = 0;
+	m_vRotateBuffer.clear();
+	m_vRotateBuffer.shrink_to_fit();
 }
 
 void CCustomBackground::CMedia::Rewind()
@@ -328,7 +439,7 @@ bool CCustomBackground::CMedia::NextFrame(float Time, CImageInfo &Image)
 
 	m_pSwsContext = sws_getCachedContext(m_pSwsContext,
 		m_pFrame->width, m_pFrame->height, (AVPixelFormat)m_pFrame->format,
-		m_Width, m_Height, AV_PIX_FMT_RGBA,
+		m_ScaledWidth, m_ScaledHeight, AV_PIX_FMT_RGBA,
 		SWS_BILINEAR, nullptr, nullptr, nullptr);
 	if(m_pSwsContext == nullptr)
 		return false;
@@ -339,9 +450,21 @@ bool CCustomBackground::CMedia::NextFrame(float Time, CImageInfo &Image)
 	Image.m_Format = CImageInfo::FORMAT_RGBA;
 	Image.Allocate();
 
-	uint8_t *apDst[4] = {Image.m_pData, nullptr, nullptr, nullptr};
-	int aDstLineSize[4] = {(int)(m_Width * 4), 0, 0, 0};
+	int aDstLineSize[4] = {(int)(m_ScaledWidth * 4), 0, 0, 0};
+	if(m_Rotation == 0)
+	{
+		// The common case, where the scaler writes the caller's image directly.
+		uint8_t *apDst[4] = {Image.m_pData, nullptr, nullptr, nullptr};
+		sws_scale(m_pSwsContext, m_pFrame->data, m_pFrame->linesize, 0, m_pFrame->height, apDst, aDstLineSize);
+		return true;
+	}
+
+	// A turned frame goes through a buffer of its own, because the scaler only
+	// writes rows the way they are stored.
+	m_vRotateBuffer.resize((size_t)m_ScaledWidth * m_ScaledHeight * 4);
+	uint8_t *apDst[4] = {m_vRotateBuffer.data(), nullptr, nullptr, nullptr};
 	sws_scale(m_pSwsContext, m_pFrame->data, m_pFrame->linesize, 0, m_pFrame->height, apDst, aDstLineSize);
+	RotateRgba(m_vRotateBuffer.data(), m_ScaledWidth, m_ScaledHeight, m_Rotation, Image.m_pData);
 	return true;
 }
 
@@ -369,11 +492,9 @@ bool CCustomBackground::CMedia::NextFrame(float Time, CImageInfo &Image)
 #endif
 
 CCustomBackground::CCustomBackground() :
-	m_pMedia(std::make_unique<CMedia>())
+	m_pMedia(std::make_unique<CMedia>()),
+	m_pSystemMedia(std::make_unique<CSystemMedia>())
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	m_pWindowsMedia = std::make_unique<CWindowsMedia>();
-#endif
 	m_Texture.Invalidate();
 }
 
@@ -386,10 +507,8 @@ void CCustomBackground::Unload()
 	m_TextureWidth = 0;
 	m_TextureHeight = 0;
 	m_pMedia->Close();
-#if defined(CONF_FAMILY_WINDOWS)
-	m_pWindowsMedia->Close();
-	m_UsingWindowsMedia = false;
-#endif
+	m_pSystemMedia->Close();
+	m_UsingSystemMedia = false;
 	m_LoadedFile.clear();
 	m_LoadFailed = false;
 	m_IsStill = false;
@@ -434,10 +553,10 @@ void CCustomBackground::Update()
 			}
 		}
 
-#if defined(CONF_FAMILY_WINDOWS)
-		// Anything that is not a PNG goes to the Windows codecs first: WIC reads
-		// jpg, bmp, gif and friends, Media Foundation plays mp4 and whatever
-		// else the system can decode.
+		// Anything that is not a PNG goes to the system codecs first: on Windows
+		// WIC reads jpg, bmp, gif and friends and Media Foundation plays mp4, on
+		// macOS ImageIO and AVFoundation do the same. They need a real path, so a
+		// file that could not be located above skips straight to FFmpeg.
 		if(aAbsolutePath[0] != 0 && str_endswith_nocase(pFile, ".png") == nullptr)
 		{
 			const bool LooksLikeImage =
@@ -445,52 +564,49 @@ void CCustomBackground::Update()
 				str_endswith_nocase(pFile, ".jpeg") != nullptr ||
 				str_endswith_nocase(pFile, ".bmp") != nullptr ||
 				str_endswith_nocase(pFile, ".webp") != nullptr ||
+				str_endswith_nocase(pFile, ".heic") != nullptr ||
 				str_endswith_nocase(pFile, ".tif") != nullptr ||
 				str_endswith_nocase(pFile, ".tiff") != nullptr;
 			// A gif can be animated, so it goes to the video decoder first.
-			const bool Opened = LooksLikeImage ?
-						    m_pWindowsMedia->OpenImage(aAbsolutePath) :
-						    (m_pWindowsMedia->OpenVideo(aAbsolutePath) || m_pWindowsMedia->OpenImage(aAbsolutePath));
-			if(Opened)
+			if(LooksLikeImage ?
+				   m_pSystemMedia->OpenImage(aAbsolutePath) :
+				   (m_pSystemMedia->OpenVideo(aAbsolutePath) || m_pSystemMedia->OpenImage(aAbsolutePath)))
 			{
-				m_UsingWindowsMedia = true;
-				m_IsStill = m_pWindowsMedia->IsStill();
-				m_Width = m_pWindowsMedia->Width();
-				m_Height = m_pWindowsMedia->Height();
+				m_UsingSystemMedia = true;
+				m_IsStill = m_pSystemMedia->IsStill();
+				m_Width = m_pSystemMedia->Width();
+				m_Height = m_pSystemMedia->Height();
 			}
-			else
-			{
-				m_LoadFailed = true;
-				return;
-			}
-		}
-		else
-#endif
-		// PNG goes through the engine image loader, which is always available.
-		// Everything else needs a decoder from FFmpeg.
-		if(str_endswith_nocase(pFile, ".png") != nullptr)
-		{
-			CImageInfo Image;
-			if(!Graphics()->LoadPng(Image, aPath, IStorage::TYPE_ALL))
-			{
-				m_LoadFailed = true;
-				return;
-			}
-			m_Width = Image.m_Width;
-			m_Height = Image.m_Height;
-			m_Texture = Graphics()->LoadTextureRawMove(Image, 0, "custom background");
-			m_HasFrame = m_Texture.IsValid() && !m_Texture.IsNullTexture();
-			m_IsStill = true;
-			if(!m_HasFrame)
-			{
-				m_Texture.Invalidate();
-				m_LoadFailed = true;
-			}
-			return;
+			// A refusal is not the end: the platforms with no system codecs at all
+			// refuse everything, and there FFmpeg below is the only decoder there
+			// has ever been.
 		}
 
-		else
+		if(!m_UsingSystemMedia)
 		{
+			// PNG goes through the engine image loader, which is always available.
+			// Everything else needs a decoder from FFmpeg.
+			if(str_endswith_nocase(pFile, ".png") != nullptr)
+			{
+				CImageInfo Image;
+				if(!Graphics()->LoadPng(Image, aPath, IStorage::TYPE_ALL))
+				{
+					m_LoadFailed = true;
+					return;
+				}
+				m_Width = Image.m_Width;
+				m_Height = Image.m_Height;
+				m_Texture = Graphics()->LoadTextureRawMove(Image, 0, "custom background");
+				m_HasFrame = m_Texture.IsValid() && !m_Texture.IsNullTexture();
+				m_IsStill = true;
+				if(!m_HasFrame)
+				{
+					m_Texture.Invalidate();
+					m_LoadFailed = true;
+				}
+				return;
+			}
+
 			IOHANDLE MediaFile = Storage()->OpenFile(aPath, IOFLAG_READ, IStorage::TYPE_ALL);
 			if(MediaFile == nullptr)
 			{
@@ -513,14 +629,13 @@ void CCustomBackground::Update()
 		return;
 
 	CImageInfo Frame;
-#if defined(CONF_FAMILY_WINDOWS)
-	if(m_UsingWindowsMedia)
+	if(m_UsingSystemMedia)
 	{
 		// Applied every frame so that changing the setting takes effect at once.
-		m_pWindowsMedia->SetMaxDuration(g_Config.m_ClCustomBackgroundVideoLength);
+		m_pSystemMedia->SetMaxDuration(g_Config.m_ClCustomBackgroundVideoLength);
 
-		const int Width = m_pWindowsMedia->Width();
-		const int Height = m_pWindowsMedia->Height();
+		const int Width = m_pSystemMedia->Width();
+		const int Height = m_pSystemMedia->Height();
 		if(Width <= 0 || Height <= 0)
 			return;
 		const size_t Size = (size_t)Width * Height * 4;
@@ -530,7 +645,7 @@ void CCustomBackground::Update()
 		uint8_t *pPixels = static_cast<uint8_t *>(malloc(Size));
 		if(pPixels == nullptr)
 			return;
-		if(!m_pWindowsMedia->NextFrame(Client()->GlobalTime(), pPixels, Size))
+		if(!m_pSystemMedia->NextFrame(Client()->GlobalTime(), pPixels, Size))
 		{
 			free(pPixels);
 			return;
@@ -552,9 +667,7 @@ void CCustomBackground::Update()
 		Frame.m_Format = CImageInfo::FORMAT_RGBA;
 		Frame.m_pData = pPixels;
 	}
-	else
-#endif
-		if(!m_pMedia->NextFrame(Client()->GlobalTime(), Frame))
+	else if(!m_pMedia->NextFrame(Client()->GlobalTime(), Frame))
 		return;
 
 	if(m_Texture.IsValid())
