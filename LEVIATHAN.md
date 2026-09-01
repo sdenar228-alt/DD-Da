@@ -306,6 +306,11 @@ without them (the N editions) still starts and only fails to decode.
 In game the map is drawn on top, so the background is only visible where the map
 is see-through, for example with the entities overlay.
 
+Above the theme list is the colour of the menus themselves, the panels and the
+buttons and the bars. The game has always had that setting and has never had a
+picker for it, so until now it could only be changed by typing `ui_color` into
+the console with a packed number after it.
+
 The menu's own moving background is a different thing: a small map, chosen by
 theme, that the game has always had. Its themes live in `data/themes` and the
 picker for them now sits at the bottom of the same settings page, rather than

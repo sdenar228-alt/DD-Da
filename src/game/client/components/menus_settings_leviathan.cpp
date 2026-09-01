@@ -704,7 +704,7 @@ void CMenus::RenderSettingsLeviathanMisc(CUIRect MainView)
 	{
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
-		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "В°/s");
+		Ui()->DoScrollbarOption(&g_Config.m_ClCustomSpinSpeed, &g_Config.m_ClCustomSpinSpeed, &Button, Localize("Speed"), -3600, 3600, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "Р’В°/s");
 
 		LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 		LeftView.HSplitTop(LINE_SIZE, &Button, &LeftView);
@@ -755,8 +755,10 @@ void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 	// The menu's own moving background, which is a map rather than a picture, and
 	// belongs next to the picture settings rather than three pages away under the
 	// general options where nobody looks for it.
-	CUIRect Themes;
+	CUIRect Themes, MenuColor;
 	LeftView.HSplitBottom(150.0f, &LeftView, &Themes);
+	LeftView.HSplitBottom(MARGIN_SMALL, &LeftView, nullptr);
+	LeftView.HSplitBottom(COLOR_PICKER_LINE_SIZE, &LeftView, &MenuColor);
 	LeftView.HSplitBottom(MARGIN_SMALL, &LeftView, nullptr);
 
 	Ui()->DoLabel_AutoLineSize(Localize("Custom background"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
@@ -878,6 +880,15 @@ void CMenus::RenderSettingsLeviathanBackground(CUIRect MainView)
 	{
 		RefreshBackgroundList();
 	}
+	// The colour of the menus themselves: the panels, the buttons, the bars. It
+	// is a setting the game has always had and has never had a picker for, so
+	// until now it could only be changed by typing ui_color into the console with
+	// a packed number after it.
+	static CButtonContainer s_MenuColor;
+	static int s_MenuColorOpacity;
+	DoLeviathanColorLine(&s_MenuColor, &s_MenuColorOpacity, &MenuColor, Localize("Menu color"),
+		&g_Config.m_UiColor, 0xE4A046AF);
+
 	// Underneath everything: the theme the menu map is picked from. The list is
 	// the game's own, so a theme chosen here is the one chosen in the general
 	// settings, not a second setting that says the same thing.
