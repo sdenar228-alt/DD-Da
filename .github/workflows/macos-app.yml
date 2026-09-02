@@ -25,6 +25,13 @@ env:
 jobs:
   build:
     runs-on: macos-26
+    # Release is what ships. Debug is built beside it because a Debug build has
+    # assertions on and optimizations off, which is where a use of uninitialized
+    # memory or a failed dbg_assert shows itself instead of hiding.
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
     env:
       CARGO_HTTP_MULTIPLEXING: false
     steps:
@@ -62,6 +69,7 @@ jobs:
       with:
           cache-bin: false # WORKAROUND(https://github.com/Swatinem/rust-cache/issues/341)
           workspaces: ./
+          key: ${{ matrix.build_type }}
 
     # PREFER_BUNDLED_LIBS is what makes the image runnable off this machine.
     # Without it CMake resolves freetype, png and the opus/ogg that brew's ffmpeg
@@ -73,7 +81,7 @@ jobs:
     # so the smoke test below would pass and the .dmg would still fail to launch
     # on anybody else's Mac.
     - name: Configure
-      run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPREFER_BUNDLED_LIBS=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
+      run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DPREFER_BUNDLED_LIBS=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
 
     - name: Build client
       run: cmake --build build --target game-client
@@ -92,7 +100,7 @@ jobs:
     # playing worker only starts when the island asks it to.
     - name: Build headless client for the smoke test
       run: |
-        cmake -S . -B build-headless -G Ninja -DCMAKE_BUILD_TYPE=Release -DPREFER_BUNDLED_LIBS=ON -DHEADLESS_CLIENT=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
+        cmake -S . -B build-headless -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DPREFER_BUNDLED_LIBS=ON -DHEADLESS_CLIENT=ON -DCLIENT_EXECUTABLE="$APP_NAME" -DDISCORD=ON
         cmake --build build-headless --target game-client
 
     # The client runs its arguments as console commands, so `quit` leaves again
@@ -114,6 +122,7 @@ jobs:
     # with the Info.plist, the icon, the data folder and the frameworks, and
     # wraps that in the disk image.
     - name: Package
+      if: matrix.build_type == 'Release'
       run: |
         cmake --build build --target package_dmg
         mkdir artifacts
@@ -127,6 +136,7 @@ jobs:
         ls -lh artifacts
 
     - name: Upload Artifacts
+      if: matrix.build_type == 'Release'
       uses: actions/upload-artifact@v6
       with:
         name: leviathan-macos-dmg

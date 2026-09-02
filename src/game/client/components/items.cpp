@@ -18,6 +18,8 @@
 #include <game/client/prediction/entities/projectile.h>
 #include <game/client/projectile_data.h>
 #include <game/mapitems.h>
+#include <algorithm>
+#include <cmath>
 
 void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const CScreenRect &ScreenRect)
 {

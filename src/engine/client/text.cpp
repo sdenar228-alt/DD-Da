@@ -23,6 +23,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
+#include <cmath>
 
 using namespace std::chrono_literals;
 

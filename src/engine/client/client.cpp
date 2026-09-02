@@ -4413,6 +4413,7 @@ int CClient::HandleChecksum(int Conn, CUuid Uuid, CUnpacker *pUnpacker)
 		str_copy(m_Checksum.m_Data.m_Config.m_##Name, g_Config.m_##Name); \
 	}
 #include <engine/shared/config_variables.h>
+#include <cstdlib>
 #undef CHECKSUM_RECORD
 #undef MACRO_CONFIG_INT
 #undef MACRO_CONFIG_COL

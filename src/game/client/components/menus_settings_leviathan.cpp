@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <cmath>
 
 enum
 {
