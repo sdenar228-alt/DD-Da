@@ -1135,6 +1135,25 @@ int CGraphicsBackend_SDL_GL::Init(const char *pName, int *pScreen, int *pWidth, 
 	g_Config.m_GfxGLMinor = 0;
 	g_Config.m_GfxGLPatch = 0;
 	int InitError = 0;
+	// What the window actually became, not what was asked for. A screen that is
+	// not full is otherwise a guess between the setting, the flags and what the
+	// window server decided, and this line settles it from a user's log alone.
+	{
+		const unsigned WindowFlags = SDL_GetWindowFlags(m_pWindow);
+		const char *pKind = "windowed";
+		if((WindowFlags & SDL_WINDOW_FULLSCREEN_DESKTOP) == SDL_WINDOW_FULLSCREEN_DESKTOP)
+			pKind = "desktop fullscreen";
+		else if((WindowFlags & SDL_WINDOW_FULLSCREEN) != 0)
+			pKind = "exclusive fullscreen";
+		else if((WindowFlags & SDL_WINDOW_BORDERLESS) != 0)
+			pKind = "borderless window";
+		int WindowWidth = 0, WindowHeight = 0;
+		SDL_GetWindowSize(m_pWindow, &WindowWidth, &WindowHeight);
+		log_info("gfx", "Window is %s, %dx%d (gfx_fullscreen %d, gfx_borderless %d, desktop %dx%d)",
+			pKind, WindowWidth, WindowHeight, g_Config.m_GfxFullscreen, g_Config.m_GfxBorderless,
+			*pDesktopWidth, *pDesktopHeight);
+	}
+
 	int GlewMajor = 0;
 	int GlewMinor = 0;
 	int GlewPatch = 0;

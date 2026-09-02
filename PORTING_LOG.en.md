@@ -157,6 +157,38 @@ after updating, the build environment having no screen.
 
 ---
 
+## Error 8
+
+**Error:**
+The client on a Mac still did not open full screen, after Error 7 was fixed
+(user's report and log: Apple M5, macOS 25.6, 2 September).
+
+**Cause:**
+Error 7 was real but was not this. It fixed mode 1, and on macOS mode 1 is not
+the default: in `config_variables.h`, under `CONF_PLATFORM_MACOS`, upstream DDNet
+sets **its own** defaults, `gfx_borderless 1` and `gfx_fullscreen 0`. The Mac
+client therefore does not start full screen at all: it starts as a borderless
+window filling the space between the menu bar and the dock, which looks like a
+full screen that failed. That is what the photo showed.
+
+**Fix:**
+The macOS default for `gfx_fullscreen` is 2, desktop fullscreen: a Space of its
+own, and the same thing macOS turns mode 1 into anyway. Additionally
+`backend_sdl.cpp` now logs what the window actually became, "desktop
+fullscreen" / "borderless window" / its size, so the next such question is
+settled by reading a log rather than by guessing.
+
+A default only applies to a config that does not carry the value yet. Anybody
+whose client has already run has it written in `settings_ddnet.cfg` and has to
+change it once: `gfx_fullscreen 2` in the console (F1), or Settings, Graphics.
+
+**Check:**
+Windows: `build.bat` green, Windows behaviour unchanged, the edit being inside
+the macOS `#else`. macOS: CI build; the new log line will confirm the mode from
+the user's very first launch.
+
+---
+
 ## Not checkable here
 
 The CI runner has no window server, so these were not exercised on macOS and
