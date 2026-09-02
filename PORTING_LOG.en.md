@@ -131,6 +131,32 @@ to a clean config save. No new error to log from this stage.
 
 ---
 
+## Error 7
+
+**Error:**
+On a real Mac the client did not open full screen: the macOS menu bar and the
+dock stayed visible (the user's photo, 2 September).
+
+**Cause:**
+Two code paths disagreed. When the mode is switched from the settings
+(`SetWindowParams`), DDNet on macOS turns mode 1 ("pure fullscreen") into
+desktop fullscreen, with a note that the exclusive kind freezes the game on
+focus loss. But at **window creation** (`IssueInit`) mode 1, the default, still
+asked for exclusive `SDL_WINDOW_FULLSCREEN`. On current macOS that does not
+produce a fullscreen Space: the window sits under the menu bar and the dock, and
+only a trip through the settings made it a real fullscreen.
+
+**Fix:**
+`graphics_threaded.cpp`, `IssueInit`: under `CONF_PLATFORM_MACOS` (and Haiku, as
+in the runtime branch) mode 1 counts as desktop fullscreen at startup too.
+Windows is untouched; the change is inside the ifdef.
+
+**Check:**
+Windows: `build.bat` green. macOS: CI build; visually only on the user's Mac
+after updating, the build environment having no screen.
+
+---
+
 ## Not checkable here
 
 The CI runner has no window server, so these were not exercised on macOS and
