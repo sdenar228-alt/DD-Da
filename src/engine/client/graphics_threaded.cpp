@@ -2232,6 +2232,15 @@ int CGraphics_Threaded::IssueInit()
 	//  Windowed fullscreen is only available on Windows, use desktop fullscreen on other platforms
 	IsDesktopFullscreen |= g_Config.m_GfxFullscreen == 3;
 #endif
+#if defined(CONF_PLATFORM_MACOS) || defined(CONF_PLATFORM_HAIKU)
+	// The same rule SetWindowParams applies later: on these platforms exclusive
+	// fullscreen is turned into desktop fullscreen, because the game freezes on
+	// losing focus in the exclusive kind. It has to hold at startup as well, or
+	// the first window is an exclusive one that macOS shows under its menu bar
+	// and dock, and only a trip through the settings makes it a real fullscreen.
+	IsDesktopFullscreen |= IsExclusiveFullscreen;
+	IsExclusiveFullscreen = false;
+#endif
 
 	int Flags = 0;
 	if(IsExclusiveFullscreen)
