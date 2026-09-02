@@ -111,6 +111,11 @@ DDNet client uses, so a stock config carries over.
 and how the fix was checked. It also states plainly which parts have only been
 verified by the automated build and not by a person at a Mac.
 
+## License
+
+DDNet's own license applies to the whole tree, this build included: see
+`license.txt` at the root of the repository.
+
 ## Continuous builds
 
 `.github/workflows/macos-app.yml` builds the client on Apple Silicon runners in
