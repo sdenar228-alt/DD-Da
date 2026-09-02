@@ -61,6 +61,12 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	MainView.VSplitLeft(30.0f, nullptr, &ExtMenu);
 	ExtMenu.VSplitLeft(100.0f, &ExtMenu, nullptr);
 
+	// The language switch sits at the very bottom of the column, so a player who
+	// cannot read the menu finds it without reading anything.
+	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
+	GameClient()->m_Menus.DoLanguageToggle(Button);
+	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr);
+
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_TelegramButton;
 	if(GameClient()->m_Menus.DoButton_Menu(&s_TelegramButton, Localize("Telegram"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))

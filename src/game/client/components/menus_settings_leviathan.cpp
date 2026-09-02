@@ -1409,6 +1409,14 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 	CUIRect LeftView, RightView, Button;
 	MainView.VSplitMid(&LeftView, &RightView, MARGIN_BETWEEN_VIEWS);
 
+	// Language first: it decides how the rest of the page reads.
+	CUIRect LanguageRow, LanguageLabel, LanguageToggle;
+	LeftView.HSplitTop(LINE_SIZE, &LanguageRow, &LeftView);
+	LanguageRow.VSplitMid(&LanguageLabel, &LanguageToggle, MARGIN_SMALL);
+	Ui()->DoLabel(&LanguageLabel, Localize("Language"), 13.0f, TEXTALIGN_ML);
+	DoLanguageToggle(LanguageToggle);
+	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
+
 	Ui()->DoLabel_AutoLineSize(Localize("Focus mode"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &LeftView, HEADLINE_HEIGHT);
 	LeftView.HSplitTop(MARGIN_SMALL, nullptr, &LeftView);
 
@@ -1599,4 +1607,27 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClCustomSpinDummy, Localize("Spin the dummy as well"), &g_Config.m_ClCustomSpinDummy, &RightView, LINE_SIZE);
 	}
+}
+
+void CMenus::SetLanguage(const char *pFilename)
+{
+	if(str_comp(g_Config.m_ClLanguagefile, pFilename) == 0)
+		return;
+	str_copy(g_Config.m_ClLanguagefile, pFilename);
+	GameClient()->OnLanguageChange();
+}
+
+void CMenus::DoLanguageToggle(CUIRect Rect)
+{
+	// English is the entry with no file; Russian is the fork's own default.
+	const bool Russian = str_comp(g_Config.m_ClLanguagefile, "languages/russian.txt") == 0;
+	CUIRect Left, Right;
+	Rect.VSplitMid(&Left, &Right, 0.0f);
+	static CButtonContainer s_RuButton, s_EnButton;
+	// The labels are not localised: they name languages, and have to read the
+	// same in either.
+	if(DoButton_Menu(&s_RuButton, "RU", Russian ? 1 : 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L, 5.0f, 0.0f, Russian ? ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		SetLanguage("languages/russian.txt");
+	if(DoButton_Menu(&s_EnButton, "EN", Russian ? 0 : 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R, 5.0f, 0.0f, Russian ? ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)))
+		SetLanguage("");
 }

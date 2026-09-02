@@ -1,148 +1,164 @@
-# Porting log: Leviathan on macOS (Apple Silicon)
+# Журнал портирования: Leviathan на macOS (Apple Silicon)
 
-Every problem met while bringing the Windows client to macOS arm64, with its
-cause, the fix, and how the fix was checked. Read this before starting a new
-stage, so nothing here is solved a second time.
+Каждая проблема, встреченная при переносе Windows-клиента на macOS arm64: её
+причина, исправление и то, как исправление проверялось. Перед новым этапом
+читать этот файл, чтобы не решать записанное здесь во второй раз.
 
-The port lives in the same tree as the Windows client. Shared code is shared;
-the platform-specific parts sit behind `CONF_PLATFORM_MACOS` / `CONF_FAMILY_UNIX`
-or in their own files (`src/macos/`, `*_mac.mm`, the unix half of
-`discord_ipc.cpp`). The Windows client is built from the same commit and is not
-changed by any of this.
+Порт живёт в том же дереве, что и Windows-клиент. Общий код общий; платформенные
+части лежат за `CONF_PLATFORM_MACOS` / `CONF_FAMILY_UNIX` или в своих файлах
+(`src/macos/`, `*_mac.mm`, unix-половина `discord_ipc.cpp`). Windows-клиент
+собирается из того же коммита и ничем из этого не меняется.
 
-Builds run on GitHub Actions (`.github/workflows/macos-app.yml`, runner
-`macos-26`, which is Apple Silicon). There is no Mac in the development
-environment, so "checked" below means: the CI build passed and, where stated, a
-headless client ran to a clean shutdown. What could not be checked without a
-window server is listed at the end, not hidden.
+Сборки идут на GitHub Actions (`.github/workflows/macos-app.yml`, раннер
+`macos-26` — это Apple Silicon). Мака в среде разработки нет, поэтому
+«проверено» ниже означает: сборка в CI прошла и, где это сказано отдельно,
+headless-клиент дошёл до чистого завершения. Что нельзя проверить без оконной
+системы, перечислено в конце, а не спрятано.
 
 ---
 
-## Error 1
+## Ошибка №1
 
-**Error:**
-The packaged app opened to a grey window and hung. The log on the Mac read:
+**Ошибка:**
+Упакованное приложение открывалось серым окном и зависало. Лог на маке:
 `no data directory found` … `$CURRENTDIR ('/')`.
 
-**Cause:**
-`src/macos/client.mm` decided whether it was running inside an app bundle with
-`[bundlePath isEqualToString:@"DDNet.app"]`. The bundle is `Leviathan.app`, so
-the check failed, the working directory was never changed into
-`Contents/Resources`, and the client started with `/` as its current directory
-and found no `data/`.
+**Причина:**
+`src/macos/client.mm` решал, запущен ли он внутри бандла, проверкой
+`[bundlePath isEqualToString:@"DDNet.app"]`. Бандл называется `Leviathan.app`,
+проверка не проходила, рабочая папка не переключалась в `Contents/Resources`,
+и клиент стартовал с текущей папкой `/`, где нет `data/`.
 
-**Fix:**
-The check became `[bundlePath hasSuffix:@".app"]`: any bundle counts, whatever
-it is called.
+**Исправление:**
+Проверка стала `[bundlePath hasSuffix:@".app"]`: подходит любой бандл, как бы он
+ни назывался.
 
-**Check:**
-CI build green; release `v20.1-macos-3` started on the user's Mac and reached the
-game.
+**Проверка:**
+Сборка в CI зелёная; релиз `v20.1-macos-3` запустился на маке пользователя и
+дошёл до игры.
 
 ---
 
-## Error 2
+## Ошибка №2
 
-**Error:**
-Nothing to read when the app failed: macOS users cannot easily open a terminal
-to see the client's output, and a client that dies at startup leaves nothing
-behind.
+**Ошибка:**
+Когда приложение падало, читать было нечего: пользователю macOS непросто открыть
+терминал и посмотреть вывод клиента, а клиент, умерший на старте, ничего после
+себя не оставляет.
 
-**Cause:**
-`logfile` is empty by default, so the log only goes to stdout, which a bundled
-app has nowhere to show.
+**Причина:**
+`logfile` по умолчанию пуст, лог идёт только в stdout, которому у бандла негде
+показаться.
 
-**Fix:**
-`client.cpp`: on macOS, when `logfile` is empty, it defaults to
+**Исправление:**
+`client.cpp`: на macOS при пустом `logfile` он по умолчанию становится
 `~/Desktop/Leviathan.log`.
 
-**Check:**
-CI build green; the log file was what diagnosed Error 1.
+**Проверка:**
+Сборка в CI зелёная; именно этот файл позволил найти Ошибку №1.
 
 ---
 
-## Error 3
+## Ошибка №3
 
-**Error:**
-Rich presence buttons (the Telegram link on the Discord profile) had no
-implementation on macOS.
+**Ошибка:**
+У кнопок Rich Presence (ссылка на Telegram в профиле Discord) не было реализации
+на macOS.
 
-**Cause:**
-Windows reaches Discord through a named pipe. The unix family reaches it through
-a unix domain socket in `$XDG_RUNTIME_DIR`, `$TMPDIR` or `/tmp`, and the address
-structure carries the path in a 104-byte field on macOS, which the long per-user
-`$TMPDIR` can exceed.
+**Причина:**
+Windows выходит на Discord через именованный канал. Семейство unix — через
+unix-сокет в `$XDG_RUNTIME_DIR`, `$TMPDIR` или `/tmp`, причём адресная структура
+на macOS держит путь в поле на 104 байта, которое длинный пользовательский
+`$TMPDIR` может превысить.
 
-**Fix:**
-`discord_ipc.cpp` has one transport per family behind the same frame protocol.
-The unix one tries each directory, skips a path that would not fit the field,
-sets `SO_NOSIGPIPE` so Discord quitting mid-game does not kill the client, and
-retries short writes.
+**Исправление:**
+В `discord_ipc.cpp` по одному транспорту на семейство за общим протоколом
+кадров. Unix-транспорт перебирает папки, пропускает путь, который не влезает в
+поле, ставит `SO_NOSIGPIPE`, чтобы выход Discord посреди игры не убил клиент, и
+повторяет неполные записи.
 
-**Check:**
-Compiles in CI. Not exercised end to end: the runner has no Discord client.
-
----
-
-## Error 4
-
-**Error:**
-The `.dmg` built in CI would have failed to launch on any Mac but the runner.
-
-**Cause:**
-CMake resolved freetype, png, opus and ogg from Homebrew under `/opt/homebrew`
-because `ddnet-libs` is only reached through `PATHS`, the last place
-`find_library` looks. Those dylibs carry absolute Homebrew install names, the
-copies placed in `Contents/Frameworks` are referenced by nothing, and a Mac
-without Homebrew has nothing at those paths.
-
-**Fix:**
-`-DPREFER_BUNDLED_LIBS=ON` in the workflow, so `ddnet-libs` wins for everything
-it carries.
-
-**Check:**
-`v20.1-macos-3` ran on a Mac that had never had Homebrew.
+**Проверка:**
+Компилируется в CI. Насквозь не проверено: на раннере нет клиента Discord.
 
 ---
 
-## Error 5
+## Ошибка №4
 
-**Error:**
-Risk, not yet a failure: thirty-one commits of new features landed after the last
-macOS build, all compiled only with MSVC.
+**Ошибка:**
+Собранный в CI `.dmg` не запустился бы ни на одном маке, кроме самого раннера.
 
-**Cause:**
-MSVC's standard headers include one another generously; libc++ on macOS does
-not. `std::size` needs `<iterator>`, `std::clamp` / `std::max({…})` need
-`<algorithm>`, `std::sin` / `std::fmod` need `<cmath>`, `getenv` needs
-`<cstdlib>`. Code that names these without including them compiles on Windows
-and fails on macOS.
+**Причина:**
+CMake брал freetype, png, opus и ogg из Homebrew в `/opt/homebrew`, потому что
+`ddnet-libs` достигается только через `PATHS` — последнее место, куда смотрит
+`find_library`. Эти dylib несут абсолютные install name из Homebrew, копии,
+положенные в `Contents/Frameworks`, ни на что не ссылаются, а на маке без
+Homebrew по тем путям ничего нет.
 
-**Fix:**
-Explicit includes added to `particles3d.cpp`, `hud.cpp`, `items.cpp`,
+**Исправление:**
+`-DPREFER_BUNDLED_LIBS=ON` в воркфлоу, чтобы `ddnet-libs` побеждал во всём, что
+он несёт.
+
+**Проверка:**
+`v20.1-macos-3` запустился на маке, где Homebrew никогда не было.
+
+---
+
+## Ошибка №5
+
+**Ошибка:**
+Риск, ещё не падение: после последней macOS-сборки в код легли тридцать один
+коммит новых фич, скомпилированных только MSVC.
+
+**Причина:**
+Стандартные заголовки MSVC щедро подключают друг друга; libc++ на macOS — нет.
+`std::size` требует `<iterator>`, `std::clamp` / `std::max({…})` — `<algorithm>`,
+`std::sin` / `std::fmod` — `<cmath>`, `getenv` — `<cstdlib>`. Код, который
+называет их без include, собирается на Windows и падает на маке.
+
+**Исправление:**
+Явные include добавлены в `particles3d.cpp`, `hud.cpp`, `items.cpp`,
 `gameclient.cpp`, `text.cpp`, `menus_settings_leviathan.cpp`, `client.cpp`.
 
-**Check:**
-Windows: `build.bat` green after the change, full rebuild of every touched file.
-macOS: run 33573821576. The Debug leg compiled the whole client with clang on
-the first attempt, built the headless client, and the headless smoke test ran the
-client through startup, `cl_music_island 1`, `cl_custom_background 1` and `quit`
-to a clean config save. No new error to log from this stage.
+**Проверка:**
+Windows: `build.bat` зелёный после правки, полная пересборка всех тронутых
+файлов. macOS: прогон 33573821576 — Debug-нога скомпилировала весь клиент
+clang'ом с первой попытки, собрала headless-клиент, и smoke-тест провёл клиент
+через запуск, `cl_music_island 1`, `cl_custom_background 1` и `quit` до чистого
+сохранения конфига. Новых ошибок на этом этапе нет.
 
 ---
 
-## Not checkable here
+## Ошибка №6
 
-The CI runner has no window server, so these were not exercised on macOS and
-are stated as untested rather than as working:
+**Ошибка:**
+Клиент падал через две секунды после запуска с access violation, сразу после
+инициализации джойстика — на Windows, после добавления значка игроков Leviathan.
 
-- window creation, fullscreen, windowed mode, resolution changes, Retina scaling;
-- keyboard, mouse, text input, clipboard;
-- sound output;
-- the OpenGL rendering itself (only the headless backend runs in CI);
-- connecting to a server from the packaged app.
+**Причина:**
+Загрузка текстуры логотипа стояла первой строкой `CGameClient::OnInit()`, а
+указатели на движок (`Graphics()` и остальные) `OnInit` получает чуть ниже. В
+этот момент `Graphics()` ещё null.
 
-What CI does check on every run: the full client links against the bundled
-frameworks, the Objective-C++ files compile, and a headless client starts,
-executes commands, saves its config and shuts down cleanly, in both Release and
-Debug.
+**Исправление:**
+Загрузка перенесена после блока `Kernel()->RequestInterface<...>()`.
+
+**Проверка:**
+Три клиента на локальном сервере прожили весь тест; macOS CI (прогон
+33606263464) зелёный в Release и Debug.
+
+---
+
+## Что здесь проверить нельзя
+
+На CI-раннере нет оконной системы, поэтому это на macOS не проверялось и
+заявлено как непроверенное, а не как работающее:
+
+- создание окна, полный экран, оконный режим, смена разрешения, масштаб Retina;
+- клавиатура, мышь, ввод текста, буфер обмена;
+- вывод звука;
+- сам рендер OpenGL (в CI работает только headless-бэкенд);
+- подключение к серверу из упакованного приложения.
+
+Что CI проверяет при каждом прогоне: полный клиент линкуется с бандловыми
+фреймворками, Objective-C++-файлы компилируются, а headless-клиент стартует,
+выполняет команды, сохраняет конфиг и чисто завершается — в Release и в Debug.
