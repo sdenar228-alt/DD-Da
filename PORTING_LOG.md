@@ -123,7 +123,9 @@ Explicit includes added to `particles3d.cpp`, `hud.cpp`, `items.cpp`,
 `gameclient.cpp`, `text.cpp`, `menus_settings_leviathan.cpp`, `client.cpp`.
 
 **Check:**
-Windows build still green (`build.bat`). macOS CI: see the entries that follow.
+Windows: `build.bat` green after the change, full rebuild of every touched file.
+macOS: the Debug leg of run 33573821576 compiled the whole client with clang on
+the first attempt; see the entries that follow for the rest of that run.
 
 ---
 
