@@ -34,6 +34,7 @@ public:
 	// friend, red for someone declared war on, nothing for everybody else.
 	bool m_ShowRelationDot;
 	ColorRGBA m_RelationColor;
+	bool m_ShowLeviathanBadge;
 	bool m_ShowClientId;
 	int m_ClientId;
 	float m_FontSizeClientId;
@@ -376,6 +377,42 @@ public:
 	}
 };
 
+// The logo by the name of anybody on this client, drawn from the texture the
+// client keeps rather than from a sprite sheet.
+class CNamePlatePartLeviathanBadge : public CNamePlatePart
+{
+	ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+
+protected:
+	void Update(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_Visible = Data.m_ShowLeviathanBadge && This.m_LeviathanLogo.IsValid();
+		if(!m_Visible)
+			return;
+		const float Side = Data.m_FontSize * 0.85f;
+		m_Size = vec2(Side, Side);
+		m_Color.a = Data.m_Color.a;
+	}
+
+public:
+	CNamePlatePartLeviathanBadge(CGameClient &This) :
+		CNamePlatePart(This)
+	{
+		m_Padding = vec2(2.0f, 0.0f);
+	}
+
+	void Render(CGameClient &This, vec2 Pos) const override
+	{
+		This.Graphics()->TextureSet(This.m_LeviathanLogo);
+		This.Graphics()->QuadsBegin();
+		This.Graphics()->SetColor(m_Color);
+		This.Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
+		IGraphics::CQuadItem Quad(Pos.x - m_Size.x / 2.0f, Pos.y - m_Size.y / 2.0f, m_Size.x, m_Size.y);
+		This.Graphics()->QuadsDrawTL(&Quad, 1);
+		This.Graphics()->QuadsEnd();
+	}
+};
+
 class CNamePlatePartName : public CNamePlatePartText
 {
 private:
@@ -558,6 +595,7 @@ private:
 
 		AddPart<CNamePlatePartFriendMark>(This);
 		AddPart<CNamePlatePartRelationDot>(This);
+		AddPart<CNamePlatePartLeviathanBadge>(This);
 		AddPart<CNamePlatePartClientId>(This, false);
 		AddPart<CNamePlatePartName>(This);
 		AddPart<CNamePlatePartNewLine>(This);
@@ -690,6 +728,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	Data.m_ShowRelationDot = Data.m_ShowName && g_Config.m_ClRelationDots && (IsFriend || IsFoe);
 	// War wins when someone is on both lists: the warning is the useful half.
 	Data.m_RelationColor = IsFoe ? ColorRGBA(0.95f, 0.25f, 0.25f) : ColorRGBA(0.35f, 0.9f, 0.35f);
+	Data.m_ShowLeviathanBadge = Data.m_ShowName && g_Config.m_ClLeviathanBadges && GameClient()->IsLeviathanUser(pPlayerInfo->m_ClientId);
 	Data.m_ShowClientId = Data.m_ShowName && (g_Config.m_Debug || g_Config.m_ClNamePlatesIds);
 	Data.m_FontSize = 18.0f + 20.0f * g_Config.m_ClNamePlatesSize / 100.0f;
 
@@ -835,6 +874,7 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_ShowFriendMark = Data.m_ShowName && g_Config.m_ClNamePlatesFriendMark;
 	Data.m_ShowRelationDot = Data.m_ShowName && g_Config.m_ClRelationDots;
 	Data.m_RelationColor = ColorRGBA(0.35f, 0.9f, 0.35f);
+	Data.m_ShowLeviathanBadge = Data.m_ShowName && g_Config.m_ClLeviathanBadges;
 
 	Data.m_ShowClientId = Data.m_ShowName && (g_Config.m_Debug || g_Config.m_ClNamePlatesIds);
 	Data.m_ClientId = Dummy;

@@ -3380,3 +3380,18 @@ Always predict frozen players
 
 No country flags match your filter criteria
 == Ни один флаг страны не подходит под фильтр
+
+Leviathan players
+== Игроки Leviathan
+
+Show the logo by Leviathan players
+== Показывать логотип у игроков Leviathan
+
+Let others see that you use Leviathan
+== Показывать другим, что ты на Leviathan
+
+By the name in the game and in the scoreboard. Only players who have the switch below on can be recognised.
+== У ника в игре и в таблице. Узнать можно только тех, у кого включена галочка ниже.
+
+A mark in a byte of your skin colour that only Leviathan reads. Your skin looks the same to everybody.
+== Метка в байте цвета скина, который читает только Leviathan. Скин для всех выглядит как раньше.

@@ -630,6 +630,16 @@ public:
 	void OnConnected() override;
 	void OnRender() override;
 	void UpdateTextGradient(bool Enabled);
+
+	// How Leviathan clients recognise each other. Servers hand out no client
+	// information, but they relay skin colours to everyone, and the top byte of a
+	// packed colour is read by nothing: every client unpacks hue, saturation and
+	// lightness from the low three bytes and ignores the rest. So the client
+	// signs its body colour there, and looks for the signature on everybody else.
+	static constexpr unsigned LEVIATHAN_BEACON = 0x4C000000u; // 'L'
+	int WithLeviathanBeacon(int PackedColor) const;
+	bool IsLeviathanUser(int ClientId) const;
+	IGraphics::CTextureHandle m_LeviathanLogo;
 	void OnUpdate() override;
 	void OnDummyDisconnect() override;
 	virtual void OnRelease();
