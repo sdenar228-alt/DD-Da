@@ -124,8 +124,10 @@ Explicit includes added to `particles3d.cpp`, `hud.cpp`, `items.cpp`,
 
 **Check:**
 Windows: `build.bat` green after the change, full rebuild of every touched file.
-macOS: the Debug leg of run 33573821576 compiled the whole client with clang on
-the first attempt; see the entries that follow for the rest of that run.
+macOS: run 33573821576. The Debug leg compiled the whole client with clang on
+the first attempt, built the headless client, and the headless smoke test ran the
+client through startup, `cl_music_island 1`, `cl_custom_background 1` and `quit`
+to a clean config save. No new error to log from this stage.
 
 ---
 
