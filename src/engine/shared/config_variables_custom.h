@@ -158,6 +158,11 @@ MACRO_CONFIG_INT(ClGradientTextBrightness, cl_gradient_text_brightness, 60, 10, 
 // The settings page opens where it was left, the way the rest of the settings do.
 MACRO_CONFIG_INT(UiLeviathanPage, ui_leviathan_page, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which Leviathan settings tab was open last")
 
+// Recognising each other: a Leviathan client marks itself in a byte of its skin
+// colour that nothing else reads, and shows a logo by anyone who did the same.
+MACRO_CONFIG_INT(ClLeviathanBeacon, cl_leviathan_beacon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Let other Leviathan players see that you use Leviathan")
+MACRO_CONFIG_INT(ClLeviathanBadges, cl_leviathan_badges, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the Leviathan logo by players who use Leviathan")
+
 // Auto replies and the name badge.
 MACRO_CONFIG_INT(ClAutoReplyMuted, cl_auto_reply_muted, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Answer players you have muted when they address you")
 MACRO_CONFIG_STR(ClAutoReplyMutedMsg, cl_auto_reply_muted_msg, 128, "ты замучен <3", CFGFLAG_CLIENT | CFGFLAG_SAVE, "What the answer says")

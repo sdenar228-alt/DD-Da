@@ -806,20 +806,37 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				{
 					str_copy(aBuf, ClientData.m_aName);
 				}
-				Player.m_Name.Update(TextRender(), aBuf, FontSize, NameLength, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
+				// The Leviathan logo in front of the name of anybody on this
+				// client. It takes its room off the name rather than sitting on
+				// top of it, so a long name is shortened, not overdrawn.
+				const bool LeviathanBadge = g_Config.m_ClLeviathanBadges && GameClient()->m_LeviathanLogo.IsValid() && GameClient()->IsLeviathanUser(pInfo->m_ClientId);
+				const float BadgeSide = LeviathanBadge ? FontSize : 0.0f;
+				const float BadgeGap = LeviathanBadge ? 2.0f : 0.0f;
+				if(LeviathanBadge)
+				{
+					Graphics()->TextureSet(GameClient()->m_LeviathanLogo);
+					Graphics()->QuadsBegin();
+					Graphics()->SetColor(1.0f, 1.0f, 1.0f, TextColor.a);
+					Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
+					IGraphics::CQuadItem BadgeQuad(NameOffset, Row.y + (Row.h - BadgeSide) / 2.0f, BadgeSide, BadgeSide);
+					Graphics()->QuadsDrawTL(&BadgeQuad, 1);
+					Graphics()->QuadsEnd();
+				}
+
+				Player.m_Name.Update(TextRender(), aBuf, FontSize, NameLength - BadgeSide - BadgeGap, TEXTFLAG_RENDER | TEXTFLAG_ELLIPSIS_AT_END);
 
 				ColorRGBA NameColor = TextColor;
 				if(ClientData.m_AuthLevel)
 				{
 					NameColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClAuthedPlayerColor));
 				}
-				Player.m_Name.Render(TextRender(), vec2(NameOffset, TextY), NameColor);
+				Player.m_Name.Render(TextRender(), vec2(NameOffset + BadgeSide + BadgeGap, TextY), NameColor);
 
 				// ready / watching
 				if(Client()->IsSixup() && Client()->m_TranslationContext.m_aClients[pInfo->m_ClientId].m_PlayerFlags7 & protocol7::PLAYERFLAG_READY)
 				{
 					Player.m_ReadyMark.Update(TextRender(), "✓", FontSize);
-					Player.m_ReadyMark.Render(TextRender(), vec2(NameOffset + Player.m_Name.Width(), TextY), ColorRGBA(0.1f, 1.0f, 0.1f, TextColor.a));
+					Player.m_ReadyMark.Render(TextRender(), vec2(NameOffset + BadgeSide + BadgeGap + Player.m_Name.Width(), TextY), ColorRGBA(0.1f, 1.0f, 0.1f, TextColor.a));
 				}
 			}
 

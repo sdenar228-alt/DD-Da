@@ -1556,6 +1556,23 @@ void CMenus::RenderSettingsLeviathanInterface(CUIRect MainView)
 		Ui()->DoScrollbarOption(&g_Config.m_ClGradientTextBrightness, &g_Config.m_ClGradientTextBrightness, &Button, Localize("Brightness"), 10, 100, &CUi::ms_LinearScrollbarScale, 0u, "%");
 	}
 
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	Ui()->DoLabel_AutoLineSize(Localize("Leviathan players"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
+	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClLeviathanBadges, Localize("Show the logo by Leviathan players"), g_Config.m_ClLeviathanBadges, &Button))
+	{
+		g_Config.m_ClLeviathanBadges ^= 1;
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClLeviathanBadges, &Button, Localize("By the name in the game and in the scoreboard. Only players who have the switch below on can be recognised."));
+	RightView.HSplitTop(LINE_SIZE, &Button, &RightView);
+	if(DoButton_CheckBox(&g_Config.m_ClLeviathanBeacon, Localize("Let others see that you use Leviathan"), g_Config.m_ClLeviathanBeacon, &Button))
+	{
+		g_Config.m_ClLeviathanBeacon ^= 1;
+		GameClient()->SendInfo(false);
+	}
+	GameClient()->m_Tooltips.DoToolTip(&g_Config.m_ClLeviathanBeacon, &Button, Localize("A mark in a byte of your skin colour that only Leviathan reads. Your skin looks the same to everybody."));
+
 	Ui()->DoLabel_AutoLineSize(Localize("Spinning tee"), HEADLINE_FONT_SIZE, TEXTALIGN_ML, &RightView, HEADLINE_HEIGHT);
 	RightView.HSplitTop(MARGIN_SMALL, nullptr, &RightView);
 

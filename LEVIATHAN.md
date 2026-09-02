@@ -237,6 +237,23 @@ with its own opacity and reach. They live in a box the size of the view plus a
 margin and wrap around its edges, so the field never thins out. Decoration only:
 they draw over the map background and under everything that matters.
 
+## Leviathan players
+
+Players on this client see a small Leviathan logo by the name of everybody else
+on it, in the game and in the scoreboard. Servers hand out no information about
+clients, so the clients tell each other: a Leviathan client signs the top byte
+of its packed body colour with a mark that nothing else reads. Every DDNet
+client unpacks hue, saturation and lightness from the low three bytes and drops
+the rest, so the skin looks exactly the same to everybody; servers store and
+relay the colour untouched. The client also compares the colour it sees in the
+snapshot against the signed value, not the raw setting, or it would take the
+signature for a change and resend its info forever.
+
+Two switches on the Interface page: show the logo, and sign your own colour. The
+player flags were not used for this on purpose: DDNet servers kick a client that
+sets an unknown flag bit, and a mark that gets its wearers kicked is not a mark.
+The mark does not cross to 0.7 servers, which rebuild the colour from parts.
+
 ## Discord presence
 
 Built in, and on. While the client is running Discord shows what you are doing:

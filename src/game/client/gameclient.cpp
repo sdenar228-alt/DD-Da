@@ -338,6 +338,14 @@ void CGameClient::OnInit()
 
 	m_pGraphics = Kernel()->RequestInterface<IGraphics>();
 
+	// The logo the client shows by other Leviathan players. Loaded here, after
+	// the interfaces above are in hand and never from inside a frame: before
+	// them Graphics() is null, and mid-frame a texture load stalls the render
+	// pipeline. Both were learned by crashing.
+	m_LeviathanLogo = Graphics()->LoadTexture("leviathan_logo.png", IStorage::TYPE_ALL);
+	if(m_LeviathanLogo.IsNullTexture())
+		m_LeviathanLogo.Invalidate();
+
 	// propagate pointers
 	m_UI.Init(Kernel());
 	m_UI.SetOnBackButtonPressedCallback([this]() {
@@ -799,6 +807,24 @@ void CGameClient::UpdatePositions()
 
 // Hands the text renderer the gradient the player asked for. The phase carries
 // the clock, so the renderer needs none of its own.
+int CGameClient::WithLeviathanBeacon(int PackedColor) const
+{
+	// A 0.7 server rebuilds the colour from skin parts and hands back the low
+	// bytes only, so on one of those the signature is not sent and, more to the
+	// point, not expected back: expecting it would look like a change every
+	// snapshot and resend the info forever.
+	if(!g_Config.m_ClLeviathanBeacon || Client()->IsSixup())
+		return PackedColor;
+	return (int)(((unsigned)PackedColor & 0x00FFFFFFu) | LEVIATHAN_BEACON);
+}
+
+bool CGameClient::IsLeviathanUser(int ClientId) const
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS || !m_aClients[ClientId].m_Active)
+		return false;
+	return ((unsigned)m_aClients[ClientId].m_ColorBody & 0xFF000000u) == LEVIATHAN_BEACON;
+}
+
 void CGameClient::UpdateTextGradient(bool Enabled)
 {
 	// The picked color says which hue to build around and how saturated to run.
@@ -906,7 +932,7 @@ void CGameClient::OnRender()
 					m_aClients[m_aLocalIds[0]].m_Country != g_Config.m_PlayerCountry ||
 					str_comp(m_aClients[m_aLocalIds[0]].m_aSkinName, g_Config.m_ClPlayerSkin) ||
 					m_aClients[m_aLocalIds[0]].m_UseCustomColor != g_Config.m_ClPlayerUseCustomColor ||
-					m_aClients[m_aLocalIds[0]].m_ColorBody != (int)g_Config.m_ClPlayerColorBody ||
+					m_aClients[m_aLocalIds[0]].m_ColorBody != WithLeviathanBeacon((int)g_Config.m_ClPlayerColorBody) ||
 					m_aClients[m_aLocalIds[0]].m_ColorFeet != (int)g_Config.m_ClPlayerColorFeet)
 					SendInfo(false);
 				else
@@ -938,7 +964,7 @@ void CGameClient::OnRender()
 						m_aClients[m_aLocalIds[1]].m_Country != g_Config.m_ClDummyCountry ||
 						str_comp(m_aClients[m_aLocalIds[1]].m_aSkinName, g_Config.m_ClDummySkin) ||
 						m_aClients[m_aLocalIds[1]].m_UseCustomColor != g_Config.m_ClDummyUseCustomColor ||
-						m_aClients[m_aLocalIds[1]].m_ColorBody != (int)g_Config.m_ClDummyColorBody ||
+						m_aClients[m_aLocalIds[1]].m_ColorBody != WithLeviathanBeacon((int)g_Config.m_ClDummyColorBody) ||
 						m_aClients[m_aLocalIds[1]].m_ColorFeet != (int)g_Config.m_ClDummyColorFeet)
 						SendDummyInfo(false);
 					else
@@ -3296,7 +3322,7 @@ void CGameClient::SendInfo(bool Start)
 		Msg.m_Country = g_Config.m_PlayerCountry;
 		Msg.m_pSkin = g_Config.m_ClPlayerSkin;
 		Msg.m_UseCustomColor = g_Config.m_ClPlayerUseCustomColor;
-		Msg.m_ColorBody = g_Config.m_ClPlayerColorBody;
+		Msg.m_ColorBody = WithLeviathanBeacon(g_Config.m_ClPlayerColorBody);
 		Msg.m_ColorFeet = g_Config.m_ClPlayerColorFeet;
 		CMsgPacker Packer(&Msg);
 		Msg.Pack(&Packer);
@@ -3311,7 +3337,7 @@ void CGameClient::SendInfo(bool Start)
 		Msg.m_Country = g_Config.m_PlayerCountry;
 		Msg.m_pSkin = g_Config.m_ClPlayerSkin;
 		Msg.m_UseCustomColor = g_Config.m_ClPlayerUseCustomColor;
-		Msg.m_ColorBody = g_Config.m_ClPlayerColorBody;
+		Msg.m_ColorBody = WithLeviathanBeacon(g_Config.m_ClPlayerColorBody);
 		Msg.m_ColorFeet = g_Config.m_ClPlayerColorFeet;
 		CMsgPacker Packer(&Msg);
 		Msg.Pack(&Packer);
@@ -3338,7 +3364,7 @@ void CGameClient::SendDummyInfo(bool Start)
 		Msg.m_Country = g_Config.m_ClDummyCountry;
 		Msg.m_pSkin = g_Config.m_ClDummySkin;
 		Msg.m_UseCustomColor = g_Config.m_ClDummyUseCustomColor;
-		Msg.m_ColorBody = g_Config.m_ClDummyColorBody;
+		Msg.m_ColorBody = WithLeviathanBeacon(g_Config.m_ClDummyColorBody);
 		Msg.m_ColorFeet = g_Config.m_ClDummyColorFeet;
 		CMsgPacker Packer(&Msg);
 		Msg.Pack(&Packer);
@@ -3353,7 +3379,7 @@ void CGameClient::SendDummyInfo(bool Start)
 		Msg.m_Country = g_Config.m_ClDummyCountry;
 		Msg.m_pSkin = g_Config.m_ClDummySkin;
 		Msg.m_UseCustomColor = g_Config.m_ClDummyUseCustomColor;
-		Msg.m_ColorBody = g_Config.m_ClDummyColorBody;
+		Msg.m_ColorBody = WithLeviathanBeacon(g_Config.m_ClDummyColorBody);
 		Msg.m_ColorFeet = g_Config.m_ClDummyColorFeet;
 		CMsgPacker Packer(&Msg);
 		Msg.Pack(&Packer);
