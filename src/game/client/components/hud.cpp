@@ -29,6 +29,7 @@
 #include <game/localization.h>
 
 #include <cmath>
+#include <algorithm>
 
 CHud::CHud()
 {

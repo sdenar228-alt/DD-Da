@@ -86,6 +86,8 @@
 #include <chrono>
 #include <limits>
 #include <vector>
+#include <algorithm>
+#include <cmath>
 
 using namespace std::chrono_literals;
 
