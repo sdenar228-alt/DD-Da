@@ -702,6 +702,10 @@ public:
 
 	bool IsActive() const { return m_MenuActive; }
 	void SetActive(bool Active);
+	// RU | EN, the two languages the client's players actually switch between.
+	// The full list stays on the Language page for everybody else.
+	void DoLanguageToggle(CUIRect Rect);
+	void SetLanguage(const char *pFilename);
 
 	void OnInterfacesInit(CGameClient *pClient) override;
 	void OnInit() override;

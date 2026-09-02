@@ -296,7 +296,9 @@ void CGameClient::InitializeLanguage()
 {
 	// set the language
 	g_Localization.LoadIndexfile(Storage(), Console());
-	if(g_Config.m_ClShowWelcome)
+	// The client starts in Russian. The guess from the system locale is kept for
+	// a config that has cleared the language, and does not override the default.
+	if(g_Config.m_ClShowWelcome && g_Config.m_ClLanguagefile[0] == 0)
 		g_Localization.SelectDefaultLanguage(Console(), g_Config.m_ClLanguagefile, sizeof(g_Config.m_ClLanguagefile));
 	g_Localization.Load(g_Config.m_ClLanguagefile, Storage(), Console());
 }
