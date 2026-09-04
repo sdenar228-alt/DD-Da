@@ -44,7 +44,11 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ninja-build
+        # glslang-tools carries glslangValidator, which the Vulkan backend needs to
+        # compile its shaders at build time. The Android build turns Vulkan on,
+        # and phones are where it matters most, so it is installed rather than
+        # switched off.
+        sudo apt-get install -y ninja-build glslang-tools
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4
