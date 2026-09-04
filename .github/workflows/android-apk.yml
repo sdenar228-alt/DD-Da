@@ -64,7 +64,10 @@ jobs:
         # The runner image presets ANDROID_HOME to its own SDK, which does not
         # carry the NDK version this build wants. Both the downloader and the
         # build below are pointed at a fresh one instead.
+        # Gradle refuses to build when the two point at different SDKs, and the
+        # runner sets ANDROID_SDK_ROOT to its own, so both are moved together.
         echo "ANDROID_HOME=$HOME/Android/Sdk" >> "$GITHUB_ENV"
+        echo "ANDROID_SDK_ROOT=$HOME/Android/Sdk" >> "$GITHUB_ENV"
         scripts/android/download_android_sdk.sh
 
     # A stable Rust: the documentation is explicit that nightly produces linking
