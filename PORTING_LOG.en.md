@@ -178,6 +178,12 @@ own, and the same thing macOS turns mode 1 into anyway. Additionally
 fullscreen" / "borderless window" / its size, so the next such question is
 settled by reading a log rather than by guessing.
 
+The line first landed in the wrong place: the anchor it was inserted at occurs
+twice in the file, and the first match was inside the headless branch, before a
+window exists at all. It compiled and said nothing. Moved to just after a
+successful `SDL_CreateWindow` and checked by running: `Window is windowed,
+800x500 (gfx_fullscreen 0, gfx_borderless 0, desktop 1920x1080)`.
+
 A default only applies to a config that does not carry the value yet. Anybody
 whose client has already run has it written in `settings_ddnet.cfg` and has to
 change it once: `gfx_fullscreen 2` in the console (F1), or Settings, Graphics.
