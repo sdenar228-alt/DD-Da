@@ -58,6 +58,10 @@ sed -i "s/\"DDNet\"/\"${APK_BASENAME}\"/g" src/main/AndroidManifest.xml
 sed -i "s/org.ddnet.client/${APK_PACKAGE_NAME}/g" src/main/AndroidManifest.xml
 
 if [ "${APK_PACKAGE_FOLDER}" != "org/ddnet/client" ]; then
+	# The move needs somewhere to move to: a package that shares no parent
+	# with org.ddnet.client, such as com.example.client, has none of its
+	# directories yet.
+	mkdir -p src/main/java/"$(dirname "${APK_PACKAGE_FOLDER}")"
 	mv src/main/java/org/ddnet/client src/main/java/"${APK_PACKAGE_FOLDER}"
 fi
 

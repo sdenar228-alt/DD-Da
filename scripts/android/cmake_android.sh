@@ -130,6 +130,11 @@ if [ -z ${SOURCE_DATE_EPOCH+x} ]; then
 	fi
 fi
 
+# The native library keeps upstream's name whatever the fork calls its desktop
+# executable: ClientActivity.java loads "DDNet" by that literal name, and the copy
+# into the apk below looks for libDDNet.so. Renaming it would mean editing the Java
+# template too, and nobody ever sees it: the app is named by strings.xml, wears the
+# fork's icon and installs under its own package.
 function build_for_type() {
 	# Remove absolute build paths from binary
 	build_extra_cflags="-ffile-prefix-map=${ANDROID_TOOLCHAIN_ROOT}=ANDROID_TOOLCHAIN_ROOT"
@@ -160,6 +165,7 @@ function build_for_type() {
 		-DANDROID_PACKAGE_NAME="${PACKAGE_NAME}" \
 		-DANDROID_PACKAGE_NAME_JNI="${PACKAGE_NAME//./_}" \
 		-DPREFER_BUNDLED_LIBS=ON \
+		-DCLIENT_EXECUTABLE=DDNet \
 		-DSERVER=ON \
 		-DTOOLS=OFF \
 		-DVULKAN=ON \
@@ -220,8 +226,15 @@ copy_project_files scripts/android/files/AndroidManifest.xml src/main/AndroidMan
 rm -rf src/main/res
 cp -R ../scripts/android/files/res src/main/
 mkdir -p src/main/res/mipmap
-cp ../other/icons/DDNet_256x256x32.png src/main/res/mipmap/ic_launcher.png
-cp ../other/icons/DDNet_256x256x32.png src/main/res/mipmap/ic_launcher_round.png
+# The fork's own launcher icon, falling back to upstream's when it is absent, the
+# way CLIENT_ICON does for the desktop builds. The game name cannot be used to
+# find it: it names the native library as well, which has to stay DDNet.
+ANDROID_ICON="../other/icons/Leviathan_256x256x32.png"
+if [ ! -f "$ANDROID_ICON" ]; then
+	ANDROID_ICON="../other/icons/DDNet_256x256x32.png"
+fi
+cp "$ANDROID_ICON" src/main/res/mipmap/ic_launcher.png
+cp "$ANDROID_ICON" src/main/res/mipmap/ic_launcher_round.png
 chmod +x ./gradlew
 
 log_info "Copying libraries..."
