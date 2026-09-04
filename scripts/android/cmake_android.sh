@@ -220,8 +220,15 @@ copy_project_files scripts/android/files/AndroidManifest.xml src/main/AndroidMan
 rm -rf src/main/res
 cp -R ../scripts/android/files/res src/main/
 mkdir -p src/main/res/mipmap
-cp ../other/icons/DDNet_256x256x32.png src/main/res/mipmap/ic_launcher.png
-cp ../other/icons/DDNet_256x256x32.png src/main/res/mipmap/ic_launcher_round.png
+# The fork's own launcher icon, falling back to upstream's when it is absent, the
+# way CLIENT_ICON does for the desktop builds. The game name cannot be used to
+# find it: it names the native library as well, which has to stay DDNet.
+ANDROID_ICON="../other/icons/Leviathan_256x256x32.png"
+if [ ! -f "$ANDROID_ICON" ]; then
+	ANDROID_ICON="../other/icons/DDNet_256x256x32.png"
+fi
+cp "$ANDROID_ICON" src/main/res/mipmap/ic_launcher.png
+cp "$ANDROID_ICON" src/main/res/mipmap/ic_launcher_round.png
 chmod +x ./gradlew
 
 log_info "Copying libraries..."

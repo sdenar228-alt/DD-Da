@@ -167,3 +167,8 @@ tags
 
 # Built artifacts handed out by hand, like the iOS app from the workflow.
 /dist/
+
+# Signing keys never belong in the tree; the Android one lives in the repository secrets.
+*.jks
+*.keystore
+*.p12
