@@ -130,6 +130,11 @@ if [ -z ${SOURCE_DATE_EPOCH+x} ]; then
 	fi
 fi
 
+# The native library keeps upstream's name whatever the fork calls its desktop
+# executable: ClientActivity.java loads "DDNet" by that literal name, and the copy
+# into the apk below looks for libDDNet.so. Renaming it would mean editing the Java
+# template too, and nobody ever sees it: the app is named by strings.xml, wears the
+# fork's icon and installs under its own package.
 function build_for_type() {
 	# Remove absolute build paths from binary
 	build_extra_cflags="-ffile-prefix-map=${ANDROID_TOOLCHAIN_ROOT}=ANDROID_TOOLCHAIN_ROOT"
@@ -160,6 +165,7 @@ function build_for_type() {
 		-DANDROID_PACKAGE_NAME="${PACKAGE_NAME}" \
 		-DANDROID_PACKAGE_NAME_JNI="${PACKAGE_NAME//./_}" \
 		-DPREFER_BUNDLED_LIBS=ON \
+		-DCLIENT_EXECUTABLE=DDNet \
 		-DSERVER=ON \
 		-DTOOLS=OFF \
 		-DVULKAN=ON \
